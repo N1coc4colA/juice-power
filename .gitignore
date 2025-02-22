@@ -83,3 +83,7 @@ CMakeLists.txt.user*
 
 # Qt Creator files
 CMakeLists.txt.user
+
+# Shaders compilation results
+/shaders/*.spv
+
