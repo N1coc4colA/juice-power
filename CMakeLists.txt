@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 
 add_subdirectory("submodules/vk-bootstrap")
+add_subdirectory("submodules")
 
 project(
 juice-power
@@ -46,9 +47,6 @@ find_package(Vulkan REQUIRED)
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
 find_package(fmt CONFIG REQUIRED)			# Convenience dependency
 find_package(magic_enum CONFIG REQUIRED)	# Convenience dependency
-
-set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/submodules/imgui)
-include(cmake/imgui.cmake)
 
 
 # Shader compilation steps
