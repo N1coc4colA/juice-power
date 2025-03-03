@@ -5,11 +5,11 @@ add_subdirectory("submodules")
 
 project(
 juice-power
-    VERSION
+	VERSION
 		# Major, Minor, Revision, [Alpha, Beta, Release]
 		0.0.0.0
 	LANGUAGES
-	    C
+		C
 		CXX
 )
 
@@ -76,7 +76,7 @@ shaders
 # Main executable
 add_executable(
 juice-power
-    ${CXX_HEADERS}
+	${CXX_HEADERS}
 	${CXX_SOURCES}
 	${C_SOURCES}
 )
@@ -86,14 +86,14 @@ add_dependencies(juice-power shaders)
 
 target_include_directories(
 juice-power
-    PRIVATE
-	    ${CMAKE_CURRENT_SOURCE_DIR}
+	PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}
 		${IMGUI_DIR}
 )
 
 target_link_libraries(
 juice-power
-    PRIVATE
+	PRIVATE
 		Vulkan::Vulkan
 		vk-bootstrap::vk-bootstrap
 		SDL3::SDL3
@@ -107,7 +107,7 @@ juice-power
 
 install(
 TARGETS
-    juice-power
+	juice-power
 	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
