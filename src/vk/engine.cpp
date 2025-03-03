@@ -360,11 +360,19 @@ void Engine::init_pipelines()
 
 void Engine::init_background_pipelines()
 {
+	const VkPushConstantRange pushConstant {
+		.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+		.offset = 0,
+		.size = sizeof(ComputePushConstants),
+	};
+
 	const VkPipelineLayoutCreateInfo computeLayout {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.setLayoutCount = 1,
 		.pSetLayouts = &_drawImageDescriptorLayout,
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = &pushConstant,
 	};
 
 	VK_CHECK(vkCreatePipelineLayout(_device, &computeLayout, nullptr, &_gradientPipelineLayout));
@@ -651,6 +659,7 @@ void Engine::draw()
 	// we will overwrite it all so we dont care about what was the older layout
 	vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
+	draw_pc(cmd);
 	draw_background(cmd);
 
 	//transition the draw image and the swapchain image into their correct transfer layouts
@@ -740,4 +749,24 @@ void Engine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 
 	vkCmdEndRendering(cmd);
+}
+
+void Engine::draw_pc(VkCommandBuffer cmd)
+{
+	assert(cmd != VK_NULL_HANDLE);
+
+	// bind the gradient drawing compute pipeline
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _gradientPipeline);
+
+	// bind the descriptor set containing the draw image for the compute pipeline
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _gradientPipelineLayout, 0, 1, &_drawImageDescriptors, 0, nullptr);
+
+	const ComputePushConstants pc {
+		.data1 = glm::vec4(1, 0, 0, 1),
+		.data2 = glm::vec4(0, 0, 1, 1),
+	}
+
+	vkCmdPushConstants(cmd, _gradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputePushConstants), &pc);
+	// execute the compute pipeline dispatch. We are using 16x16 workgroup size so we need to divide by it
+	vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0), std::ceil(_drawExtent.height / 16.0), 1);
 }

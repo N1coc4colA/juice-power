@@ -85,6 +85,8 @@ public:
 	VkCommandBuffer _immCommandBuffer;
 	VkCommandPool _immCommandPool;
 
+	std::vector<ComputeEffect> backgroundEffects;
+	int currentBackgroundEffect{0};
 
 	/// Initializes everything in the engine
 	void init();
@@ -125,6 +127,8 @@ public:
 	void draw_background(VkCommandBuffer cmd);
 
 	void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
+
+	void draw_pc(VkCommandBuffer cmd);
 
 	/// Run main loop
 	void run();
