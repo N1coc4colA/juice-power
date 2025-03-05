@@ -48,6 +48,8 @@ find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
 find_package(fmt CONFIG REQUIRED)			# Convenience dependency
 find_package(magic_enum CONFIG REQUIRED)	# Convenience dependency
 
+set(MAGIC_ENUM_INCL_DIR "")
+
 
 # Shader compilation steps
 foreach(shader_source ${SHADER_SOURCES})
@@ -62,6 +64,20 @@ foreach(shader_source ${SHADER_SOURCES})
 		VERBATIM
 	)
 	list(APPEND SHADER_FILES ${file_dir}/${file_c}.spv)
+endforeach()
+
+
+# Check if the include directory is flat or nested
+get_target_property(magic_enum_include_dirs magic_enum::magic_enum INTERFACE_INCLUDE_DIRECTORIES)
+
+foreach(dir ${magic_enum_include_dirs})
+	if (EXISTS "${dir}/magic_enum.hpp")
+		set(MAGIC_ENUM_INCL_DIR "${dir}")
+		break()
+	elseif (EXISTS "${dir}/magic_enum/magic_enum.hpp")
+		set(MAGIC_ENUM_INCL_DIR "${dir}/magic_enum")
+		break()
+	endif()
 endforeach()
 
 
@@ -80,6 +96,26 @@ juice-power
 	${CXX_SOURCES}
 	${C_SOURCES}
 )
+target_include_directories(juice-power PRIVATE "${MAGIC_ENUM_INCL_DIR}")
+
+
+# Check that we have AMD's VMA available
+get_target_property(JP_INCLUDE_DIRS juice-power INCLUDE_DIRECTORIES)
+
+set(VMA_HEADER_FOUND FALSE)
+
+foreach(dir ${JP_INCLUDE_DIRS})
+	if (EXISTS "${dir}/vk_mem_alloc.h")
+		set(VMA_HEADER_FOUND TRUE)
+		message(STATUS "Found vk_mem_alloc.h in ${dir}")
+		break()
+	endif()
+endforeach()
+
+if (NOT VMA_HEADER_FOUND)
+	message(FATAL_ERROR "AMD's VMA's vk_mem_alloc.h not found in juice-power include directories!")
+endif()
+
 
 # Compile our shaders when the main exec is.
 add_dependencies(juice-power shaders)
@@ -89,6 +125,12 @@ juice-power
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}
 		${IMGUI_DIR}
+)
+
+target_include_directories(
+juice-power
+	PUBLIC
+		magic_enum::
 )
 
 target_link_libraries(
