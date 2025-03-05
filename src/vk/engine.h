@@ -88,6 +88,9 @@ public:
 	std::vector<ComputeEffect> backgroundEffects;
 	int currentBackgroundEffect{0};
 
+	VkPipelineLayout _trianglePipelineLayout;
+	VkPipeline _trianglePipeline;
+
 	/// Initializes everything in the engine
 	void init();
 
@@ -117,6 +120,8 @@ public:
 
 	void init_imgui();
 
+	void init_triangle_pipeline();
+
 	/// Shuts down the engine
 	void cleanup();
 
@@ -129,6 +134,8 @@ public:
 	void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
 
 	void draw_pc(VkCommandBuffer cmd);
+
+	void draw_geometry(VkCommandBuffer cmd);
 
 	/// Run main loop
 	void run();
