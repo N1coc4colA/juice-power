@@ -70,39 +70,3 @@ install(
 	DESTINATION include
 )
 
-#add_executable(
-#example_glfw_opengl3
-#	${IMGUI_DIR}/examples/example_glfw_opengl3/main.cpp
-#)
-#target_link_libraries(
-#example_glfw_opengl3
-#	PRIVATE imgui imgui_impl_glfw imgui_impl_opengl3 glfw
-#)
-
-#add_executable(
-#example_sdl2_sdlrenderer2
-#	${IMGUI_DIR}/examples/example_sdl2_sdlrenderer2/main.cpp
-#)
-#target_link_libraries(
-#example_sdl2_sdlrenderer2
-#	PRIVATE
-#		imgui
-#		imgui_impl_sdl2
-#		imgui_impl_sdlrenderer2
-#		SDL2::SDL2-static
-#		SDL2::SDL2main
-#)
-
-#add_executable(
-#	example_sdl2_opengl3
-#	${IMGUI_DIR}/examples/example_sdl2_opengl3/main.cpp
-#)
-#target_link_libraries(
-#example_sdl2_opengl3
-#	PRIVATE
-#		imgui
-#		imgui_impl_sdl2
-#		imgui_impl_opengl3
-#		SDL2::SDL2-static
-#		SDL2::SDL2main
-#)
