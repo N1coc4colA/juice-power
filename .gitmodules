@@ -7,3 +7,6 @@
 [submodule "submodules/VulkanMemoryAllocator"]
 	path = submodules/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "submodules/fastgltf"]
+	path = submodules/fastgltf
+	url = https://github.com/spnda/fastgltf.git
