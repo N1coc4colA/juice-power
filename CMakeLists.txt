@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
 
-add_subdirectory("submodules/vk-bootstrap")
-add_subdirectory("submodules")
 
 project(
 juice-power
@@ -12,6 +10,13 @@ juice-power
 		C
 		CXX
 )
+
+
+set(FASTGLTF_COMPILE_AS_CPP20 1)
+
+add_subdirectory("submodules/fastgltf")
+add_subdirectory("submodules/vk-bootstrap")
+add_subdirectory("submodules")
 
 
 set(CMAKE_CXX_STANDARD 23)
@@ -124,6 +129,7 @@ juice-power
 		SDL3::SDL3
 		fmt::fmt
 		magic_enum::magic_enum
+		fastgltf::fastgltf
 		imgui
 		imgui_impl_sdl3
 		imgui_impl_vulkan
