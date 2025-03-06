@@ -97,24 +97,7 @@ juice-power
 	${C_SOURCES}
 )
 target_include_directories(juice-power PRIVATE "${MAGIC_ENUM_INCL_DIR}")
-
-
-# Check that we have AMD's VMA available
-get_target_property(JP_INCLUDE_DIRS juice-power INCLUDE_DIRECTORIES)
-
-set(VMA_HEADER_FOUND FALSE)
-
-foreach(dir ${JP_INCLUDE_DIRS})
-	if (EXISTS "${dir}/vk_mem_alloc.h")
-		set(VMA_HEADER_FOUND TRUE)
-		message(STATUS "Found vk_mem_alloc.h in ${dir}")
-		break()
-	endif()
-endforeach()
-
-if (NOT VMA_HEADER_FOUND)
-	message(FATAL_ERROR "AMD's VMA's vk_mem_alloc.h not found in juice-power include directories!")
-endif()
+target_include_directories(juice-power PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/submodules/")
 
 
 # Compile our shaders when the main exec is.

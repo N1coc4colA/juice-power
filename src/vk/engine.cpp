@@ -61,15 +61,14 @@ do { \
 
 
 #define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
-
+#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 #include <VkBootstrap.h>
 
 #include <fmt/printf.h>
 
-#include "submodules/imgui/imgui.h"
-#include "submodules/imgui/backends/imgui_impl_sdl3.h"
-#include "submodules/imgui/backends/imgui_impl_vulkan.h"
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_sdl3.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
 
 #include "defines.h"
 #include "initializers.h"
