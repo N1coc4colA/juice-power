@@ -12,9 +12,9 @@ struct DescriptorLayoutBuilder
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 
-	void add_binding(uint32_t binding, VkDescriptorType type);
+	void add_binding(const uint32_t binding, const VkDescriptorType type);
 	void clear();
-	VkDescriptorSetLayout build(VkDevice device, VkShaderStageFlags shaderStages);
+	VkDescriptorSetLayout build(VkDevice device, const VkShaderStageFlags shaderStages);
 };
 
 
@@ -24,8 +24,8 @@ struct DescriptorWriter
 	std::deque<VkDescriptorBufferInfo> bufferInfos;
 	std::vector<VkWriteDescriptorSet> writes;
 
-	void write_image(int binding, VkImageView image, VkSampler sampler, VkImageLayout layout, VkDescriptorType type);
-	void write_buffer(int binding, VkBuffer buffer, size_t size, size_t offset, VkDescriptorType type);
+	void write_image(const int binding, VkImageView image, VkSampler sampler, const VkImageLayout layout, const VkDescriptorType type);
+	void write_buffer(const int binding, VkBuffer buffer, const size_t size, const size_t offset, const VkDescriptorType type);
 
 	void clear();
 	void update_set(VkDevice device, VkDescriptorSet set);
@@ -42,7 +42,7 @@ struct DescriptorAllocator
 
 	VkDescriptorPool pool;
 
-	void init_pool(VkDevice device, uint32_t maxSets, std::span<PoolSizeRatio> poolRatios);
+	void init_pool(VkDevice device, const uint32_t maxSets, const std::span<const PoolSizeRatio> &poolRatios);
 	void clear_descriptors(VkDevice device);
 	void destroy_pool(VkDevice device);
 
@@ -58,7 +58,7 @@ public:
 		float ratio;
 	};
 
-	void init(VkDevice device, uint32_t initialSets, std::span<PoolSizeRatio> poolRatios);
+	void init(VkDevice device, uint32_t initialSets, const std::span<const PoolSizeRatio> &poolRatios);
 	void clear_pools(VkDevice device);
 	void destroy_pools(VkDevice device);
 
@@ -66,7 +66,7 @@ public:
 
 private:
 	VkDescriptorPool get_pool(VkDevice device);
-	VkDescriptorPool create_pool(VkDevice device, uint32_t setCount, std::span<PoolSizeRatio> poolRatios);
+	VkDescriptorPool create_pool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios);
 
 	std::vector<PoolSizeRatio> ratios;
 	std::vector<VkDescriptorPool> fullPools;

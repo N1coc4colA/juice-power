@@ -3,7 +3,7 @@
 #include <cassert>
 
 
-VkCommandPoolCreateInfo vkinit::command_pool_create_info(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags)
+VkCommandPoolCreateInfo vkinit::command_pool_create_info(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags)
 {
 	const VkCommandPoolCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -14,7 +14,7 @@ VkCommandPoolCreateInfo vkinit::command_pool_create_info(uint32_t queueFamilyInd
 	return info;
 }
 
-VkCommandBufferAllocateInfo vkinit::command_buffer_allocate_info(VkCommandPool pool, uint32_t count)
+VkCommandBufferAllocateInfo vkinit::command_buffer_allocate_info(VkCommandPool pool, const uint32_t count)
 {
 	assert(pool != VK_NULL_HANDLE);
 
@@ -29,7 +29,7 @@ VkCommandBufferAllocateInfo vkinit::command_buffer_allocate_info(VkCommandPool p
 	return info;
 }
 
-VkCommandBufferBeginInfo vkinit::command_buffer_begin_info(VkCommandBufferUsageFlags flags)
+VkCommandBufferBeginInfo vkinit::command_buffer_begin_info(const VkCommandBufferUsageFlags flags)
 {
 	const VkCommandBufferBeginInfo info {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -41,7 +41,7 @@ VkCommandBufferBeginInfo vkinit::command_buffer_begin_info(VkCommandBufferUsageF
 	return info;
 }
 
-VkFenceCreateInfo vkinit::fence_create_info(VkFenceCreateFlags flags)
+VkFenceCreateInfo vkinit::fence_create_info(const VkFenceCreateFlags flags)
 {
 	const VkFenceCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -52,7 +52,7 @@ VkFenceCreateInfo vkinit::fence_create_info(VkFenceCreateFlags flags)
 	return info;
 }
 
-VkSemaphoreCreateInfo vkinit::semaphore_create_info(VkSemaphoreCreateFlags flags)
+VkSemaphoreCreateInfo vkinit::semaphore_create_info(const VkSemaphoreCreateFlags flags)
 {
 	const VkSemaphoreCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -63,7 +63,7 @@ VkSemaphoreCreateInfo vkinit::semaphore_create_info(VkSemaphoreCreateFlags flags
 	return info;
 }
 
-VkSemaphoreSubmitInfo vkinit::semaphore_submit_info(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore)
+VkSemaphoreSubmitInfo vkinit::semaphore_submit_info(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore)
 {
 	assert(semaphore != VK_NULL_HANDLE);
 
@@ -128,7 +128,7 @@ VkPresentInfoKHR vkinit::present_info()
 	return info;
 }
 
-VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view, VkClearValue *clear, VkImageLayout layout)
+VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view, VkClearValue *clear, const VkImageLayout layout)
 {
 	assert(view != VK_NULL_HANDLE);
 
@@ -149,7 +149,7 @@ VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view, VkClearValue
 	return colorAttachment;
 }
 
-VkRenderingAttachmentInfo vkinit::depth_attachment_info(VkImageView view, VkImageLayout layout)
+VkRenderingAttachmentInfo vkinit::depth_attachment_info(VkImageView view, const VkImageLayout layout)
 {
 	assert(view != VK_NULL_HANDLE);
 
@@ -170,7 +170,7 @@ VkRenderingAttachmentInfo vkinit::depth_attachment_info(VkImageView view, VkImag
 	return depthAttachment;
 }
 
-VkRenderingInfo vkinit::rendering_info(VkExtent2D renderExtent, VkRenderingAttachmentInfo *colorAttachment, VkRenderingAttachmentInfo *depthAttachment)
+VkRenderingInfo vkinit::rendering_info(const VkExtent2D &renderExtent, VkRenderingAttachmentInfo *colorAttachment, VkRenderingAttachmentInfo *depthAttachment)
 {
 	const VkRenderingInfo renderInfo {
 		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -278,7 +278,7 @@ VkDescriptorBufferInfo vkinit::buffer_info(VkBuffer buffer, VkDeviceSize offset,
 	return binfo;
 }
 
-VkImageCreateInfo vkinit::image_create_info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
+VkImageCreateInfo vkinit::image_create_info(const VkFormat format, const VkImageUsageFlags usageFlags, const VkExtent3D &extent)
 {
 	const VkImageCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,

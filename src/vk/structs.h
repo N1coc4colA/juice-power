@@ -6,8 +6,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include "descriptors.h"
-
 
 struct DeletionQueue
 {

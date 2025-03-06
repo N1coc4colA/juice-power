@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <iostream>
 #include <thread>
 
 #include <SDL3/SDL.h>
@@ -91,14 +90,14 @@ Engine &Engine::get()
 AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
 	// allocate buffer
-	const VkBufferCreateInfo bufferInfo = {
+	const VkBufferCreateInfo bufferInfo {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		.pNext = nullptr,
 		.size = allocSize,
 		.usage = usage,
 	};
 
-	const VmaAllocationCreateInfo vmaallocInfo = {
+	const VmaAllocationCreateInfo vmaallocInfo {
 		.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
 		.usage = memoryUsage,
 	};
@@ -958,7 +957,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
 
 	//set dynamic viewport and scissor
-	const VkViewport viewport = {
+	const VkViewport viewport {
 		.x = 0,
 		.y = 0,
 		.width = static_cast<float>(_drawExtent.width),
@@ -969,7 +968,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 
 	vkCmdSetViewport(cmd, 0, 1, &viewport);
 
-	const VkRect2D scissor = {
+	const VkRect2D scissor {
 		.offset = {
 			.x = 0,
 			.y = 0,
@@ -999,7 +998,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	vkCmdEndRendering(cmd);
 }
 
-GPUMeshBuffers Engine::uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices)
+GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices)
 {
 	const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
 	const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
@@ -1014,7 +1013,7 @@ GPUMeshBuffers Engine::uploadMesh(std::span<uint32_t> indices, std::span<Vertex>
 	};
 
 	//find the adress of the vertex buffer
-	VkBufferDeviceAddressInfo deviceAdressInfo {
+	const VkBufferDeviceAddressInfo deviceAdressInfo {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
 		.buffer = newSurface.vertexBuffer.buffer
 	};
@@ -1059,29 +1058,31 @@ GPUMeshBuffers Engine::uploadMesh(std::span<uint32_t> indices, std::span<Vertex>
 
 void Engine::init_default_data()
 {
-	std::array<Vertex,4> rect_vertices;
+	const std::array<Vertex, 4> rect_vertices {
+		Vertex {
+			.position = {0.5, -0.5, 0},
+			.color = {0,0, 0,1},
+		},
+		Vertex {
+			.position = {0.5, 0.5, 0},
+			.color = {0.5, 0.5, 0.5, 1},
+		},
+		Vertex {
+			.position = {-0.5, -0.5, 0},
+			.color = {1, 0, 0, 1},
+		},
+		Vertex {
+			.position = {-0.5, 0.5, 0},
+			.color = {0, 1, 0, 1},
+		},
+	};
 
-	rect_vertices[0].position = {0.5,-0.5, 0};
-	rect_vertices[1].position = {0.5,0.5, 0};
-	rect_vertices[2].position = {-0.5,-0.5, 0};
-	rect_vertices[3].position = {-0.5,0.5, 0};
+	const std::array<uint32_t, 6> rect_indices {
+		0, 1, 2,
+		2, 1, 3,
+	};
 
-	rect_vertices[0].color = {0,0, 0,1};
-	rect_vertices[1].color = { 0.5,0.5,0.5 ,1};
-	rect_vertices[2].color = { 1,0, 0,1 };
-	rect_vertices[3].color = { 0,1, 0,1 };
-
-	std::array<uint32_t,6> rect_indices;
-
-	rect_indices[0] = 0;
-	rect_indices[1] = 1;
-	rect_indices[2] = 2;
-
-	rect_indices[3] = 2;
-	rect_indices[4] = 1;
-	rect_indices[5] = 3;
-
-	rectangle = uploadMesh(rect_indices,rect_vertices);
+	rectangle = uploadMesh(rect_indices, rect_vertices);
 
 	//delete the rectangle data on engine shutdown
 	_mainDeletionQueue.push_function([&](){

@@ -50,7 +50,7 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device)
 	};
 
 	// completely clear VertexInputStateCreateInfo, as we have no need for it
-	const VkPipelineVertexInputStateCreateInfo _vertexInputInfo = {
+	const VkPipelineVertexInputStateCreateInfo _vertexInputInfo {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
 	};
 
@@ -60,7 +60,7 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device)
 		VK_DYNAMIC_STATE_SCISSOR,
 	};
 
-	const VkPipelineDynamicStateCreateInfo dynamicInfo = {
+	const VkPipelineDynamicStateCreateInfo dynamicInfo {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 		.dynamicStateCount = 2,
 		.pDynamicStates = &state[0],
@@ -68,7 +68,7 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device)
 
 	// we now use all of the info structs we have been writing into into this one
 	// to create the pipeline
-	const VkGraphicsPipelineCreateInfo pipelineInfo = {
+	const VkGraphicsPipelineCreateInfo pipelineInfo {
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 		// connect the renderInfo to the pNext extension mechanism
 		.pNext = &_renderInfo,
@@ -106,7 +106,7 @@ void PipelineBuilder::set_shaders(VkShaderModule vertexShader, VkShaderModule fr
 	_shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
 }
 
-void PipelineBuilder::set_input_topology(VkPrimitiveTopology topology)
+void PipelineBuilder::set_input_topology(const VkPrimitiveTopology topology)
 {
 	_inputAssembly.topology = topology;
 	// we are not going to use primitive restart on the entire tutorial so leave
@@ -114,7 +114,7 @@ void PipelineBuilder::set_input_topology(VkPrimitiveTopology topology)
 	_inputAssembly.primitiveRestartEnable = VK_FALSE;
 }
 
-void PipelineBuilder::set_polygon_mode(VkPolygonMode mode)
+void PipelineBuilder::set_polygon_mode(const VkPolygonMode mode)
 {
 	_rasterizer.polygonMode = mode;
 	_rasterizer.lineWidth = 1.f;
@@ -141,12 +141,16 @@ void PipelineBuilder::set_multisampling_none()
 void PipelineBuilder::disable_blending()
 {
 	// default write mask
-	_colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	_colorBlendAttachment.colorWriteMask = 0
+		| VK_COLOR_COMPONENT_R_BIT
+		| VK_COLOR_COMPONENT_G_BIT
+		| VK_COLOR_COMPONENT_B_BIT
+		| VK_COLOR_COMPONENT_A_BIT;
 	// no blending
 	_colorBlendAttachment.blendEnable = VK_FALSE;
 }
 
-void PipelineBuilder::set_color_attachment_format(VkFormat format)
+void PipelineBuilder::set_color_attachment_format(const VkFormat format)
 {
 	_colorAttachmentformat = format;
 	// connect the format to the renderInfo  structure
@@ -154,7 +158,7 @@ void PipelineBuilder::set_color_attachment_format(VkFormat format)
 	_renderInfo.pColorAttachmentFormats = &_colorAttachmentformat;
 }
 
-void PipelineBuilder::set_depth_format(VkFormat format)
+void PipelineBuilder::set_depth_format(const VkFormat format)
 {
 	_renderInfo.depthAttachmentFormat = format;
 }

@@ -2,11 +2,13 @@
 #define ENGINE_H
 
 #include <cstring>
+#include <span>
 
 #include <vulkan/vulkan.h>
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
+#include "descriptors.h"
 #include "structs.h"
 #include "types.h"
 
@@ -98,7 +100,7 @@ public:
 	GPUMeshBuffers rectangle;
 
 
-	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+	AllocatedBuffer create_buffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
 
 	void destroy_buffer(const AllocatedBuffer& buffer);
 
@@ -153,7 +155,7 @@ public:
 	void draw_geometry(VkCommandBuffer cmd);
 
 
-	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+	GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
 
 
 	/// Run main loop

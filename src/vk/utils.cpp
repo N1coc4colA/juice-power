@@ -10,7 +10,7 @@
 namespace vkutil
 {
 
-void transition_image(VkCommandBuffer cmd, VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout)
+void transition_image(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout)
 {
 	assert(cmd != VK_NULL_HANDLE);
 	assert(image != VK_NULL_HANDLE);
@@ -49,7 +49,7 @@ void transition_image(VkCommandBuffer cmd, VkImage image, VkImageLayout currentL
 	vkCmdPipelineBarrier2(cmd, &depInfo);
 }
 
-void copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage destination, VkExtent2D srcSize, VkExtent2D dstSize)
+void copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage destination, const VkExtent2D &srcSize, const VkExtent2D &dstSize)
 {
 	assert(cmd != VK_NULL_HANDLE);
 	assert(source != VK_NULL_HANDLE);

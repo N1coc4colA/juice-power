@@ -35,16 +35,16 @@ struct ComputeEffect
 {
 	const char *name = "";
 
-	VkPipeline pipeline;
-	VkPipelineLayout layout;
+	VkPipeline pipeline = VK_NULL_HANDLE;
+	VkPipelineLayout layout = VK_NULL_HANDLE;
 
 	ComputePushConstants data;
 };
 
 struct AllocatedBuffer
 {
-	VkBuffer buffer;
-	VmaAllocation allocation;
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation allocation = VK_NULL_HANDLE;
 	VmaAllocationInfo info;
 };
 
