@@ -5,7 +5,8 @@
 
 #include <vulkan/vulkan.h>
 
-#include "vma.h"
+#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
+
 #include "structs.h"
 #include "types.h"
 
@@ -91,6 +92,16 @@ public:
 	VkPipelineLayout _trianglePipelineLayout;
 	VkPipeline _trianglePipeline;
 
+	VkPipelineLayout _meshPipelineLayout;
+	VkPipeline _meshPipeline;
+
+	GPUMeshBuffers rectangle;
+
+
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+
+	void destroy_buffer(const AllocatedBuffer& buffer);
+
 	/// Initializes everything in the engine
 	void init();
 
@@ -116,11 +127,15 @@ public:
 
 	void init_pipelines();
 
+	void init_mesh_pipeline();
+
 	void init_background_pipelines();
 
 	void init_imgui();
 
 	void init_triangle_pipeline();
+
+	void init_default_data();
 
 	/// Shuts down the engine
 	void cleanup();
@@ -136,6 +151,10 @@ public:
 	void draw_pc(VkCommandBuffer cmd);
 
 	void draw_geometry(VkCommandBuffer cmd);
+
+
+	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+
 
 	/// Run main loop
 	void run();
