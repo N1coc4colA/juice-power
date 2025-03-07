@@ -10,3 +10,6 @@
 [submodule "submodules/fastgltf"]
 	path = submodules/fastgltf
 	url = https://github.com/spnda/fastgltf.git
+[submodule "submodules/stb"]
+	path = submodules/stb
+	url = https://github.com/nothings/stb.git
