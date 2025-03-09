@@ -16,7 +16,7 @@ set(FASTGLTF_COMPILE_AS_CPP20 1)
 
 add_subdirectory("submodules/fastgltf")
 add_subdirectory("submodules/vk-bootstrap")
-add_subdirectory("submodules")
+add_subdirectory("submodules") # For ImGui
 
 
 set(CMAKE_CXX_STANDARD 23)
@@ -44,8 +44,9 @@ file(GLOB_RECURSE FRAG_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag")
 # Vertex shaders
 file(GLOB_RECURSE VERT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert")
 set(SHADER_SOURCES ${FRAG_SOURCES} ${VERT_SOURCES} ${COMP_SOURCES})
-# Used to ease access of the shaders when testing
+
 add_compile_definitions(COMPILED_SHADERS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+add_compile_definitions(ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
 
 
 find_package(Vulkan REQUIRED)
