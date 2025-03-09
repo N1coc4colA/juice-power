@@ -6,6 +6,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "descriptors.h"
+
 
 struct DeletionQueue
 {
@@ -29,6 +31,7 @@ struct FrameData
 	VkFence _renderFence = VK_NULL_HANDLE;
 
 	DeletionQueue _deletionQueue;
+	DescriptorAllocatorGrowable _frameDescriptors;
 };
 
 

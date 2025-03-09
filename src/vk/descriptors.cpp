@@ -104,7 +104,6 @@ VkDescriptorSet DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLa
 void DescriptorWriter::write_image(const int binding, VkImageView image, VkSampler sampler,  const VkImageLayout layout, const VkDescriptorType type)
 {
 	assert(image != VK_NULL_HANDLE);
-	assert(sampler != VK_NULL_HANDLE);
 
 	VkDescriptorImageInfo &info = imageInfos.emplace_back(
 	VkDescriptorImageInfo {

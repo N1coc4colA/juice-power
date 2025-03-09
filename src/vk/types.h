@@ -8,15 +8,6 @@
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 
-struct AllocatedImage
-{
-	VkImage image = VK_NULL_HANDLE;
-	VkImageView imageView = VK_NULL_HANDLE;
-	VmaAllocation allocation = VK_NULL_HANDLE;
-	VkExtent3D imageExtent;
-	VkFormat imageFormat;
-};
-
 struct MeshPushConstants
 {
 	glm::vec4 data;
@@ -70,6 +61,16 @@ struct GPUDrawPushConstants
 {
 	glm::mat4 worldMatrix;
 	VkDeviceAddress vertexBuffer;
+};
+
+struct GPUSceneData
+{
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::mat4 viewproj;
+	glm::vec4 ambientColor;
+	glm::vec4 sunlightDirection; // w for sun power
+	glm::vec4 sunlightColor;
 };
 
 

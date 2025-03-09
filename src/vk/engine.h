@@ -12,6 +12,8 @@
 #include "loader.h"
 #include "structs.h"
 #include "types.h"
+#include "node.h"
+#include "renderobject.h"
 
 
 constexpr unsigned int FRAME_OVERLAP = 2;
@@ -29,6 +31,7 @@ public:
 	int _frameNumber = 0;
 	///
 	bool stop_rendering = false;
+	bool resize_requested = false;
 
 	/// Window size
 	VkExtent2D _windowExtent = { 1700 , 900 };
@@ -72,8 +75,9 @@ public:
 	AllocatedImage _depthImage;
 	VkExtent2D _swapchainExtent;
 	VkExtent2D _drawExtent;
+	float renderScale = 1.f;
 
-	DescriptorAllocator globalDescriptorAllocator;
+	DescriptorAllocatorGrowable globalDescriptorAllocator;
 
 	VkDescriptorSet _drawImageDescriptors;
 	VkDescriptorSetLayout _drawImageDescriptorLayout;
@@ -94,6 +98,28 @@ public:
 	std::vector<std::shared_ptr<MeshAsset>> testMeshes;
 
 	AllocatedBuffer create_buffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
+
+	GPUSceneData sceneData;
+
+	VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
+
+	AllocatedImage _whiteImage;
+	AllocatedImage _blackImage;
+	AllocatedImage _greyImage;
+	AllocatedImage _errorCheckerboardImage;
+
+	VkSampler _defaultSamplerLinear;
+	VkSampler _defaultSamplerNearest;
+
+	VkDescriptorSetLayout _singleImageDescriptorLayout;
+
+	MaterialInstance defaultData;
+	GLTFMetallic_Roughness metalRoughMaterial;
+
+	DrawContext mainDrawContext;
+	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
+
+	void update_scene();
 
 	void destroy_buffer(const AllocatedBuffer& buffer);
 
@@ -145,8 +171,16 @@ public:
 
 	void draw_geometry(VkCommandBuffer cmd);
 
+	void create_swapchain(uint32_t w, uint32_t h);
+	void destroy_swapchain();
+	void resize_swapchain();
+
 
 	GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
+
+	AllocatedImage create_image(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+	AllocatedImage create_image(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+	void destroy_image(const AllocatedImage &img);
 
 
 	/// Run main loop
