@@ -96,8 +96,6 @@ VkCommandBufferSubmitInfo vkinit::command_buffer_submit_info(VkCommandBuffer cmd
 VkSubmitInfo2 vkinit::submit_info(VkCommandBufferSubmitInfo *cmd, VkSemaphoreSubmitInfo *signalSemaphoreInfo, VkSemaphoreSubmitInfo *waitSemaphoreInfo)
 {
 	assert(cmd != nullptr);
-	assert(signalSemaphoreInfo != nullptr);
-	assert(waitSemaphoreInfo != nullptr);
 
 	const VkSubmitInfo2 info {
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,

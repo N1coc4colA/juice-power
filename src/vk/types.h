@@ -72,4 +72,5 @@ struct GPUDrawPushConstants
 	VkDeviceAddress vertexBuffer;
 };
 
+
 #endif // TYPES_H

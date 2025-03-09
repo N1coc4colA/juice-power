@@ -38,6 +38,8 @@ public:
 	void set_color_attachment_format(const VkFormat format);
 	void set_depth_format(const VkFormat format);
 	void disable_depthtest();
+	void enable_depthtest(bool depthWriteEnable, VkCompareOp op);
 };
+
 
 #endif // PIPELINEBUILDER_H

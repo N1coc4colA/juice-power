@@ -9,13 +9,9 @@
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 #include "descriptors.h"
+#include "loader.h"
 #include "structs.h"
 #include "types.h"
-
-
-#ifndef NDEBUG
-//#define VMA_USE_DEBUG_LOG
-#endif
 
 
 constexpr unsigned int FRAME_OVERLAP = 2;
@@ -73,6 +69,7 @@ public:
 
 	//draw resources
 	AllocatedImage _drawImage;
+	AllocatedImage _depthImage;
 	VkExtent2D _swapchainExtent;
 	VkExtent2D _drawExtent;
 
@@ -91,14 +88,10 @@ public:
 	std::vector<ComputeEffect> backgroundEffects;
 	int currentBackgroundEffect{0};
 
-	VkPipelineLayout _trianglePipelineLayout;
-	VkPipeline _trianglePipeline;
-
 	VkPipelineLayout _meshPipelineLayout;
 	VkPipeline _meshPipeline;
 
-	GPUMeshBuffers rectangle;
-
+	std::vector<std::shared_ptr<MeshAsset>> testMeshes;
 
 	AllocatedBuffer create_buffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
 
@@ -134,8 +127,6 @@ public:
 	void init_background_pipelines();
 
 	void init_imgui();
-
-	void init_triangle_pipeline();
 
 	void init_default_data();
 

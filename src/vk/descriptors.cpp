@@ -170,14 +170,11 @@ void DescriptorAllocatorGrowable::init(VkDevice device, const uint32_t maxSets, 
 	assert(device != VK_NULL_HANDLE);
 
 	ratios.clear();
-
 	for (const auto &r : poolRatios) {
 		ratios.push_back(r);
 	}
 
-	// [REORDERED] [SWAP.0]
 	setsPerPool = maxSets * 1.5; //grow it next allocation
-	// [REORDERED] [SWAP.0]
 	const VkDescriptorPool newPool = create_pool(device, maxSets, poolRatios);
 
 	readyPools.push_back(newPool);

@@ -2,62 +2,12 @@
 
 #include <cassert>
 #include <cstring>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <thread>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
-
-
-#ifdef VMA_USE_DEBUG_LOG
-
-#include <string>
-
-
-//#define VMA_STATS_STRING_ENABLED 1
-
-static int allocationCounter = 0;
-
-template<typename ... Args>
-inline void vma_printer(const char *format, Args ... args)
-{
-	std::string str("VMA LOG: ");
-	str += format;
-	str += "\n";
-	printf(str.c_str(), args...);
-
-	if (strstr(format, "Allocate")) {
-		printf("Alloc\n");
-		allocationCounter++;
-	} else if (strstr(format, "Free")) {
-		printf("Dealloc\n");
-		allocationCounter--;
-	}
-}
-
-template<>
-inline void vma_printer(const char *format)
-{
-	std::string str("VMA LOG: ");
-	str += format;
-	str += "\n";
-	printf("%s", str.c_str());
-
-	if (strstr(format, "Allocate")) {
-		printf("Alloc\n");
-		allocationCounter++;
-	} else if (strstr(format, "Free")) {
-		printf("Dealloc\n");
-		allocationCounter--;
-	}
-}
-
-#define VMA_DEBUG_LOG(format, ...) \
-do { \
-		vma_printer(format, ##__VA_ARGS__); \
-} while (false)
-
-#endif
-
 
 #include <VkBootstrap.h>
 
@@ -71,9 +21,9 @@ do { \
 #include "initializers.h"
 #include "utils.h"
 #include "pipelinebuilder.h"
+#include "vma.h"
 
-#define VMA_IMPLEMENTATION
-#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
+#include <chrono>
 
 
 constexpr bool bUseValidationLayers = false;
@@ -86,7 +36,6 @@ Engine &Engine::get()
 	return *loadedEngine;
 }
 
-
 AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
 	// allocate buffer
@@ -97,7 +46,7 @@ AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage
 		.usage = usage,
 	};
 
-	const VmaAllocationCreateInfo vmaallocInfo {
+	const VmaAllocationCreateInfo vmaAllocInfo {
 		.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
 		.usage = memoryUsage,
 	};
@@ -105,7 +54,7 @@ AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage
 	AllocatedBuffer newBuffer;
 
 	// allocate the buffer
-	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
+	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
 
 	return newBuffer;
 }
@@ -130,6 +79,7 @@ void Engine::init()
 	init_descriptors();
 	init_pipelines();
 	init_imgui();
+	init_default_data();
 
 	//everything went fine apparently
 	_isInitialized = true;
@@ -249,6 +199,7 @@ void Engine::init_swapchain()
 		1,
 	};
 
+	// Color IMG
 	//hardcoding the draw format to 32 bit float
 	_drawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
 	_drawImage.imageExtent = drawImageExtent;
@@ -269,7 +220,6 @@ void Engine::init_swapchain()
 
 	//allocate and create the image
 	VK_CHECK(vmaCreateImage(_allocator, &rimg_info, &rimg_allocinfo, &_drawImage.image, &_drawImage.allocation, nullptr));
-	//vmaSetAllocationName(_allocator, _drawImage.allocation, "Draw Image");
 
 	//build a image-view for the draw image to use for rendering
 	const VkImageViewCreateInfo rview_info = vkinit::imageview_create_info(_drawImage.imageFormat, _drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -278,8 +228,29 @@ void Engine::init_swapchain()
 
 	//add to deletion queues
 	_mainDeletionQueue.push_function([this]() {
+		assert(_drawImage.imageView != VK_NULL_HANDLE);
 		vkDestroyImageView(_device, _drawImage.imageView, nullptr);
 		vmaDestroyImage(_allocator, _drawImage.image, _drawImage.allocation);
+	});
+
+	// Depth IMG
+	_depthImage.imageFormat = VK_FORMAT_D32_SFLOAT;
+	_depthImage.imageExtent = drawImageExtent;
+	const VkImageUsageFlags depthImageUsages = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+	const VkImageCreateInfo dimg_info = vkinit::image_create_info(_depthImage.imageFormat, depthImageUsages, drawImageExtent);
+
+	//allocate and create the image
+	vmaCreateImage(_allocator, &dimg_info, &rimg_allocinfo, &_depthImage.image, &_depthImage.allocation, nullptr);
+
+	//build a image-view for the draw image to use for rendering
+	const VkImageViewCreateInfo dview_info = vkinit::imageview_create_info(_depthImage.imageFormat, _depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	VK_CHECK(vkCreateImageView(_device, &dview_info, nullptr, &_depthImage.imageView));
+
+	_mainDeletionQueue.push_function([this]() {
+		vkDestroyImageView(_device, _depthImage.imageView, nullptr);
+		vmaDestroyImage(_allocator, _depthImage.image, _depthImage.allocation);
 	});
 }
 
@@ -387,25 +358,23 @@ void Engine::init_pipelines()
 {
 	init_background_pipelines();
 
-	init_triangle_pipeline();
 	init_mesh_pipeline();
 }
 
 void Engine::init_mesh_pipeline()
 {
-
 	VkShaderModule triangleFragShader;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle.frag.spv", _device, triangleFragShader)) {
 		fmt::print("Error when building the triangle fragment shader module");
 	} else {
-		fmt::print("Triangle fragment shader succesfully loaded");
+		fmt::print("Triangle fragment shader succesfully loaded\n");
 	}
 
 	VkShaderModule triangleVertexShader;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle_mesh.vert.spv", _device, triangleVertexShader)) {
-		fmt::print("Error when building the triangle vertex shader module");
+		fmt::print("Error when building the triangle vertex shader module\n");
 	} else {
-		fmt::print("Triangle vertex shader succesfully loaded");
+		fmt::print("Triangle vertex shader succesfully loaded\n");
 	}
 
 	const VkPushConstantRange bufferRange {
@@ -437,11 +406,12 @@ void Engine::init_mesh_pipeline()
 	//no blending
 	pipelineBuilder.disable_blending();
 
-	pipelineBuilder.disable_depthtest();
+	//pipelineBuilder.disable_depthtest();
+	pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
 
 	//connect the image format we will draw into, from draw image
 	pipelineBuilder.set_color_attachment_format(_drawImage.imageFormat);
-	pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+	pipelineBuilder.set_depth_format(_depthImage.imageFormat);
 
 	//finally build the pipeline
 	_meshPipeline = pipelineBuilder.build_pipeline(_device);
@@ -600,63 +570,6 @@ void Engine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& functio
 	VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
 }
 
-void Engine::init_triangle_pipeline()
-{
-	VkShaderModule triangleFragShader;
-	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle.frag.spv", _device, triangleFragShader)) {
-		fmt::print("Error when building the triangle fragment shader module");
-	} else {
-		fmt::print("Triangle fragment shader succesfully loaded");
-	}
-
-	VkShaderModule triangleVertexShader;
-	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle.vert.spv", _device, triangleVertexShader)) {
-		fmt::print("Error when building the triangle vertex shader module");
-	} else {
-		fmt::print("Triangle vertex shader succesfully loaded");
-	}
-
-	//build the pipeline layout that controls the inputs/outputs of the shader
-	//we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
-	VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
-	VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
-
-	PipelineBuilder pipelineBuilder;
-
-	//use the triangle layout we created
-	pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
-	//connecting the vertex and pixel shaders to the pipeline
-	pipelineBuilder.set_shaders(triangleVertexShader, triangleFragShader);
-	//it will draw triangles
-	pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	//filled triangles
-	pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-	//no backface culling
-	pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-	//no multisampling
-	pipelineBuilder.set_multisampling_none();
-	//no blending
-	pipelineBuilder.disable_blending();
-	//no depth testing
-	pipelineBuilder.disable_depthtest();
-
-	//connect the image format we will draw into, from draw image
-	pipelineBuilder.set_color_attachment_format(_drawImage.imageFormat);
-	pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
-
-	//finally build the pipeline
-	_trianglePipeline = pipelineBuilder.build_pipeline(_device);
-
-	//clean structures
-	vkDestroyShaderModule(_device, triangleFragShader, nullptr);
-	vkDestroyShaderModule(_device, triangleVertexShader, nullptr);
-
-	_mainDeletionQueue.push_function([&]() {
-		vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
-		vkDestroyPipeline(_device, _trianglePipeline, nullptr);
-	});
-}
-
 void Engine::cleanup()
 {
 	if (_isInitialized) {
@@ -684,6 +597,11 @@ void Engine::cleanup()
 			_frames[i]._renderSemaphore = VK_NULL_HANDLE;
 			_frames[i]._swapchainSemaphore = VK_NULL_HANDLE;
 		}
+
+		/*for (auto &mesh : testMeshes) {
+			destroy_buffer(mesh->meshBuffers.indexBuffer);
+			destroy_buffer(mesh->meshBuffers.vertexBuffer);
+		}*/
 
 		//flush the global deletion queue
 		_mainDeletionQueue.flush();
@@ -831,6 +749,7 @@ void Engine::draw()
 	draw_background(cmd);
 
 	vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	vkutil::transition_image(cmd, _depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
 	draw_geometry(cmd);
 
@@ -944,17 +863,22 @@ void Engine::draw_pc(VkCommandBuffer cmd)
 	vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0), std::ceil(_drawExtent.height / 16.0), 1);
 }
 
+#include <chrono>
+
+// Store the application start time (global or in your initialization code)
+const auto startTime = std::chrono::high_resolution_clock::now();
+
 void Engine::draw_geometry(VkCommandBuffer cmd)
 {
 	assert(cmd != VK_NULL_HANDLE);
 
 	//begin a render pass  connected to our draw image
-	VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	//VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-	VkRenderingInfo renderInfo = vkinit::rendering_info(_drawExtent, &colorAttachment, nullptr);
-	vkCmdBeginRendering(cmd, &renderInfo);
+	VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+	VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+	VkRenderingInfo renderInfo = vkinit::rendering_info(_windowExtent, &colorAttachment, &depthAttachment);
 
 	//set dynamic viewport and scissor
 	const VkViewport viewport {
@@ -965,8 +889,6 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 		.minDepth = 0.f,
 		.maxDepth = 1.f,
 	};
-
-	vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 	const VkRect2D scissor {
 		.offset = {
@@ -979,21 +901,67 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 		},
 	};
 
-	vkCmdSetScissor(cmd, 0, 1, &scissor);
+	// Original impl from the tutorial
+	/*const glm::mat4 view = glm::translate(glm::mat4{1.f}, glm::vec3{0.f, 0.f, -5.f});
+	// camera projection
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), static_cast<float>(_drawExtent.width) / static_cast<float>(_drawExtent.height), 10000.f, 0.1f);
 
-	//launch a draw command to draw 3 vertices
-	vkCmdDraw(cmd, 3, 1, 0, 0);
+	// invert the Y direction on projection matrix so that we are more similar
+	// to opengl and gltf axis
+	projection[1][1] *= -1.f;
+
+	const GPUDrawPushConstants push_constants {
+		.worldMatrix = projection * view,
+		.vertexBuffer = testMeshes[2]->meshBuffers.vertexBufferAddress,
+	};*/
+
+
+	// Custom impl to show it nicely
+	// Calculate the elapsed time in seconds
+	const auto currentTime = std::chrono::high_resolution_clock::now();
+	const float time = std::chrono::duration<float>(currentTime - startTime).count();
+
+	// Define the rotation angle over time
+	const float angle = glm::radians(90.0f) * time; // Rotates 90 degrees per second
+
+	// Rotation matrix around the Y-axis
+	const glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// Translation matrix to move the object back over time
+	const glm::mat4 backTranslation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f - time));
+
+	// Combine the transformations
+	const glm::mat4 worldMatrix = backTranslation * rotation;
+
+	// Calculate the view and projection matrices
+	const glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+	glm::mat4 projection = glm::perspective(
+		glm::radians(70.0f),
+		static_cast<float>(_drawExtent.width) / static_cast<float>(_drawExtent.height),
+		0.1f, 10000.0f
+	);
+
+	// Invert the Y direction of the projection matrix for OpenGL compatibility
+	projection[1][1] *= -1.0f;
+
+	// Push constants with the animated world matrix
+	const GPUDrawPushConstants push_constants {
+		.worldMatrix = projection * view * worldMatrix,
+		.vertexBuffer = testMeshes[2]->meshBuffers.vertexBufferAddress,
+	};
+
+
+	vkCmdBeginRendering(cmd, &renderInfo);
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
 
-	GPUDrawPushConstants push_constants;
-	push_constants.worldMatrix = glm::mat4{ 1.f };
-	push_constants.vertexBuffer = rectangle.vertexBufferAddress;
+	vkCmdSetViewport(cmd, 0, 1, &viewport);
+	vkCmdSetScissor(cmd, 0, 1, &scissor);
 
 	vkCmdPushConstants(cmd, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
-	vkCmdBindIndexBuffer(cmd, rectangle.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(cmd, testMeshes[2]->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-	vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+	vkCmdDrawIndexed(cmd, testMeshes[2]->surfaces[0].count, 1, testMeshes[2]->surfaces[0].startIndex, 0, 0);
 
 	vkCmdEndRendering(cmd);
 }
@@ -1004,6 +972,12 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 	const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
 
 	GPUMeshBuffers newSurface {
+		//create index buffer
+		.indexBuffer = create_buffer(
+			indexBufferSize,
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VMA_MEMORY_USAGE_GPU_ONLY
+		),
 		//create vertex buffer
 		.vertexBuffer = create_buffer(
 			vertexBufferSize,
@@ -1019,34 +993,29 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 	};
 	newSurface.vertexBufferAddress = vkGetBufferDeviceAddress(_device, &deviceAdressInfo);
 
-	//create index buffer
-	newSurface.indexBuffer = create_buffer(
-		indexBufferSize,
-		VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-		VMA_MEMORY_USAGE_GPU_ONLY
-	);
-
 	AllocatedBuffer staging = create_buffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-	void *data = staging.allocation->GetMappedData();
+	void *data = getMappedData(staging.allocation);
 
 	// copy vertex buffer
 	std::memcpy(data, vertices.data(), vertexBufferSize);
 	// copy index buffer
-	std::memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
+	std::memcpy(reinterpret_cast<char *>(data) + vertexBufferSize, indices.data(), indexBufferSize);
 
 	immediate_submit([&](VkCommandBuffer cmd) {
-		VkBufferCopy vertexCopy{ 0 };
-		vertexCopy.dstOffset = 0;
-		vertexCopy.srcOffset = 0;
-		vertexCopy.size = vertexBufferSize;
+		const VkBufferCopy vertexCopy {
+			.srcOffset = 0,
+			.dstOffset = 0,
+			.size = vertexBufferSize,
+		};
 
 		vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1, &vertexCopy);
 
-		VkBufferCopy indexCopy{ 0 };
-		indexCopy.dstOffset = 0;
-		indexCopy.srcOffset = vertexBufferSize;
-		indexCopy.size = indexBufferSize;
+		const VkBufferCopy indexCopy {
+			.srcOffset = vertexBufferSize,
+			.dstOffset = 0,
+			.size = indexBufferSize,
+		};
 
 		vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1, &indexCopy);
 	});
@@ -1058,39 +1027,13 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 
 void Engine::init_default_data()
 {
-	const std::array<Vertex, 4> rect_vertices {
-		Vertex {
-			.position = {0.5, -0.5, 0},
-			.color = {0,0, 0,1},
-		},
-		Vertex {
-			.position = {0.5, 0.5, 0},
-			.color = {0.5, 0.5, 0.5, 1},
-		},
-		Vertex {
-			.position = {-0.5, -0.5, 0},
-			.color = {1, 0, 0, 1},
-		},
-		Vertex {
-			.position = {-0.5, 0.5, 0},
-			.color = {0, 1, 0, 1},
-		},
-	};
-
-	const std::array<uint32_t, 6> rect_indices {
-		0, 1, 2,
-		2, 1, 3,
-	};
-
-	rectangle = uploadMesh(rect_indices, rect_vertices);
-
-	//delete the rectangle data on engine shutdown
+	testMeshes = loadGltfMeshes(this, ASSETS_DIR "/basicmesh.glb").value();
+	assert(testMeshes.size() == 3);
+	//delete the meshes data on engine shutdown
 	_mainDeletionQueue.push_function([&](){
-		destroy_buffer(rectangle.indexBuffer);
-		destroy_buffer(rectangle.vertexBuffer);
+		for (const auto &v : testMeshes) {
+			destroy_buffer(v->meshBuffers.indexBuffer);
+			destroy_buffer(v->meshBuffers.vertexBuffer);
+		}
 	});
 }
-
-
-
-
