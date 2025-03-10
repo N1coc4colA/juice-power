@@ -14,6 +14,7 @@
 #include "types.h"
 #include "node.h"
 #include "renderobject.h"
+#include "camera.h"
 
 
 constexpr unsigned int FRAME_OVERLAP = 2;
@@ -118,6 +119,9 @@ public:
 
 	DrawContext mainDrawContext;
 	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
+
+	Camera mainCamera;
+
 
 	void update_scene();
 

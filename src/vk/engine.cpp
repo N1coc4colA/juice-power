@@ -81,6 +81,9 @@ void Engine::init()
 	init_imgui();
 	init_default_data();
 
+	mainCamera.velocity = glm::vec3(0.f);
+	mainCamera.position = glm::vec3(0, 0, 5);
+
 	//everything went fine apparently
 	_isInitialized = true;
 }
@@ -752,15 +755,7 @@ void Engine::run()
 				stop_rendering = false;
 			}
 
-			/*if (e.type == SDL_WINDOWEVENT) {
-				if (e.window.type == SDL_EVENT_WINDOW_MINIMIZED) {
-					stop_rendering = true;
-				}
-				if (e.window.type == SDL_EVENT_WINDOW_RESTORED) {
-					stop_rendering = false;
-				}
-			}*/
-
+			mainCamera.processSDLEvent(e);
 			ImGui_ImplSDL3_ProcessEvent(&e);
 		}
 
@@ -1012,7 +1007,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 
 	// Custom impl to show it nicely
 	// Calculate the elapsed time in seconds
-	/*const auto currentTime = std::chrono::high_resolution_clock::now();
+	const auto currentTime = std::chrono::high_resolution_clock::now();
 	const float time = std::chrono::duration<float>(currentTime - startTime).count();
 
 	// Define the rotation angle over time
@@ -1028,7 +1023,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	const glm::mat4 worldMatrix = backTranslation * rotation;
 
 	// Calculate the view and projection matrices
-	const glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+	const glm::mat4 view = glm::translate(glm::mat4(1.f), glm::vec3(0.0f, 0.0f, -5.0f));
 	glm::mat4 projection = glm::perspective(
 		glm::radians(70.0f),
 		static_cast<float>(_drawExtent.width) / static_cast<float>(_drawExtent.height),
@@ -1045,7 +1040,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	};
 
 
-	vkCmdBeginRendering(cmd, &renderInfo);
+	/*vkCmdBeginRendering(cmd, &renderInfo);
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
 
@@ -1094,19 +1089,19 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 
 
 	for (const RenderObject &draw : mainDrawContext.OpaqueSurfaces) {
-
 		vkCmdBindPipeline(cmd,VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->pipeline);
-		vkCmdBindDescriptorSets(cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,draw.material->pipeline->layout, 0,1, &globalDescriptor,0,nullptr );
-		vkCmdBindDescriptorSets(cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,draw.material->pipeline->layout, 1,1, &draw.material->materialSet,0,nullptr );
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->layout, 0, 1, &globalDescriptor, 0, nullptr);
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->layout, 1, 1, &draw.material->materialSet, 0, nullptr);
 
-		vkCmdBindIndexBuffer(cmd, draw.indexBuffer,0,VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(cmd, draw.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 		GPUDrawPushConstants pushConstants;
 		pushConstants.vertexBuffer = draw.vertexBufferAddress;
 		pushConstants.worldMatrix = draw.transform;
-		vkCmdPushConstants(cmd,draw.material->pipeline->layout ,VK_SHADER_STAGE_VERTEX_BIT,0, sizeof(GPUDrawPushConstants), &pushConstants);
+		vkCmdPushConstants(cmd, draw.material->pipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &pushConstants);
+		//vkCmdPushConstants(cmd, draw.material->pipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
 
-		vkCmdDrawIndexed(cmd,draw.indexCount,1,draw.firstIndex,0,0);
+		vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0);
 	}
 
 	vkCmdEndRendering(cmd);
@@ -1415,6 +1410,21 @@ void Engine::update_scene()
 	}
 
 	loadedNodes["Suzanne"]->draw(glm::mat4{1.f}, mainDrawContext);
+
+	mainCamera.update();
+
+	glm::mat4 view = mainCamera.getViewMatrix();
+
+	// camera projection
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)_windowExtent.width / (float)_windowExtent.height, 10000.f, 0.1f);
+
+	// invert the Y direction on projection matrix so that we are more similar
+	// to opengl and gltf axis
+	projection[1][1] *= -1;
+
+	sceneData.view = view;
+	sceneData.proj = projection;
+	sceneData.viewproj = projection * view;
 
 	sceneData.view = glm::translate(glm::mat4{1.f}, glm::vec3{0.f ,0.f, -5.f});
 	// camera projection
