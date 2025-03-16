@@ -1071,6 +1071,11 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	vkCmdEndRendering(cmd);*/
 
 
+	vkCmdBeginRendering(cmd, &renderInfo);
+
+	vkCmdSetViewport(cmd, 0, 1, &viewport);
+	vkCmdSetScissor(cmd, 0, 1, &scissor);
+
 	auto &currFrame = get_current_frame();
 
 	//allocate a new uniform buffer for the scene data
