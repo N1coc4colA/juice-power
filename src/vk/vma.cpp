@@ -56,5 +56,7 @@ do { \
 
 void *getMappedData(VmaAllocation alloc)
 {
+	assert(alloc != VK_NULL_HANDLE);
+
 	return alloc->GetMappedData();
 }

@@ -18,7 +18,7 @@
 #include "types.h"
 
 
-std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine *engine, const std::filesystem::path &filePath)
+std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &engine, const std::filesystem::path &filePath)
 {
 	std::cout << "Loading GLTF: " << filePath << std::endl;
 
@@ -45,16 +45,16 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine *en
 		return {};
 	}
 
-	std::vector<std::shared_ptr<MeshAsset>> meshes;
+	std::vector<std::shared_ptr<MeshAsset>> meshes = {};
 
 	// use the same vectors for all meshes so that the memory doesnt reallocate as
 	// often
-	std::vector<uint32_t> indices;
-	std::vector<Vertex> vertices;
-	for (fastgltf::Mesh &mesh : gltf.meshes) {
-		MeshAsset newmesh;
-
-		newmesh.name = mesh.name;
+	std::vector<uint32_t> indices = {};
+	std::vector<Vertex> vertices = {};
+	for (const fastgltf::Mesh &mesh : gltf.meshes) {
+		MeshAsset newmesh = {
+			.name = std::string(mesh.name),
+		};
 
 		// clear the mesh arrays each mesh, we dont want to merge them by error
 		indices.clear();
@@ -147,7 +147,7 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine *en
 				vtx.color = glm::vec4(vtx.normal, 1.f);
 			}
 		}
-		newmesh.meshBuffers = engine->uploadMesh(indices, vertices);
+		newmesh.meshBuffers = engine.uploadMesh(indices, vertices);
 
 		meshes.emplace_back(std::make_shared<MeshAsset>(std::move(newmesh)));
 	}

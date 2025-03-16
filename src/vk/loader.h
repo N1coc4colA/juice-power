@@ -21,21 +21,21 @@ struct GLTFMaterial
 
 struct GeoSurface
 {
-	uint32_t startIndex;
-	uint32_t count;
-	std::shared_ptr<GLTFMaterial> material;
+	uint32_t startIndex = -1;
+	uint32_t count = -1;
+	std::shared_ptr<GLTFMaterial> material = {};
 };
 
 struct MeshAsset
 {
-	std::string name;
+	std::string name = "";
 
-	std::vector<GeoSurface> surfaces;
-	GPUMeshBuffers meshBuffers;
+	std::vector<GeoSurface> surfaces = {};
+	GPUMeshBuffers meshBuffers = {};
 };
 
 
-std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine *engine, const std::filesystem::path &filePath);
+std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &engine, const std::filesystem::path &filePath);
 
 
 #endif // LOADER_H

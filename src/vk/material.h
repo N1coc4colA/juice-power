@@ -14,53 +14,54 @@ class Engine;
 
 struct MaterialPipeline
 {
-	VkPipeline pipeline;
-	VkPipelineLayout layout;
+	VkPipeline pipeline = VK_NULL_HANDLE;
+	VkPipelineLayout layout = VK_NULL_HANDLE;
 };
 
 enum class MaterialPass : uint8_t
 {
+	Invalid,
 	MainColor,
 	Transparent,
 	Other,
 
-	First = MainColor,
+	First = Invalid,
 	Last = Other,
 };
 
 struct MaterialInstance
 {
-	MaterialPipeline *pipeline;
-	VkDescriptorSet materialSet;
-	MaterialPass passType;
+	MaterialPipeline *pipeline = nullptr;
+	VkDescriptorSet materialSet = VK_NULL_HANDLE;
+	MaterialPass passType = MaterialPass::Invalid;
 };
 
 struct GLTFMetallic_Roughness
 {
-	MaterialPipeline opaquePipeline;
-	MaterialPipeline transparentPipeline;
+	MaterialPipeline opaquePipeline = {};
+	MaterialPipeline transparentPipeline = {};
 
-	VkDescriptorSetLayout materialLayout;
+	VkDescriptorSetLayout materialLayout = VK_NULL_HANDLE;
 
 	struct MaterialConstants {
-		glm::vec4 colorFactors;
-		glm::vec4 metal_rough_factors;
+		glm::vec4 colorFactors = {};
+		glm::vec4 metal_rough_factors = {};
 		//padding, we need it anyway for uniform buffers
 		glm::vec4 extra[14];
 	};
 
 	struct MaterialResources {
-		AllocatedImage colorImage;
-		VkSampler colorSampler;
-		AllocatedImage metalRoughImage;
-		VkSampler metalRoughSampler;
-		VkBuffer dataBuffer;
-		uint32_t dataBufferOffset;
+		AllocatedImage colorImage = {};
+		VkSampler colorSampler = VK_NULL_HANDLE;
+		AllocatedImage metalRoughImage = {};
+		VkSampler metalRoughSampler = VK_NULL_HANDLE;
+		VkBuffer dataBuffer = VK_NULL_HANDLE;
+		uint32_t dataBufferOffset = -1;
 	};
 
-	DescriptorWriter writer;
+	DescriptorWriter writer = {};
 
-	void build_pipelines(Engine *engine);
+	void build_pipelines(Engine &engine);
 	void clear_resources(VkDevice device);
 
 	MaterialInstance write_material(VkDevice device, const MaterialPass pass, const MaterialResources &resources, DescriptorAllocatorGrowable &descriptorAllocator);

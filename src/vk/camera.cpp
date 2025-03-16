@@ -14,23 +14,46 @@ void Camera::update()
 void Camera::processSDLEvent(SDL_Event &e)
 {
 	// [TODO] Replace with switches
-	if (e.type == SDL_EVENT_KEY_DOWN) {
-		if (e.key.scancode == SDL_SCANCODE_W) { velocity.z = -1; }
-		if (e.key.scancode == SDL_SCANCODE_S) { velocity.z = 1; }
-		if (e.key.scancode == SDL_SCANCODE_A) { velocity.x = -1; }
-		if (e.key.scancode == SDL_SCANCODE_D) { velocity.x = 1; }
-	}
-
-	if (e.type == SDL_EVENT_KEY_UP) {
-		if (e.key.scancode == SDL_SCANCODE_W) { velocity.z = 0; }
-		if (e.key.scancode == SDL_SCANCODE_S) { velocity.z = 0; }
-		if (e.key.scancode == SDL_SCANCODE_A) { velocity.x = 0; }
-		if (e.key.scancode == SDL_SCANCODE_D) { velocity.x = 0; }
-	}
-
-	if (e.type == SDL_EVENT_MOUSE_MOTION) {
-		yaw += (float)e.motion.xrel / 200.f;
-		pitch -= (float)e.motion.yrel / 200.f;
+	switch (e.type) {
+		case SDL_EVENT_KEY_DOWN: {
+			switch (e.key.scancode) {
+				case SDL_SCANCODE_W: {
+					velocity.z = -1.f;
+				}
+				case SDL_SCANCODE_S: {
+					velocity.z = 1.f;
+				}
+				case SDL_SCANCODE_A: {
+					velocity.x = -1.f;
+				}
+				case SDL_SCANCODE_D: {
+					velocity.x = 1.f;
+				}
+				default: break;
+			}
+		}
+		case SDL_EVENT_KEY_UP: {
+			switch (e.key.scancode) {
+				case SDL_SCANCODE_W: {
+					velocity.z = 0.f;
+				}
+				case SDL_SCANCODE_S: {
+					velocity.z = 0.f;
+				}
+				case SDL_SCANCODE_A: {
+					velocity.x = 0.f;
+				}
+				case SDL_SCANCODE_D: {
+					velocity.x = 0.f;
+				}
+				default: break;
+			}
+		}
+		case SDL_EVENT_MOUSE_MOTION: {
+			yaw += (float)e.motion.xrel / 200.f;
+			pitch -= (float)e.motion.yrel / 200.f;
+		}
+		default: break;
 	}
 }
 

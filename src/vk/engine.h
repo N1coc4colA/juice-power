@@ -49,7 +49,7 @@ public:
 
 	VmaAllocator _allocator = VK_NULL_HANDLE;
 
-	DeletionQueue _mainDeletionQueue;
+	DeletionQueue _mainDeletionQueue = {};
 
 	VkInstance _instance = VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT _debug_messenger = VK_NULL_HANDLE;
@@ -63,64 +63,64 @@ public:
 	VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
 
 	/// Image format expected by the windowing system
-	VkFormat _swapchainImageFormat;
+	VkFormat _swapchainImageFormat = VK_FORMAT_MAX_ENUM;
 
 	/// Array of images from the swapchain
-	std::vector<VkImage> _swapchainImages;
+	std::vector<VkImage> _swapchainImages = {};
 
 	/// Array of image-views from the swapchain
-	std::vector<VkImageView> _swapchainImageViews;
+	std::vector<VkImageView> _swapchainImageViews = {};
 
 	//draw resources
-	AllocatedImage _drawImage;
-	AllocatedImage _depthImage;
-	VkExtent2D _swapchainExtent;
-	VkExtent2D _drawExtent;
+	AllocatedImage _drawImage = {};
+	AllocatedImage _depthImage = {};
+	VkExtent2D _swapchainExtent = {0, 0};
+	VkExtent2D _drawExtent = {0, 0};
 	float renderScale = 1.f;
 
 	DescriptorAllocatorGrowable globalDescriptorAllocator;
 
-	VkDescriptorSet _drawImageDescriptors;
+	VkDescriptorSet _drawImageDescriptors = VK_NULL_HANDLE;
 	VkDescriptorSetLayout _drawImageDescriptorLayout;
 
-	VkPipeline _gradientPipeline;
-	VkPipelineLayout _gradientPipelineLayout;
+	VkPipeline _gradientPipeline = VK_NULL_HANDLE;
+	VkPipelineLayout _gradientPipelineLayout = VK_NULL_HANDLE;
 
-	VkFence _immFence;
-	VkCommandBuffer _immCommandBuffer;
-	VkCommandPool _immCommandPool;
+	VkFence _immFence = VK_NULL_HANDLE;
+	VkCommandBuffer _immCommandBuffer = VK_NULL_HANDLE;
+	VkCommandPool _immCommandPool = VK_NULL_HANDLE;
 
 	std::vector<ComputeEffect> backgroundEffects;
 	int currentBackgroundEffect{0};
 
-	VkPipelineLayout _meshPipelineLayout;
-	VkPipeline _meshPipeline;
+	VkPipelineLayout _meshPipelineLayout = VK_NULL_HANDLE;
+	VkPipeline _meshPipeline = VK_NULL_HANDLE;
 
-	std::vector<std::shared_ptr<MeshAsset>> testMeshes;
+	std::vector<std::shared_ptr<MeshAsset>> testMeshes = {};
 
 	AllocatedBuffer create_buffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
 
-	GPUSceneData sceneData;
+	GPUSceneData sceneData = {};
 
-	VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
+	VkDescriptorSetLayout _gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
 
-	AllocatedImage _whiteImage;
-	AllocatedImage _blackImage;
-	AllocatedImage _greyImage;
-	AllocatedImage _errorCheckerboardImage;
+	AllocatedImage _whiteImage = {};
+	AllocatedImage _blackImage = {};
+	AllocatedImage _greyImage = {};
+	AllocatedImage _errorCheckerboardImage = {};
 
-	VkSampler _defaultSamplerLinear;
-	VkSampler _defaultSamplerNearest;
+	VkSampler _defaultSamplerLinear = VK_NULL_HANDLE;
+	VkSampler _defaultSamplerNearest = VK_NULL_HANDLE;
 
-	VkDescriptorSetLayout _singleImageDescriptorLayout;
+	VkDescriptorSetLayout _singleImageDescriptorLayout = VK_NULL_HANDLE;
 
-	MaterialInstance defaultData;
-	GLTFMetallic_Roughness metalRoughMaterial;
+	MaterialInstance defaultData = {};
+	GLTFMetallic_Roughness metalRoughMaterial = {};
 
-	DrawContext mainDrawContext;
-	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
+	DrawContext mainDrawContext = {};
+	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes = {};
 
-	Camera mainCamera;
+	Camera mainCamera = {};
 
 
 	void update_scene();

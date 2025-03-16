@@ -1,5 +1,7 @@
 #include "pipelinebuilder.h"
 
+#include <cassert>
+
 #include <fmt/printf.h>
 
 #include "initializers.h"
@@ -28,6 +30,8 @@ void PipelineBuilder::clear()
 
 VkPipeline PipelineBuilder::build_pipeline(VkDevice device)
 {
+	assert(device != VK_NULL_HANDLE);
+
 	// make viewport state from our stored viewport and scissor.
 	// at the moment we wont support multiple viewports or scissors
 	const VkPipelineViewportStateCreateInfo viewportState = {
@@ -88,7 +92,7 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device)
 
 	// its easy to error out on create graphics pipeline, so we handle it a bit
 	// better than the common VK_CHECK case
-	VkPipeline newPipeline;
+	VkPipeline newPipeline = VK_NULL_HANDLE;
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) != VK_SUCCESS) {
 		fmt::println("failed to create pipeline");
 		return VK_NULL_HANDLE; // failed to create graphics pipeline
@@ -99,6 +103,9 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device)
 
 void PipelineBuilder::set_shaders(VkShaderModule vertexShader, VkShaderModule fragmentShader)
 {
+	assert(vertexShader != VK_NULL_HANDLE);
+	assert(fragmentShader != VK_NULL_HANDLE);
+
 	_shaderStages.clear();
 
 	_shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
@@ -108,6 +115,8 @@ void PipelineBuilder::set_shaders(VkShaderModule vertexShader, VkShaderModule fr
 
 void PipelineBuilder::set_input_topology(const VkPrimitiveTopology topology)
 {
+	assert(topology != VK_PRIMITIVE_TOPOLOGY_MAX_ENUM);
+
 	_inputAssembly.topology = topology;
 	// we are not going to use primitive restart on the entire tutorial so leave
 	// it on false
@@ -116,12 +125,17 @@ void PipelineBuilder::set_input_topology(const VkPrimitiveTopology topology)
 
 void PipelineBuilder::set_polygon_mode(const VkPolygonMode mode)
 {
+	assert(mode != VK_POLYGON_MODE_MAX_ENUM);
+
 	_rasterizer.polygonMode = mode;
 	_rasterizer.lineWidth = 1.f;
 }
 
 void PipelineBuilder::set_cull_mode(VkCullModeFlags cullMode, VkFrontFace frontFace)
 {
+	assert(cullMode != VK_CULL_MODE_FLAG_BITS_MAX_ENUM);
+	assert(frontFace != VK_FRONT_FACE_MAX_ENUM);
+
 	_rasterizer.cullMode = cullMode;
 	_rasterizer.frontFace = frontFace;
 }
@@ -152,6 +166,8 @@ void PipelineBuilder::disable_blending()
 
 void PipelineBuilder::set_color_attachment_format(const VkFormat format)
 {
+	assert(format != VK_FORMAT_MAX_ENUM);
+
 	_colorAttachmentformat = format;
 	// connect the format to the renderInfo  structure
 	_renderInfo.colorAttachmentCount = 1;
@@ -160,6 +176,8 @@ void PipelineBuilder::set_color_attachment_format(const VkFormat format)
 
 void PipelineBuilder::set_depth_format(const VkFormat format)
 {
+	assert(format != VK_FORMAT_MAX_ENUM);
+
 	_renderInfo.depthAttachmentFormat = format;
 }
 

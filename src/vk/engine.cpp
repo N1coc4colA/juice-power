@@ -38,6 +38,9 @@ Engine &Engine::get()
 
 AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
+	assert(allocSize != 0);
+	assert(memoryUsage != VMA_MEMORY_USAGE_UNKNOWN);
+
 	// allocate buffer
 	const VkBufferCreateInfo bufferInfo {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -51,7 +54,7 @@ AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage
 		.usage = memoryUsage,
 	};
 
-	AllocatedBuffer newBuffer;
+	AllocatedBuffer newBuffer = {};
 
 	// allocate the buffer
 	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
@@ -59,7 +62,7 @@ AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage
 	return newBuffer;
 }
 
-void Engine::destroy_buffer(const AllocatedBuffer& buffer)
+void Engine::destroy_buffer(const AllocatedBuffer &buffer)
 {
 	vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
 }
@@ -82,7 +85,7 @@ void Engine::init()
 	init_default_data();
 
 	mainCamera.velocity = glm::vec3(0.f);
-	mainCamera.position = glm::vec3(0, 0, 5);
+	mainCamera.position = glm::vec3(0.f, 0.f, 5.f);
 
 	//everything went fine apparently
 	_isInitialized = true;
@@ -91,7 +94,7 @@ void Engine::init()
 void Engine::init_sdl()
 {
 	// We initialize SDL and create a window with it.
-	SDL_Init(SDL_INIT_VIDEO);
+	assert(SDL_Init(SDL_INIT_VIDEO));
 
 	const SDL_WindowFlags window_flags = 0
 		| SDL_WINDOW_VULKAN
@@ -109,7 +112,7 @@ void Engine::init_sdl()
 
 void Engine::init_vulkan()
 {
-	vkb::InstanceBuilder builder;
+	vkb::InstanceBuilder builder{};
 
 	//make the Vulkan instance, with basic debug features
 	const auto inst_ret = builder
@@ -129,7 +132,7 @@ void Engine::init_vulkan()
 	assert(_instance != VK_NULL_HANDLE);
 	assert(_debug_messenger != VK_NULL_HANDLE);
 
-	SDL_Vulkan_CreateSurface(_window, _instance, nullptr, &_surface);
+	assert(SDL_Vulkan_CreateSurface(_window, _instance, nullptr, &_surface));
 
 	const VkPhysicalDeviceVulkan13Features features {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
@@ -244,7 +247,7 @@ void Engine::init_swapchain()
 	const VkImageCreateInfo dimg_info = vkinit::image_create_info(_depthImage.imageFormat, depthImageUsages, drawImageExtent);
 
 	//allocate and create the image
-	vmaCreateImage(_allocator, &dimg_info, &rimg_allocinfo, &_depthImage.image, &_depthImage.allocation, nullptr);
+	VK_CHECK(vmaCreateImage(_allocator, &dimg_info, &rimg_allocinfo, &_depthImage.image, &_depthImage.allocation, nullptr));
 
 	//build a image-view for the draw image to use for rendering
 	const VkImageViewCreateInfo dview_info = vkinit::imageview_create_info(_depthImage.imageFormat, _depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -316,16 +319,16 @@ void Engine::init_sync_structures()
 void Engine::init_descriptors()
 {
 	//create a descriptor pool that will hold 10 sets with 1 image each
-	const std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> sizes {
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
+	constexpr DescriptorAllocatorGrowable::PoolSizeRatio sizes[] = {
+		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
 	};
 
 	globalDescriptorAllocator.init(_device, 10, sizes);
 
 	//make the descriptor set layout for our compute draw
 	{
-		DescriptorLayoutBuilder builder;
+		DescriptorLayoutBuilder builder{};
 		builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 		_drawImageDescriptorLayout = builder.build(_device, VK_SHADER_STAGE_COMPUTE_BIT);
 	}
@@ -333,17 +336,17 @@ void Engine::init_descriptors()
 	//allocate a descriptor set for our draw image
 	_drawImageDescriptors = globalDescriptorAllocator.allocate(_device, _drawImageDescriptorLayout);
 
-	DescriptorWriter writer;
+	DescriptorWriter writer{};
 	writer.write_image(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	writer.update_set(_device,_drawImageDescriptors);
 
 	for (int i = 0; i < FRAME_OVERLAP; i++) {
 		// create a descriptor pool
-		std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> frame_sizes = {
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 },
+		constexpr DescriptorAllocatorGrowable::PoolSizeRatio frame_sizes[] = {
+			{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
+			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
 		};
 
 		_frames[i]._frameDescriptors = DescriptorAllocatorGrowable();
@@ -355,13 +358,13 @@ void Engine::init_descriptors()
 	}
 
 	{
-		DescriptorLayoutBuilder builder;
+		DescriptorLayoutBuilder builder{};
 		builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 		_gpuSceneDataDescriptorLayout = builder.build(_device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
 
 	{
-		DescriptorLayoutBuilder builder;
+		DescriptorLayoutBuilder builder{};
 		builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 		_singleImageDescriptorLayout = builder.build(_device, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
@@ -376,7 +379,7 @@ void Engine::init_descriptors()
 		vkDestroyDescriptorSetLayout(_device, _singleImageDescriptorLayout, nullptr);
 	});
 
-	metalRoughMaterial.build_pipelines(this);
+	metalRoughMaterial.build_pipelines(*this);
 }
 
 void Engine::init_pipelines()
@@ -412,14 +415,14 @@ void Engine::init_mesh_pipeline()
 	pipeline_layout_info.pPushConstantRanges = &bufferRange;
 	pipeline_layout_info.pushConstantRangeCount = 1;*/
 
-	VkShaderModule triangleFragShader;
+	VkShaderModule triangleFragShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/tex_image.frag.spv", _device, triangleFragShader)) {
 		fmt::print("Error when building the fragment shader\n");
 	} else {
 		fmt::print("Triangle fragment shader succesfully loaded\n");
 	}
 
-	VkShaderModule triangleVertexShader;
+	VkShaderModule triangleVertexShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle_mesh.vert.spv", _device, triangleVertexShader)) {
 		fmt::print("Error when building the vertex shader\n");
 	} else {
@@ -490,7 +493,7 @@ void Engine::init_mesh_pipeline()
 
 	//< mesh_shader
 
-	PipelineBuilder pipelineBuilder;
+	PipelineBuilder pipelineBuilder{};
 
 	//use the triangle layout we created
 	pipelineBuilder._pipelineLayout = _meshPipelineLayout;
@@ -548,7 +551,7 @@ void Engine::init_background_pipelines()
 	VK_CHECK(vkCreatePipelineLayout(_device, &computeLayout, nullptr, &_gradientPipelineLayout));
 
 	//layout code
-	VkShaderModule computeDrawShader;
+	VkShaderModule computeDrawShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/gradient.comp.spv", _device, computeDrawShader)) {
 		fmt::print("Error when building the compute shader \n");
 	}
@@ -583,18 +586,18 @@ void Engine::init_imgui()
 	// 1: create descriptor pool for IMGUI
 	//  the size of the pool is very oversize, but it's copied from imgui demo
 	//  itself.
-	const VkDescriptorPoolSize pool_sizes[] = {
-		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	constexpr VkDescriptorPoolSize pool_sizes[] = {
+		{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+		{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+		{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}
 	};
 
 	const VkDescriptorPoolCreateInfo pool_info {
@@ -605,7 +608,7 @@ void Engine::init_imgui()
 		.pPoolSizes = pool_sizes,
 	};
 
-	VkDescriptorPool imguiPool;
+	VkDescriptorPool imguiPool = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateDescriptorPool(_device, &pool_info, nullptr, &imguiPool));
 
 	// 2: initialize imgui library
@@ -647,7 +650,7 @@ void Engine::init_imgui()
 	});
 }
 
-void Engine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
+void Engine::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function)
 {
 	VK_CHECK(vkResetFences(_device, 1, &_immFence));
 	VK_CHECK(vkResetCommandBuffer(_immCommandBuffer, 0));
@@ -676,7 +679,7 @@ void Engine::cleanup()
 {
 	if (_isInitialized) {
 		// We need to wait fort he GPU to finish until...
-		vkDeviceWaitIdle(_device);
+		VK_CHECK(vkDeviceWaitIdle(_device));
 
 		// we can destroy the command pools.
 		// It may crash the app otherwise.
@@ -816,7 +819,7 @@ void Engine::draw()
 	assert(_currFrame._swapchainSemaphore != VK_NULL_HANDLE);
 	//request image from the swapchain
 
-	uint32_t swapchainImageIndex;
+	uint32_t swapchainImageIndex = -1;
 	const VkResult acquireResult = vkAcquireNextImageKHR(_device, _swapchain, 1000000000, _currFrame._swapchainSemaphore, nullptr, &swapchainImageIndex);
 	if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
 		resize_requested = true;
@@ -828,6 +831,7 @@ void Engine::draw()
 
 	//naming it cmd for shorter writing
 	VkCommandBuffer cmd = _currFrame._mainCommandBuffer;
+	assert(cmd != VK_NULL_HANDLE);
 
 	assert(cmd != VK_NULL_HANDLE);
 	// now that we are sure that the commands finished executing, we can safely
@@ -982,7 +986,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-	VkRenderingInfo renderInfo = vkinit::rendering_info(_windowExtent, &colorAttachment, &depthAttachment);
+	const VkRenderingInfo renderInfo = vkinit::rendering_info(_windowExtent, &colorAttachment, &depthAttachment);
 
 	//set dynamic viewport and scissor
 	const VkViewport viewport {
@@ -1067,12 +1071,13 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	vkCmdEndRendering(cmd);*/
 
 
+	auto &currFrame = get_current_frame();
 
 	//allocate a new uniform buffer for the scene data
 	AllocatedBuffer gpuSceneDataBuffer = create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 	//add it to the deletion queue of this frame so it gets deleted once its been used
-	get_current_frame()._deletionQueue.push_function([=, this]() {
+	currFrame._deletionQueue.push_function([=, this]() {
 		destroy_buffer(gpuSceneDataBuffer);
 	});
 
@@ -1081,7 +1086,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	*sceneUniformData = sceneData;
 
 	//create a descriptor set that binds that buffer and update it
-	VkDescriptorSet globalDescriptor = get_current_frame()._frameDescriptors.allocate(_device, _gpuSceneDataDescriptorLayout);
+	VkDescriptorSet globalDescriptor = currFrame._frameDescriptors.allocate(_device, _gpuSceneDataDescriptorLayout);
 
 	DescriptorWriter writer;
 	writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -1089,19 +1094,27 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 
 
 	for (const RenderObject &draw : mainDrawContext.OpaqueSurfaces) {
-		vkCmdBindPipeline(cmd,VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->pipeline);
+		assert(draw.material);
+		assert(draw.material->materialSet != VK_NULL_HANDLE);
+		assert(draw.material->passType != MaterialPass::Invalid);
+		assert(draw.material->pipeline != nullptr);
+		assert(draw.material->pipeline->pipeline != VK_NULL_HANDLE);
+		assert(draw.material->pipeline->layout != VK_NULL_HANDLE);
+		assert(draw.vertexBufferAddress != 0);
+
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->pipeline);
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->layout, 0, 1, &globalDescriptor, 0, nullptr);
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->layout, 1, 1, &draw.material->materialSet, 0, nullptr);
 
 		vkCmdBindIndexBuffer(cmd, draw.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		GPUDrawPushConstants pushConstants;
-		pushConstants.vertexBuffer = draw.vertexBufferAddress;
-		pushConstants.worldMatrix = draw.transform;
+		const GPUDrawPushConstants pushConstants {
+			.worldMatrix = draw.transform,
+			.vertexBuffer = draw.vertexBufferAddress,
+		};
 		vkCmdPushConstants(cmd, draw.material->pipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &pushConstants);
-		//vkCmdPushConstants(cmd, draw.material->pipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
 
-		vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0);
+		vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0); // [DEFECT]
 	}
 
 	vkCmdEndRendering(cmd);
@@ -1137,6 +1150,7 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 	AllocatedBuffer staging = create_buffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
 	void *data = getMappedData(staging.allocation);
+	assert(data != nullptr);
 
 	// copy vertex buffer
 	std::memcpy(data, vertices.data(), vertexBufferSize);
@@ -1168,7 +1182,7 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 
 void Engine::init_default_data()
 {
-	testMeshes = loadGltfMeshes(this, ASSETS_DIR "/basicmesh.glb").value();
+	testMeshes = loadGltfMeshes(*this, ASSETS_DIR "/basicmesh.glb").value();
 	assert(testMeshes.size() == 3);
 	//delete the meshes data on engine shutdown
 	_mainDeletionQueue.push_function([&](){
@@ -1233,6 +1247,7 @@ void Engine::init_default_data()
 
 	//write the buffer
 	GLTFMetallic_Roughness::MaterialConstants *sceneUniformData = reinterpret_cast<GLTFMetallic_Roughness::MaterialConstants *>(getMappedData(materialConstants.allocation));
+	assert(sceneUniformData != nullptr);
 	sceneUniformData->colorFactors = glm::vec4{1.f, 1.f, 1.f, 1.f};
 	sceneUniformData->metal_rough_factors = glm::vec4{1,0.5,0,0};
 
@@ -1245,7 +1260,7 @@ void Engine::init_default_data()
 
 	defaultData = metalRoughMaterial.write_material(_device, MaterialPass::MainColor, materialResources, globalDescriptorAllocator);
 
-	for (auto &m : testMeshes) {
+	for (const auto &m : testMeshes) {
 		std::shared_ptr<MeshNode> newNode = std::make_shared<MeshNode>();
 		newNode->mesh = m;
 
@@ -1306,11 +1321,11 @@ void Engine::destroy_swapchain()
 
 void Engine::resize_swapchain()
 {
-	vkDeviceWaitIdle(_device);
+	VK_CHECK(vkDeviceWaitIdle(_device));
 
 	destroy_swapchain();
 
-	int w, h;
+	int w = -1, h = -1;
 	SDL_GetWindowSize(_window, &w, &h);
 	_windowExtent.width = w;
 	_windowExtent.height = h;
@@ -1322,6 +1337,9 @@ void Engine::resize_swapchain()
 
 AllocatedImage Engine::create_image(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped)
 {
+	assert(format != VK_FORMAT_MAX_ENUM);
+	assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
+
 	AllocatedImage newImage {
 		.imageExtent = size,
 		.imageFormat = format,
@@ -1358,6 +1376,10 @@ AllocatedImage Engine::create_image(const VkExtent3D &size, const VkFormat forma
 
 AllocatedImage Engine::create_image(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped)
 {
+	assert(data != nullptr);
+	assert(format != VK_FORMAT_MAX_ENUM);
+	assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
+
 	const size_t data_size = size.depth * size.width * size.height * 4;
 	AllocatedBuffer uploadbuffer = create_buffer(data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
@@ -1413,7 +1435,7 @@ void Engine::update_scene()
 
 	mainCamera.update();
 
-	glm::mat4 view = mainCamera.getViewMatrix();
+	const glm::mat4 view = mainCamera.getViewMatrix();
 
 	// camera projection
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)_windowExtent.width / (float)_windowExtent.height, 10000.f, 0.1f);

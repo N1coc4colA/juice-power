@@ -14,19 +14,19 @@ struct MaterialInstance;
 
 struct RenderObject
 {
-	uint32_t indexCount;
-	uint32_t firstIndex;
-	VkBuffer indexBuffer;
+	uint32_t indexCount = -1;
+	uint32_t firstIndex = -1;
+	VkBuffer indexBuffer = VK_NULL_HANDLE;
 
-	MaterialInstance *material;
+	MaterialInstance *material = nullptr;
 
-	glm::mat4 transform;
-	VkDeviceAddress vertexBufferAddress;
+	glm::mat4 transform = {};
+	VkDeviceAddress vertexBufferAddress = 0;
 };
 
 struct DrawContext
 {
-	std::vector<RenderObject> OpaqueSurfaces;
+	std::vector<RenderObject> OpaqueSurfaces = {};
 };
 
 

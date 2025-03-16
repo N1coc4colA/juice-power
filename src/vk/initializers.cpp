@@ -5,6 +5,8 @@
 
 VkCommandPoolCreateInfo vkinit::command_pool_create_info(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags)
 {
+	assert(flags != VK_COMMAND_POOL_CREATE_FLAG_BITS_MAX_ENUM);
+
 	const VkCommandPoolCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext = nullptr,
@@ -17,6 +19,7 @@ VkCommandPoolCreateInfo vkinit::command_pool_create_info(const uint32_t queueFam
 VkCommandBufferAllocateInfo vkinit::command_buffer_allocate_info(VkCommandPool pool, const uint32_t count)
 {
 	assert(pool != VK_NULL_HANDLE);
+	assert(count != 0);
 
 	const VkCommandBufferAllocateInfo info {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -31,6 +34,8 @@ VkCommandBufferAllocateInfo vkinit::command_buffer_allocate_info(VkCommandPool p
 
 VkCommandBufferBeginInfo vkinit::command_buffer_begin_info(const VkCommandBufferUsageFlags flags)
 {
+	assert(flags != VK_COMMAND_BUFFER_USAGE_FLAG_BITS_MAX_ENUM);
+
 	const VkCommandBufferBeginInfo info {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 		.pNext = nullptr,
@@ -43,6 +48,8 @@ VkCommandBufferBeginInfo vkinit::command_buffer_begin_info(const VkCommandBuffer
 
 VkFenceCreateInfo vkinit::fence_create_info(const VkFenceCreateFlags flags)
 {
+	assert(flags != VK_FENCE_CREATE_FLAG_BITS_MAX_ENUM);
+
 	const VkFenceCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 		.pNext = nullptr,
@@ -54,6 +61,8 @@ VkFenceCreateInfo vkinit::fence_create_info(const VkFenceCreateFlags flags)
 
 VkSemaphoreCreateInfo vkinit::semaphore_create_info(const VkSemaphoreCreateFlags flags)
 {
+	assert(flags != VK_FENCE_CREATE_FLAG_BITS_MAX_ENUM);
+
 	const VkSemaphoreCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 		.pNext = nullptr,
@@ -65,6 +74,7 @@ VkSemaphoreCreateInfo vkinit::semaphore_create_info(const VkSemaphoreCreateFlags
 
 VkSemaphoreSubmitInfo vkinit::semaphore_submit_info(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore)
 {
+	assert(stageMask != VK_PIPELINE_STAGE_2_NONE);
 	assert(semaphore != VK_NULL_HANDLE);
 
 	const VkSemaphoreSubmitInfo submitInfo {
@@ -129,6 +139,7 @@ VkPresentInfoKHR vkinit::present_info()
 VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view, VkClearValue *clear, const VkImageLayout layout)
 {
 	assert(view != VK_NULL_HANDLE);
+	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
 
 	const VkRenderingAttachmentInfo colorAttachment {
 		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -150,6 +161,7 @@ VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view, VkClearValue
 VkRenderingAttachmentInfo vkinit::depth_attachment_info(VkImageView view, const VkImageLayout layout)
 {
 	assert(view != VK_NULL_HANDLE);
+	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
 
 	const VkRenderingAttachmentInfo depthAttachment {
 		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -187,6 +199,8 @@ VkRenderingInfo vkinit::rendering_info(const VkExtent2D &renderExtent, VkRenderi
 
 VkImageSubresourceRange vkinit::image_subresource_range(VkImageAspectFlags aspectMask)
 {
+	assert(aspectMask != VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM);
+
 	const VkImageSubresourceRange subImage {
 		.aspectMask = aspectMask,
 		.baseMipLevel = 0,
@@ -200,6 +214,9 @@ VkImageSubresourceRange vkinit::image_subresource_range(VkImageAspectFlags aspec
 
 VkDescriptorSetLayoutBinding vkinit::descriptorset_layout_binding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding)
 {
+	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
+	assert(stageFlags != VK_PIPELINE_LAYOUT_CREATE_FLAG_BITS_MAX_ENUM);
+
 	const VkDescriptorSetLayoutBinding setbind {
 		.binding = binding,
 		.descriptorType = type,
@@ -229,6 +246,8 @@ VkDescriptorSetLayoutCreateInfo vkinit::descriptorset_layout_create_info(VkDescr
 
 VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo *imageInfo, uint32_t binding)
 {
+	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
+	assert(dstSet != VK_NULL_HANDLE);
 	assert(imageInfo != nullptr);
 
 	const VkWriteDescriptorSet write {
@@ -246,6 +265,7 @@ VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDes
 
 VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo *bufferInfo, uint32_t binding)
 {
+	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 	assert(dstSet != VK_NULL_HANDLE);
 	assert(bufferInfo != nullptr);
 
@@ -278,6 +298,9 @@ VkDescriptorBufferInfo vkinit::buffer_info(VkBuffer buffer, VkDeviceSize offset,
 
 VkImageCreateInfo vkinit::image_create_info(const VkFormat format, const VkImageUsageFlags usageFlags, const VkExtent3D &extent)
 {
+	assert(format != VK_FORMAT_MAX_ENUM);
+	assert(usageFlags != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
+
 	const VkImageCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		.pNext = nullptr,
@@ -304,7 +327,9 @@ VkImageCreateInfo vkinit::image_create_info(const VkFormat format, const VkImage
 
 VkImageViewCreateInfo vkinit::imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
 {
+	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(image != VK_NULL_HANDLE);
+	assert(aspectFlags != VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM);
 
 	// build a image-view for the depth image to use for rendering
 	const VkImageViewCreateInfo info {
@@ -344,6 +369,7 @@ VkPipelineLayoutCreateInfo vkinit::pipeline_layout_create_info()
 
 VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry)
 {
+	assert(stage != VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
 	assert(shaderModule != VK_NULL_HANDLE);
 	assert(entry != nullptr);
 

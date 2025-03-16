@@ -11,8 +11,8 @@ struct AllocatedImage
 	VkImage image = VK_NULL_HANDLE;
 	VkImageView imageView = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
-	VkExtent3D imageExtent;
-	VkFormat imageFormat;
+	VkExtent3D imageExtent = {0, 0, 0};
+	VkFormat imageFormat = VK_FORMAT_MAX_ENUM;
 };
 
 

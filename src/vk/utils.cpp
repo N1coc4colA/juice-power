@@ -14,12 +14,14 @@ void transition_image(VkCommandBuffer cmd, VkImage image, const VkImageLayout cu
 {
 	assert(cmd != VK_NULL_HANDLE);
 	assert(image != VK_NULL_HANDLE);
+	assert(currentLayout != VK_IMAGE_LAYOUT_MAX_ENUM);
+	assert(newLayout != VK_IMAGE_LAYOUT_MAX_ENUM);
 
 	const VkImageAspectFlags aspectMask = (newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
 			? VK_IMAGE_ASPECT_DEPTH_BIT
 			: VK_IMAGE_ASPECT_COLOR_BIT;
 
-	const VkImageMemoryBarrier2 imageBarrier{
+	const VkImageMemoryBarrier2 imageBarrier {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 		.pNext = nullptr,
 		.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
@@ -34,7 +36,7 @@ void transition_image(VkCommandBuffer cmd, VkImage image, const VkImageLayout cu
 		.subresourceRange = vkinit::image_subresource_range(aspectMask),
 	};
 
-	const VkDependencyInfo depInfo{
+	const VkDependencyInfo depInfo {
 		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
 		.pNext = nullptr,
 		.dependencyFlags = 0,
@@ -144,7 +146,7 @@ bool load_shader_module(const char *filePath, VkDevice device, VkShaderModule &o
 	};
 
 	// check that the creation goes well.
-	VkShaderModule shaderModule;
+	VkShaderModule shaderModule = VK_NULL_HANDLE;
 	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
 		return false;
 	}

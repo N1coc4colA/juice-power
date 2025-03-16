@@ -11,14 +11,14 @@ class PipelineBuilder
 public:
 	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
 
-	VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
-	VkPipelineRasterizationStateCreateInfo _rasterizer;
-	VkPipelineColorBlendAttachmentState _colorBlendAttachment;
-	VkPipelineMultisampleStateCreateInfo _multisampling;
-	VkPipelineLayout _pipelineLayout;
-	VkPipelineDepthStencilStateCreateInfo _depthStencil;
-	VkPipelineRenderingCreateInfo _renderInfo;
-	VkFormat _colorAttachmentformat;
+	VkPipelineInputAssemblyStateCreateInfo _inputAssembly = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineRasterizationStateCreateInfo _rasterizer = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineColorBlendAttachmentState _colorBlendAttachment = {};
+	VkPipelineMultisampleStateCreateInfo _multisampling = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
+	VkPipelineDepthStencilStateCreateInfo _depthStencil = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineRenderingCreateInfo _renderInfo = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkFormat _colorAttachmentformat = VK_FORMAT_MAX_ENUM;
 
 	inline PipelineBuilder()
 	{

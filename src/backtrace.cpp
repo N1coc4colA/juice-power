@@ -2,6 +2,7 @@
 
 #include <execinfo.h>
 #include <cxxabi.h>
+#include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -10,6 +11,8 @@
 
 void BackTrace::easyPrint(unsigned int maxFrames)
 {
+	assert(maxFrames != 0);
+
 	// Array to store the stack frames
 	void *addrlist[maxFrames + 1];
 
@@ -69,6 +72,8 @@ void BackTrace::easyPrint(unsigned int maxFrames)
 
 std::span<BackTraceEntry> backtrace_entries(int max_frames)
 {
+	assert(max_frames > 0);
+
 	// Array to store the stack frames
 	void *addrlist[max_frames + 1];
 
@@ -145,6 +150,7 @@ BackTrace::BackTrace(unsigned int maxFrames)
 	: entries(backtrace_entries(maxFrames))
 	, bt(entries.data(), [](BackTraceEntry *d) {delete [] d;})
 {
+	assert(maxFrames != 0);
 }
 
 BackTrace::BackTrace(const BackTrace &other)

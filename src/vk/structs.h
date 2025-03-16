@@ -11,7 +11,7 @@
 
 struct DeletionQueue
 {
-	std::deque<std::function<void()>> deletors;
+	std::deque<std::function<void()>> deletors = {};
 
 	inline void push_function(std::function<void()> &&function)
 	{
@@ -30,8 +30,8 @@ struct FrameData
 				_renderSemaphore = VK_NULL_HANDLE;
 	VkFence _renderFence = VK_NULL_HANDLE;
 
-	DeletionQueue _deletionQueue;
-	DescriptorAllocatorGrowable _frameDescriptors;
+	DeletionQueue _deletionQueue = {};
+	DescriptorAllocatorGrowable _frameDescriptors = {};
 };
 
 
