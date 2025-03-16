@@ -19,8 +19,10 @@
 
 #include "defines.h"
 #include "initializers.h"
+#include "src/vk/loadedgltf.h"
 #include "utils.h"
 #include "pipelinebuilder.h"
+#include "loader.h"
 #include "vma.h"
 
 #include <chrono>
@@ -85,7 +87,15 @@ void Engine::init()
 	init_default_data();
 
 	mainCamera.velocity = glm::vec3(0.f);
-	mainCamera.position = glm::vec3(0.f, 0.f, 5.f);
+	mainCamera.position = glm::vec3(30.f, -00.f, -085.f);
+	//mainCamera.position = glm::vec3(0.f, 0.f, 5.f);
+
+	const std::string structurePath = ASSETS_DIR "/structure.glb";
+	auto structureFile = loadGltf(*this, structurePath);
+
+	assert(structureFile.has_value());
+
+	loadedScenes["structure"] = *structureFile;
 
 	//everything went fine apparently
 	_isInitialized = true;
@@ -680,6 +690,8 @@ void Engine::cleanup()
 	if (_isInitialized) {
 		// We need to wait fort he GPU to finish until...
 		VK_CHECK(vkDeviceWaitIdle(_device));
+
+		loadedScenes.clear();
 
 		// we can destroy the command pools.
 		// It may crash the app otherwise.
@@ -1428,6 +1440,8 @@ void Engine::destroy_image(const AllocatedImage &img)
 void Engine::update_scene()
 {
 	mainDrawContext.OpaqueSurfaces.clear();
+
+	loadedScenes["structure"]->draw(glm::mat4{1.f}, mainDrawContext);
 
 	for (int x = -3; x < 3; x++) {
 		const glm::mat4 scale = glm::scale(glm::mat4{1.f}, glm::vec3{0.2f});

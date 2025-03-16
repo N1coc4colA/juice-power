@@ -12,6 +12,7 @@
 
 
 class Engine;
+class LoadedGLTF;
 
 
 struct GLTFMaterial
@@ -36,6 +37,7 @@ struct MeshAsset
 
 
 std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &engine, const std::filesystem::path &filePath);
+std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Engine &engine, const std::filesystem::path &filePath);
 
 
 #endif // LOADER_H
