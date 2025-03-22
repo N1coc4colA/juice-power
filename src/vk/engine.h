@@ -124,6 +124,8 @@ public:
 
 	std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes = {};
 
+	EngineStats stats;
+
 	void update_scene();
 
 	void destroy_buffer(const AllocatedBuffer& buffer);

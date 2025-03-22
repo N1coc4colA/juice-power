@@ -29,11 +29,16 @@ void MeshNode::draw(const glm::mat4 &topMatrix, DrawContext &ctx)
 			.firstIndex = s.startIndex,
 			.indexBuffer = mesh->meshBuffers.indexBuffer.buffer,
 			.material = &s.material->data,
+			.bounds = s.bounds,
 			.transform = nodeMatrix,
 			.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress,
 		};
 
-		ctx.OpaqueSurfaces.push_back(def);
+		if (s.material->data.passType == MaterialPass::Transparent) {
+			ctx.TransparentSurfaces.push_back(def);
+		} else {
+			ctx.OpaqueSurfaces.push_back(def);
+		}
 	}
 
 	// recurse down

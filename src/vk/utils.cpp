@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include <cassert>
+#include <cmath>
 #include <fstream>
 #include <vector>
 
@@ -154,6 +155,102 @@ bool load_shader_module(const char *filePath, VkDevice device, VkShaderModule &o
 	outShaderModule = shaderModule;
 
 	return true;
+}
+
+void generate_mipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
+{
+	const int mipLevels = int(std::floor(std::log2(std::max(imageSize.width, imageSize.height)))) + 1;
+
+	for (int mip = 0; mip < mipLevels; mip++) {
+		VkExtent2D halfSize = imageSize;
+		halfSize.width /= 2;
+		halfSize.height /= 2;
+
+		const VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+		auto subresourceRange = vkinit::image_subresource_range(aspectMask);
+		subresourceRange.levelCount = 1;
+		subresourceRange.baseMipLevel = mip;
+
+		const VkImageMemoryBarrier2 imageBarrier {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+			.pNext = nullptr,
+
+			.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+			.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
+			.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+			.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
+
+			.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+
+			.image = image,
+			.subresourceRange = subresourceRange,
+		};
+
+		const VkDependencyInfo depInfo {
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.pNext = nullptr,
+			.imageMemoryBarrierCount = 1,
+			.pImageMemoryBarriers = &imageBarrier,
+		};
+
+		vkCmdPipelineBarrier2(cmd, &depInfo);
+
+		if (mip < mipLevels - 1) {
+			const VkImageBlit2 blitRegion {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+				.pNext = nullptr,
+				.srcSubresource = {
+					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+					.mipLevel = static_cast<uint32_t>(mip),
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.srcOffsets = {
+					{},
+					{
+						.x = static_cast<int32_t>(imageSize.width),
+						.y = static_cast<int32_t>(imageSize.height),
+						.z = 1,
+					},
+				},
+				.dstSubresource = {
+					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+					.mipLevel = static_cast<uint32_t>(mip),
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.dstOffsets = {
+					{},
+					{
+						.x = static_cast<int32_t>(halfSize.width),
+						.y = static_cast<int32_t>(halfSize.height),
+						.z = 1,
+					},
+				},
+			};
+
+			const VkBlitImageInfo2 blitInfo {
+				.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+				.pNext = nullptr,
+				.srcImage = image,
+				.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				.dstImage = image,
+				.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.regionCount = 1,
+				.pRegions = &blitRegion,
+				.filter = VK_FILTER_LINEAR,
+			};
+
+			vkCmdBlitImage2(cmd, &blitInfo);
+
+			imageSize = halfSize;
+		}
+	}
+
+	// transition all mip levels into the final read_only layout
+	transition_image(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 

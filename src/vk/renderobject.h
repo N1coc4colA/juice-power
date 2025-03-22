@@ -8,6 +8,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include "loader.h"
+
 
 struct MaterialInstance;
 
@@ -20,6 +22,7 @@ struct RenderObject
 
 	MaterialInstance *material = nullptr;
 
+	Bounds bounds = {};
 	glm::mat4 transform = {};
 	VkDeviceAddress vertexBufferAddress = 0;
 };
@@ -27,6 +30,7 @@ struct RenderObject
 struct DrawContext
 {
 	std::vector<RenderObject> OpaqueSurfaces = {};
+	std::vector<RenderObject> TransparentSurfaces = {};
 };
 
 

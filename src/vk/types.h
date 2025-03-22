@@ -39,6 +39,15 @@ struct AllocatedBuffer
 	VmaAllocationInfo info = {.deviceMemory = VK_NULL_HANDLE};
 };
 
+struct EngineStats
+{
+	float frametime = 0.f;
+	int triangle_count = 0.f;
+	int drawcall_count = 0.f;
+	float scene_update_time = 0.f;
+	float mesh_draw_time = 0.f;
+};
+
 struct Vertex
 {
 	glm::vec3 position = {};

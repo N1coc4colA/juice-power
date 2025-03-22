@@ -2,9 +2,11 @@
 
 #include <cassert>
 #include <cstring>
+#include <chrono>
+#include <thread>
+
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
-#include <thread>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -25,12 +27,51 @@
 #include "loader.h"
 #include "vma.h"
 
-#include <chrono>
-
 
 constexpr bool bUseValidationLayers = true;
 
 Engine *loadedEngine = nullptr;
+
+
+
+bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj)
+{
+	constexpr std::array<glm::vec3, 8> corners {
+		glm::vec3 { 1, 1, 1 },
+		glm::vec3 { 1, 1, -1 },
+		glm::vec3 { 1, -1, 1 },
+		glm::vec3 { 1, -1, -1 },
+		glm::vec3 { -1, 1, 1 },
+		glm::vec3 { -1, 1, -1 },
+		glm::vec3 { -1, -1, 1 },
+		glm::vec3 { -1, -1, -1 },
+	};
+
+	const glm::mat4 matrix = viewproj * obj.transform;
+
+	glm::vec3 min = { 1.5, 1.5, 1.5 };
+	glm::vec3 max = { -1.5, -1.5, -1.5 };
+
+	for (int c = 0; c < 8; c++) {
+		// project each corner into clip space
+		glm::vec4 v = matrix * glm::vec4(obj.bounds.origin + (corners[c] * obj.bounds.extents), 1.f);
+
+		// perspective correction
+		v.x = v.x / v.w;
+		v.y = v.y / v.w;
+		v.z = v.z / v.w;
+
+		min = glm::min(glm::vec3 { v.x, v.y, v.z }, min);
+		max = glm::max(glm::vec3 { v.x, v.y, v.z }, max);
+	}
+
+	// check the clip space box is within the view
+	if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f || min.y > 1.f || max.y < -1.f) {
+		return false;
+	} else {
+		return true;
+	}
+}
 
 
 Engine &Engine::get()
@@ -396,7 +437,7 @@ void Engine::init_pipelines()
 {
 	init_background_pipelines();
 
-	init_mesh_pipeline();
+	metalRoughMaterial.build_pipelines(*this);
 }
 
 void Engine::init_mesh_pipeline()
@@ -756,6 +797,18 @@ void Engine::run()
 
 	// main loop
 	while (!bQuit) {
+		//begin clock
+		const auto start = std::chrono::system_clock::now();
+
+		//everything else
+
+		//get clock again, compare with start clock
+		const auto end = std::chrono::system_clock::now();
+
+		//convert to microseconds (integer), and then come back to miliseconds
+		const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+		stats.frametime = elapsed.count() / 1000.f;
+
 		// Handle events on queue
 		while (SDL_PollEvent(&e) != 0) {
 			// close the window when user alt-f4s or clicks the X button
@@ -802,6 +855,16 @@ void Engine::run()
 
 			ImGui::End();
 		}
+
+		ImGui::Begin("Stats");
+
+		ImGui::Text("frametime %f ms", stats.frametime);
+		ImGui::Text("draw time %f ms", stats.mesh_draw_time);
+		ImGui::Text("update time %f ms", stats.scene_update_time);
+		ImGui::Text("triangles %i", stats.triangle_count);
+		ImGui::Text("draws %i", stats.drawcall_count);
+
+		ImGui::End();
 
 		ImGui::Render();
 
@@ -994,6 +1057,50 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 {
 	assert(cmd != VK_NULL_HANDLE);
 
+	//reset counters
+	stats.drawcall_count = 0;
+	stats.triangle_count = 0;
+	//begin clock
+	const auto start = std::chrono::system_clock::now();
+
+	std::vector<uint32_t> opaque_draws;
+	opaque_draws.reserve(mainDrawContext.OpaqueSurfaces.size());
+	std::vector<uint32_t> transparent_draws;
+	transparent_draws.reserve(mainDrawContext.TransparentSurfaces.size());
+
+	for (int i = 0; i < mainDrawContext.OpaqueSurfaces.size(); i++) {
+		if (is_visible(mainDrawContext.OpaqueSurfaces[i], sceneData.viewproj)) {
+			opaque_draws.push_back(i);
+		}
+	}
+	for (int i = 0; i < mainDrawContext.TransparentSurfaces.size(); i++) {
+		if (is_visible(mainDrawContext.TransparentSurfaces[i], sceneData.viewproj)) {
+			transparent_draws.push_back(i);
+		}
+	}
+
+	// sort the opaque surfaces by material and mesh
+	std::sort(opaque_draws.begin(), opaque_draws.end(), [&](const auto &iA, const auto &iB) {
+		const RenderObject &A = mainDrawContext.OpaqueSurfaces[iA];
+		const RenderObject &B = mainDrawContext.OpaqueSurfaces[iB];
+
+		if (A.material == B.material) {
+			return A.indexBuffer < B.indexBuffer;
+		} else {
+			return A.material < B.material;
+		}
+	});
+	std::sort(transparent_draws.begin(), transparent_draws.end(), [&](const auto &iA, const auto &iB) {
+		const RenderObject &A = mainDrawContext.TransparentSurfaces[iA];
+		const RenderObject &B = mainDrawContext.TransparentSurfaces[iB];
+
+		if (A.material == B.material) {
+			return A.indexBuffer < B.indexBuffer;
+		} else {
+			return A.material < B.material;
+		}
+	});
+
 	//begin a render pass  connected to our draw image
 	VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
@@ -1110,31 +1217,94 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	writer.update_set(_device, globalDescriptor);
 
 
-	for (const RenderObject &draw : mainDrawContext.OpaqueSurfaces) {
-		assert(draw.material);
-		assert(draw.material->materialSet != VK_NULL_HANDLE);
-		assert(draw.material->passType != MaterialPass::Invalid);
-		assert(draw.material->pipeline != nullptr);
-		assert(draw.material->pipeline->pipeline != VK_NULL_HANDLE);
-		assert(draw.material->pipeline->layout != VK_NULL_HANDLE);
-		assert(draw.vertexBufferAddress != 0);
+	MaterialPipeline *lastPipeline = nullptr;
+	MaterialInstance *lastMaterial = nullptr;
+	VkBuffer lastIndexBuffer = VK_NULL_HANDLE;
 
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->pipeline);
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->layout, 0, 1, &globalDescriptor, 0, nullptr);
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.material->pipeline->layout, 1, 1, &draw.material->materialSet, 0, nullptr);
+	auto draw = [&](const RenderObject &r) {
+		assert(r.material);
+		assert(r.material->materialSet != VK_NULL_HANDLE);
+		assert(r.material->passType != MaterialPass::Invalid);
+		assert(r.material->pipeline != nullptr);
+		assert(r.material->pipeline->pipeline != VK_NULL_HANDLE);
+		assert(r.material->pipeline->layout != VK_NULL_HANDLE);
+		assert(r.vertexBufferAddress != 0);
 
-		vkCmdBindIndexBuffer(cmd, draw.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		if (r.material != lastMaterial) {
+			lastMaterial = r.material;
+			//rebind pipeline and descriptors if the material changed
+			if (r.material->pipeline != lastPipeline) {
 
-		const GPUDrawPushConstants pushConstants {
-			.worldMatrix = draw.transform,
-			.vertexBuffer = draw.vertexBufferAddress,
+				lastPipeline = r.material->pipeline;
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, r.material->pipeline->pipeline);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,r.material->pipeline->layout, 0, 1, &globalDescriptor, 0, nullptr);
+
+				const VkViewport viewport {
+					.x = 0,
+					.y = 0,
+					.width = static_cast<float>(_windowExtent.width),
+					.height = static_cast<float>(_windowExtent.height),
+					.minDepth = 0.f,
+					.maxDepth = 1.f,
+				};
+
+				vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+				const VkRect2D scissor {
+					.offset = {
+						.x = 0,
+						.y = 0,
+					},
+					.extent = {
+						.width = _windowExtent.width,
+						.height = _windowExtent.height,
+					},
+				};
+
+				vkCmdSetScissor(cmd, 0, 1, &scissor);
+			}
+
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, r.material->pipeline->layout, 1, 1, &r.material->materialSet, 0, nullptr);
+		}
+
+		//rebind index buffer if needed
+		if (r.indexBuffer != lastIndexBuffer) {
+			lastIndexBuffer = r.indexBuffer;
+			vkCmdBindIndexBuffer(cmd, r.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		}
+
+		// calculate final mesh matrix
+		const GPUDrawPushConstants push_constants {
+			.worldMatrix = r.transform,
+			.vertexBuffer = r.vertexBufferAddress,
 		};
-		vkCmdPushConstants(cmd, draw.material->pipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &pushConstants);
 
-		vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0); // [DEFECT]
+		vkCmdPushConstants(cmd, r.material->pipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
+
+		vkCmdDrawIndexed(cmd, r.indexCount, 1, r.firstIndex, 0, 0);
+
+		//stats
+		stats.drawcall_count++;
+		stats.triangle_count += r.indexCount / 3;
+	};
+
+	for (const auto &r : opaque_draws) {
+		draw(mainDrawContext.OpaqueSurfaces[r]);
+	}
+	for (const auto &r : transparent_draws) {
+		draw(mainDrawContext.TransparentSurfaces[r]);
 	}
 
 	vkCmdEndRendering(cmd);
+
+	mainDrawContext.OpaqueSurfaces.clear();
+	mainDrawContext.TransparentSurfaces.clear();
+
+	const auto end = std::chrono::system_clock::now();
+
+	//convert to microseconds (integer), and then come back to miliseconds
+	const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	stats.mesh_draw_time = elapsed.count() / 1000.f;
 }
 
 GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices)
@@ -1423,7 +1593,11 @@ AllocatedImage Engine::create_image(const void *data, const VkExtent3D &size, co
 		// copy the buffer into the image
 		vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
-		vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		if (mipmapped) {
+			vkutil::generate_mipmaps(cmd, new_image.image, VkExtent2D{new_image.imageExtent.width, new_image.imageExtent.height});
+		} else {
+			vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 	});
 
 	destroy_buffer(uploadbuffer);
