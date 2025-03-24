@@ -105,8 +105,8 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &en
 	std::vector<uint32_t> indices = {};
 	std::vector<Vertex> vertices = {};
 	for (const fastgltf::Mesh &mesh : gltf.meshes) {
-			MeshAsset newmesh = {
-		.name = std::string(mesh.name),
+		MeshAsset newmesh = {
+			.name = std::string(mesh.name),
 		};
 
 		// clear the mesh arrays each mesh, we dont want to merge them by error
@@ -115,8 +115,8 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &en
 
 		for (auto &&p : mesh.primitives) {
 			const GeoSurface newSurface {
-				.startIndex = (uint32_t)indices.size(),
-				.count = (uint32_t)gltf.accessors[p.indicesAccessor.value()].count,
+				.startIndex = static_cast<uint32_t>(indices.size()),
+				.count = static_cast<uint32_t>(gltf.accessors[p.indicesAccessor.value()].count),
 			};
 
 			const size_t initial_vtx = vertices.size();
@@ -143,7 +143,7 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &en
 				fastgltf::iterateAccessorWithIndex<glm::vec3>(
 					gltf,
 					posAccessor,
-					[&](glm::vec3 v, size_t index) {
+					[&](const glm::vec3 v, const size_t index) {
 						const Vertex newvtx {
 							.position = v,
 							.uv_x = 0,
@@ -162,7 +162,7 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &en
 				fastgltf::iterateAccessorWithIndex<glm::vec3>(
 					gltf,
 					gltf.accessors[(*normals).accessorIndex],
-					[&](glm::vec3 v, size_t index) {
+					[&](const glm::vec3 v, const size_t index) {
 						vertices[initial_vtx + index].normal = v;
 					}
 				);
@@ -174,7 +174,7 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &en
 				fastgltf::iterateAccessorWithIndex<glm::vec2>(
 					gltf,
 					gltf.accessors[(*uv).accessorIndex],
-					[&](glm::vec2 v, size_t index) {
+					[&](const glm::vec2 v, const size_t index) {
 						vertices[initial_vtx + index].uv_x = v.x;
 						vertices[initial_vtx + index].uv_y = v.y;
 					}
@@ -186,11 +186,12 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &en
 			if (colors != p.attributes.end()) {
 				fastgltf::iterateAccessorWithIndex<glm::vec4>(
 					gltf, gltf.accessors[(*colors).accessorIndex],
-					[&](glm::vec4 v, size_t index) {
+					[&](const glm::vec4 v, const size_t index) {
 						vertices[initial_vtx + index].color = v;
 					}
 				);
 			}
+
 			newmesh.surfaces.push_back(newSurface);
 		}
 
@@ -201,6 +202,7 @@ std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &en
 				vtx.color = glm::vec4(vtx.normal, 1.f);
 			}
 		}
+
 		newmesh.meshBuffers = engine.uploadMesh(indices, vertices);
 
 		meshes.emplace_back(std::make_shared<MeshAsset>(std::move(newmesh)));
@@ -270,7 +272,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Engine &engine, const std::f
 	file.descriptorPool.init(engine._device, gltf.materials.size(), sizes);
 
 	// load samplers
-	for (fastgltf::Sampler &sampler : gltf.samplers) {
+	for (const fastgltf::Sampler &sampler : gltf.samplers) {
 		const VkSamplerCreateInfo sampl {
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 			.pNext = nullptr,
@@ -294,7 +296,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Engine &engine, const std::f
 	std::vector<std::shared_ptr<GLTFMaterial>> materials{};
 
 	// load all textures
-	for (fastgltf::Image &image : gltf.images) {
+	for (const fastgltf::Image &image : gltf.images) {
 		images.push_back(engine._errorCheckerboardImage);
 	}
 
@@ -466,7 +468,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Engine &engine, const std::f
 	}
 
 	// load all nodes and their meshes
-	for (fastgltf::Node &node : gltf.nodes) {
+	for (const fastgltf::Node &node : gltf.nodes) {
 		std::shared_ptr<Node> newNode = node.meshIndex.has_value()
 			? std::make_shared<MeshNode>()
 			: std::make_shared<Node>();
@@ -521,7 +523,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Engine &engine, const std::f
 
 	// load all textures
 	for (fastgltf::Image &image : gltf.images) {
-		std::optional<AllocatedImage> img = load_image(engine, gltf, image);
+		const std::optional<AllocatedImage> img = load_image(engine, gltf, image);
 
 		if (img.has_value()) {
 			images.push_back(*img);
@@ -545,8 +547,8 @@ std::optional<AllocatedImage> load_image(Engine &engine, fastgltf::Asset &asset,
 
 	std::visit(
 		fastgltf::visitor {
-			[](auto &arg) {},
-			[&](fastgltf::sources::URI &filePath) {
+			[](const auto &arg) {},
+			[&](const fastgltf::sources::URI &filePath) {
 				assert(filePath.fileByteOffset == 0); // We don't support offsets with stbi.
 				assert(filePath.uri.isLocalPath()); // We're only capable of loading
 				// local files.
@@ -565,7 +567,7 @@ std::optional<AllocatedImage> load_image(Engine &engine, fastgltf::Asset &asset,
 					stbi_image_free(data);
 				}
 			},
-			[&](fastgltf::sources::Vector &vector) {
+			[&](const fastgltf::sources::Vector &vector) {
 				unsigned char *data = stbi_load_from_memory(sweep<stbi_uc>(vector.bytes.data()), static_cast<int>(vector.bytes.size()), &width, &height, &nrChannels, 4);
 				if (data) {
 					const VkExtent3D imagesize {
@@ -579,15 +581,15 @@ std::optional<AllocatedImage> load_image(Engine &engine, fastgltf::Asset &asset,
 					stbi_image_free(data);
 				}
 			},
-			[&](fastgltf::sources::BufferView &view) {
-				auto &bufferView = asset.bufferViews[view.bufferViewIndex];
-				auto &buffer = asset.buffers[bufferView.bufferIndex];
+			[&](const fastgltf::sources::BufferView &view) {
+				const auto &bufferView = asset.bufferViews[view.bufferViewIndex];
+				const auto &buffer = asset.buffers[bufferView.bufferIndex];
 
 				std::visit(fastgltf::visitor { // We only care about VectorWithMime here, because we
 					// specify LoadExternalBuffers, meaning all buffers
 					// are already loaded into a vector.
-					[](auto &arg) {},
-					[&](fastgltf::sources::Vector &vector) {
+					[](const auto &arg) {},
+					[&](const fastgltf::sources::Vector &vector) {
 					unsigned char *data = stbi_load_from_memory(sweep<stbi_uc>(vector.bytes.data() + bufferView.byteOffset), static_cast<int>(bufferView.byteLength), &width, &height, &nrChannels, 4);
 					if (data) {
 						const VkExtent3D imagesize {

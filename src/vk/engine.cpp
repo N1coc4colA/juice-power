@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <chrono>
+#include <iostream>
 #include <thread>
 
 #include <glm/ext/matrix_clip_space.hpp>
@@ -26,6 +27,9 @@
 #include "pipelinebuilder.h"
 #include "loader.h"
 #include "vma.h"
+
+
+#define LOGFN() {std::cout << __func__ << std::endl;}
 
 
 constexpr bool bUseValidationLayers = true;
@@ -81,6 +85,8 @@ Engine &Engine::get()
 
 AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
+	LOGFN();
+
 	assert(allocSize != 0);
 	assert(memoryUsage != VMA_MEMORY_USAGE_UNKNOWN);
 
@@ -107,11 +113,15 @@ AllocatedBuffer Engine::create_buffer(size_t allocSize, VkBufferUsageFlags usage
 
 void Engine::destroy_buffer(const AllocatedBuffer &buffer)
 {
+	LOGFN();
+
 	vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
 }
 
 void Engine::init()
 {
+	LOGFN();
+
 	// only one engine initialization is allowed with the application.
 	assert(loadedEngine == nullptr);
 	loadedEngine = this;
@@ -124,19 +134,14 @@ void Engine::init()
 	init_sync_structures();
 	init_descriptors();
 	init_pipelines();
-	init_imgui();
 	init_default_data();
+	init_renderables();
+
+	init_imgui();
 
 	mainCamera.velocity = glm::vec3(0.f);
-	mainCamera.position = glm::vec3(30.f, -00.f, -085.f);
-	//mainCamera.position = glm::vec3(0.f, 0.f, 5.f);
-
-	const std::string structurePath = ASSETS_DIR "/structure.glb";
-	auto structureFile = loadGltf(*this, structurePath);
-
-	assert(structureFile.has_value());
-
-	loadedScenes["structure"] = *structureFile;
+	//mainCamera.position = glm::vec3(30.f, -00.f, -085.f);
+	mainCamera.position = glm::vec3(0.f, 0.f, -5.f);
 
 	//everything went fine apparently
 	_isInitialized = true;
@@ -144,6 +149,8 @@ void Engine::init()
 
 void Engine::init_sdl()
 {
+	LOGFN();
+
 	// We initialize SDL and create a window with it.
 	assert(SDL_Init(SDL_INIT_VIDEO));
 
@@ -163,6 +170,8 @@ void Engine::init_sdl()
 
 void Engine::init_vulkan()
 {
+	LOGFN();
+
 	vkb::InstanceBuilder builder{};
 
 	//make the Vulkan instance, with basic debug features
@@ -185,18 +194,18 @@ void Engine::init_vulkan()
 
 	assert(SDL_Vulkan_CreateSurface(_window, _instance, nullptr, &_surface));
 
-	const VkPhysicalDeviceVulkan13Features features {
+	constexpr VkPhysicalDeviceVulkan13Features features13 {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
 		.synchronization2 = true,
 		.dynamicRendering = true,
 	};
 
 	//use vkbootstrap to select a GPU.
-	//We want a GPU that can write to the SDL surface and supports Vulkan 1.1
+	//We want a GPU that can write to the SDL surface and supports Vulkan 1.3
 	vkb::PhysicalDeviceSelector selector{ vkb_inst };
 	const vkb::PhysicalDevice physicalDevice = selector
 		.set_minimum_version(1, 3)  // We run on Vulkan 1.3+
-		.set_required_features_13(features)
+		.set_required_features_13(features13)
 		.set_surface(_surface)
 		.select()
 		.value();
@@ -228,7 +237,7 @@ void Engine::init_vulkan()
 
 void Engine::init_vma()
 {
-	VkImage img;
+	LOGFN();
 
 	// initialize the memory allocator
 	const VmaAllocatorCreateInfo allocatorInfo {
@@ -247,6 +256,8 @@ void Engine::init_vma()
 
 void Engine::init_swapchain()
 {
+	LOGFN();
+
 	create_swapchain(_windowExtent.width, _windowExtent.height);
 
 	//draw image size will match the window
@@ -313,6 +324,8 @@ void Engine::init_swapchain()
 
 void Engine::init_commands()
 {
+	LOGFN();
+
 	//create a command pool for commands submitted to the graphics queue.
 	//we also want the pool to allow for resetting of individual command buffers
 	const VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -343,6 +356,8 @@ void Engine::init_commands()
 
 void Engine::init_sync_structures()
 {
+	LOGFN();
+
 	//create syncronization structures
 	//one fence to control when the gpu has finished rendering the frame,
 	//and 2 semaphores to syncronize rendering with swapchain
@@ -369,6 +384,8 @@ void Engine::init_sync_structures()
 
 void Engine::init_descriptors()
 {
+	LOGFN();
+
 	//create a descriptor pool that will hold 10 sets with 1 image each
 	constexpr DescriptorAllocatorGrowable::PoolSizeRatio sizes[] = {
 		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
@@ -435,13 +452,18 @@ void Engine::init_descriptors()
 
 void Engine::init_pipelines()
 {
+	LOGFN();
+
 	init_background_pipelines();
+	init_mesh_pipeline();
 
 	metalRoughMaterial.build_pipelines(*this);
 }
 
 void Engine::init_mesh_pipeline()
 {
+	LOGFN();
+
 	/*VkShaderModule triangleFragShader;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle.frag.spv", _device, triangleFragShader)) {
 		fmt::print("Error when building the triangle fragment shader module");
@@ -480,7 +502,7 @@ void Engine::init_mesh_pipeline()
 		fmt::print("Triangle vertex shader succesfully loaded\n");
 	}
 
-	/*const VkPushConstantRange bufferRange {
+	const VkPushConstantRange bufferRange {
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 		.offset = 0,
 		.size = sizeof(GPUDrawPushConstants),
@@ -504,7 +526,7 @@ void Engine::init_mesh_pipeline()
 	//filled triangles
 	pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
 	//no backface culling
-	pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+	pipelineBuilder.set_cull_mode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 	//no multisampling
 	pipelineBuilder.set_multisampling_none();
 	//no blending
@@ -528,9 +550,9 @@ void Engine::init_mesh_pipeline()
 	_mainDeletionQueue.push_function([&]() {
 		vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
 		vkDestroyPipeline(_device, _meshPipeline, nullptr);
-	});*/
+	});
 
-	VkPushConstantRange bufferRange{};
+	/*VkPushConstantRange bufferRange{};
 	bufferRange.offset = 0;
 	bufferRange.size = sizeof(GPUDrawPushConstants);
 	bufferRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -553,7 +575,7 @@ void Engine::init_mesh_pipeline()
 	//it will draw triangles
 	pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	//filled triangles
-	pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+	pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_LINE); // FILL
 	//no backface culling
 	pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
 	//no multisampling
@@ -579,11 +601,13 @@ void Engine::init_mesh_pipeline()
 	_mainDeletionQueue.push_function([&]() {
 		vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
 		vkDestroyPipeline(_device, _meshPipeline, nullptr);
-	});
+	});*/
 }
 
 void Engine::init_background_pipelines()
 {
+	LOGFN();
+
 	const VkPushConstantRange pushConstant {
 		.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 		.offset = 0,
@@ -634,6 +658,8 @@ void Engine::init_background_pipelines()
 
 void Engine::init_imgui()
 {
+	LOGFN();
+
 	// 1: create descriptor pool for IMGUI
 	//  the size of the pool is very oversize, but it's copied from imgui demo
 	//  itself.
@@ -703,6 +729,8 @@ void Engine::init_imgui()
 
 void Engine::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function)
 {
+	LOGFN();
+
 	VK_CHECK(vkResetFences(_device, 1, &_immFence));
 	VK_CHECK(vkResetCommandBuffer(_immCommandBuffer, 0));
 
@@ -728,6 +756,8 @@ void Engine::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&functio
 
 void Engine::cleanup()
 {
+	LOGFN();
+
 	if (_isInitialized) {
 		// We need to wait fort he GPU to finish until...
 		VK_CHECK(vkDeviceWaitIdle(_device));
@@ -792,6 +822,8 @@ void Engine::cleanup()
 
 void Engine::run()
 {
+	LOGFN();
+
 	SDL_Event e;
 	bool bQuit = false;
 
@@ -868,6 +900,8 @@ void Engine::run()
 
 		ImGui::Render();
 
+		update_scene();
+
 		draw();
 
 		if (resize_requested) {
@@ -878,7 +912,7 @@ void Engine::run()
 
 void Engine::draw()
 {
-	update_scene();
+	LOGFN();
 
 	auto &_currFrame = get_current_frame();
 
@@ -926,7 +960,7 @@ void Engine::draw()
 	// we will overwrite it all so we dont care about what was the older layout
 	vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
-	draw_pc(cmd);
+	//draw_pc(cmd);
 	draw_background(cmd);
 
 	//transition the draw image and the swapchain image into their correct transfer layouts
@@ -992,29 +1026,33 @@ void Engine::draw()
 
 void Engine::draw_background(VkCommandBuffer cmd)
 {
+	LOGFN();
+
 	assert(cmd != VK_NULL_HANDLE);
 
-	/*/make a clear-color from frame number. This will flash with a 120 frame period.
+	//make a clear-color from frame number. This will flash with a 120 frame period.
 	const float flash = std::abs(std::sin(_frameNumber / 120.f));
 	const VkClearColorValue clearValue { { 0.0f, 0.0f, flash, 1.0f } };
 
 	const VkImageSubresourceRange clearRange = vkinit::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
 
 	//clear image
-	vkCmdClearColorImage(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);*/
+	vkCmdClearColorImage(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 
-	// bind the gradient drawing compute pipeline
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _gradientPipeline);
+	/*/ bind the gradient drawing compute pipeline
+	//vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _gradientPipeline);
 
 	// bind the descriptor set containing the draw image for the compute pipeline
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _gradientPipelineLayout, 0, 1, &_drawImageDescriptors, 0, nullptr);
+	//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _gradientPipelineLayout, 0, 1, &_drawImageDescriptors, 0, nullptr);
 
 	// execute the compute pipeline dispatch. We are using 16x16 workgroup size so we need to divide by it
-	vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0), std::ceil(_drawExtent.height / 16.0), 1);
+	//vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0), std::ceil(_drawExtent.height / 16.0), 1);*/
 }
 
 void Engine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)
 {
+	LOGFN();
+
 	assert(cmd != VK_NULL_HANDLE);
 	assert(targetImageView != VK_NULL_HANDLE);
 
@@ -1030,6 +1068,8 @@ void Engine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)
 
 void Engine::draw_pc(VkCommandBuffer cmd)
 {
+	LOGFN();
+
 	assert(cmd != VK_NULL_HANDLE);
 
 	// bind the gradient drawing compute pipeline
@@ -1055,6 +1095,8 @@ const auto startTime = std::chrono::high_resolution_clock::now();
 
 void Engine::draw_geometry(VkCommandBuffer cmd)
 {
+	LOGFN();
+
 	assert(cmd != VK_NULL_HANDLE);
 
 	//reset counters
@@ -1163,7 +1205,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 	};
 
 
-	/*vkCmdBeginRendering(cmd, &renderInfo);
+	vkCmdBeginRendering(cmd, &renderInfo);
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
 
@@ -1187,13 +1229,13 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 
 	vkCmdDrawIndexed(cmd, testMeshes[2]->surfaces[0].count, 1, testMeshes[2]->surfaces[0].startIndex, 0, 0);
 
-	vkCmdEndRendering(cmd);*/
+	vkCmdEndRendering(cmd);
 
 
-	vkCmdBeginRendering(cmd, &renderInfo);
+	/*vkCmdBeginRendering(cmd, &renderInfo);
 
-	vkCmdSetViewport(cmd, 0, 1, &viewport);
-	vkCmdSetScissor(cmd, 0, 1, &scissor);
+	//vkCmdSetViewport(cmd, 0, 1, &viewport);
+	//vkCmdSetScissor(cmd, 0, 1, &scissor);
 
 	auto &currFrame = get_current_frame();
 
@@ -1304,11 +1346,13 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 
 	//convert to microseconds (integer), and then come back to miliseconds
 	const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	stats.mesh_draw_time = elapsed.count() / 1000.f;
+	stats.mesh_draw_time = elapsed.count() / 1000.f;*/
 }
 
 GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices)
 {
+	LOGFN();
+
 	const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
 	const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
 
@@ -1369,6 +1413,8 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 
 void Engine::init_default_data()
 {
+	LOGFN();
+
 	testMeshes = loadGltfMeshes(*this, ASSETS_DIR "/basicmesh.glb").value();
 	assert(testMeshes.size() == 3);
 	//delete the meshes data on engine shutdown
@@ -1380,17 +1426,17 @@ void Engine::init_default_data()
 	});
 
 	//3 default textures, white, grey, black. 1 pixel each
-	const uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
+	const uint32_t white = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
 	_whiteImage = create_image(reinterpret_cast<const void *>(&white), VkExtent3D{ 1, 1, 1 }, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	const uint32_t grey = glm::packUnorm4x8(glm::vec4(0.66f, 0.66f, 0.66f, 1));
+	const uint32_t grey = glm::packUnorm4x8(glm::vec4(0.66f, 0.66f, 0.66f, 1.f));
 	_greyImage = create_image(reinterpret_cast<const void *>(&grey), VkExtent3D{ 1, 1, 1 }, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	const uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
+	const uint32_t black = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
 	_blackImage = create_image(reinterpret_cast<const void *>(&black), VkExtent3D{ 1, 1, 1 }, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	//checkerboard image
-	const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+	const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
 	std::array<uint32_t, 16*16> pixels; //for 16x16 checkerboard texture
 	for (int x = 0; x < 16; x++) {
 		for (int y = 0; y < 16; y++) {
@@ -1436,7 +1482,7 @@ void Engine::init_default_data()
 	GLTFMetallic_Roughness::MaterialConstants *sceneUniformData = reinterpret_cast<GLTFMetallic_Roughness::MaterialConstants *>(getMappedData(materialConstants.allocation));
 	assert(sceneUniformData != nullptr);
 	sceneUniformData->colorFactors = glm::vec4{1.f, 1.f, 1.f, 1.f};
-	sceneUniformData->metal_rough_factors = glm::vec4{1,0.5,0,0};
+	sceneUniformData->metal_rough_factors = glm::vec4{1.f, 0.5f, 0.f, 0.f};
 
 	_mainDeletionQueue.push_function([=, this]() {
 		destroy_buffer(materialConstants);
@@ -1462,8 +1508,19 @@ void Engine::init_default_data()
 	}
 }
 
+void Engine::init_renderables()
+{
+	const auto structureFile = loadGltf(*this, ASSETS_DIR "/structure.glb");
+
+	assert(structureFile.has_value());
+
+	loadedScenes["structure"] = *structureFile;
+}
+
 void Engine::create_swapchain(uint32_t w, uint32_t h)
 {
+	LOGFN();
+
 	vkb::SwapchainBuilder swapchainBuilder {
 		_chosenGPU,
 		_device,
@@ -1498,6 +1555,8 @@ void Engine::create_swapchain(uint32_t w, uint32_t h)
 
 void Engine::destroy_swapchain()
 {
+	LOGFN();
+
 	vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 
 	// destroy swapchain resources
@@ -1508,6 +1567,8 @@ void Engine::destroy_swapchain()
 
 void Engine::resize_swapchain()
 {
+	LOGFN();
+
 	VK_CHECK(vkDeviceWaitIdle(_device));
 
 	destroy_swapchain();
@@ -1524,6 +1585,8 @@ void Engine::resize_swapchain()
 
 AllocatedImage Engine::create_image(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped)
 {
+	LOGFN();
+
 	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
 
@@ -1563,6 +1626,8 @@ AllocatedImage Engine::create_image(const VkExtent3D &size, const VkFormat forma
 
 AllocatedImage Engine::create_image(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped)
 {
+	LOGFN();
+
 	assert(data != nullptr);
 	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
@@ -1607,12 +1672,16 @@ AllocatedImage Engine::create_image(const void *data, const VkExtent3D &size, co
 
 void Engine::destroy_image(const AllocatedImage &img)
 {
+	LOGFN();
+
 	vkDestroyImageView(_device, img.imageView, nullptr);
 	vmaDestroyImage(_allocator, img.image, img.allocation);
 }
 
 void Engine::update_scene()
 {
+	LOGFN();
+
 	mainDrawContext.OpaqueSurfaces.clear();
 
 	loadedScenes["structure"]->draw(glm::mat4{1.f}, mainDrawContext);

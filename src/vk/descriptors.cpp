@@ -247,7 +247,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::create_pool(VkDevice device, const
 	for (const PoolSizeRatio &ratio : poolRatios) {
 		poolSizes.push_back(VkDescriptorPoolSize{
 			.type = ratio.type,
-			.descriptorCount = uint32_t(ratio.ratio * setCount)
+			.descriptorCount = static_cast<uint32_t>(ratio.ratio * setCount),
 		});
 	}
 
@@ -255,7 +255,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::create_pool(VkDevice device, const
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 		.flags = 0,
 		.maxSets = setCount,
-		.poolSizeCount = (uint32_t)poolSizes.size(),
+		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data(),
 	};
 

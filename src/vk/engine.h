@@ -19,6 +19,8 @@
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
+class Scene;
+
 
 class Engine
 {
@@ -49,7 +51,7 @@ public:
 
 	VmaAllocator _allocator = VK_NULL_HANDLE;
 
-	DeletionQueue _mainDeletionQueue = {};
+	DeletionQueue _mainDeletionQueue {};
 
 	VkInstance _instance = VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT _debug_messenger = VK_NULL_HANDLE;
@@ -66,19 +68,19 @@ public:
 	VkFormat _swapchainImageFormat = VK_FORMAT_MAX_ENUM;
 
 	/// Array of images from the swapchain
-	std::vector<VkImage> _swapchainImages = {};
+	std::vector<VkImage> _swapchainImages {};
 
 	/// Array of image-views from the swapchain
-	std::vector<VkImageView> _swapchainImageViews = {};
+	std::vector<VkImageView> _swapchainImageViews {};
 
 	//draw resources
-	AllocatedImage _drawImage = {};
-	AllocatedImage _depthImage = {};
+	AllocatedImage _drawImage {};
+	AllocatedImage _depthImage {};
 	VkExtent2D _swapchainExtent = {0, 0};
 	VkExtent2D _drawExtent = {0, 0};
 	float renderScale = 1.f;
 
-	DescriptorAllocatorGrowable globalDescriptorAllocator;
+	DescriptorAllocatorGrowable globalDescriptorAllocator {};
 
 	VkDescriptorSet _drawImageDescriptors = VK_NULL_HANDLE;
 	VkDescriptorSetLayout _drawImageDescriptorLayout;
@@ -91,40 +93,42 @@ public:
 	VkCommandPool _immCommandPool = VK_NULL_HANDLE;
 
 	std::vector<ComputeEffect> backgroundEffects;
-	int currentBackgroundEffect{0};
+	int currentBackgroundEffect = 0;
 
 	VkPipelineLayout _meshPipelineLayout = VK_NULL_HANDLE;
 	VkPipeline _meshPipeline = VK_NULL_HANDLE;
 
-	std::vector<std::shared_ptr<MeshAsset>> testMeshes = {};
+	std::vector<std::shared_ptr<MeshAsset>> testMeshes {};
 
 	AllocatedBuffer create_buffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
 
-	GPUSceneData sceneData = {};
+	GPUSceneData sceneData {};
 
 	VkDescriptorSetLayout _gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
 
-	AllocatedImage _whiteImage = {};
-	AllocatedImage _blackImage = {};
-	AllocatedImage _greyImage = {};
-	AllocatedImage _errorCheckerboardImage = {};
+	AllocatedImage _whiteImage {};
+	AllocatedImage _blackImage {};
+	AllocatedImage _greyImage {};
+	AllocatedImage _errorCheckerboardImage {};
 
 	VkSampler _defaultSamplerLinear = VK_NULL_HANDLE;
 	VkSampler _defaultSamplerNearest = VK_NULL_HANDLE;
 
 	VkDescriptorSetLayout _singleImageDescriptorLayout = VK_NULL_HANDLE;
 
-	MaterialInstance defaultData = {};
-	GLTFMetallic_Roughness metalRoughMaterial = {};
+	MaterialInstance defaultData {};
+	GLTFMetallic_Roughness metalRoughMaterial {};
 
-	DrawContext mainDrawContext = {};
-	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes = {};
+	DrawContext mainDrawContext {};
+	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes {};
 
-	Camera mainCamera = {};
+	Camera mainCamera {};
 
-	std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes = {};
+	std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes {};
 
-	EngineStats stats;
+	EngineStats stats {};
+
+	Scene *scene = nullptr;
 
 	void update_scene();
 
@@ -162,6 +166,8 @@ public:
 	void init_imgui();
 
 	void init_default_data();
+
+	void init_renderables();
 
 	/// Shuts down the engine
 	void cleanup();

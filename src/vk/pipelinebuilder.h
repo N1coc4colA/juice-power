@@ -11,13 +11,13 @@ class PipelineBuilder
 public:
 	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
 
-	VkPipelineInputAssemblyStateCreateInfo _inputAssembly = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
-	VkPipelineRasterizationStateCreateInfo _rasterizer = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
-	VkPipelineColorBlendAttachmentState _colorBlendAttachment = {};
-	VkPipelineMultisampleStateCreateInfo _multisampling = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineInputAssemblyStateCreateInfo _inputAssembly {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineRasterizationStateCreateInfo _rasterizer {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineColorBlendAttachmentState _colorBlendAttachment {};
+	VkPipelineMultisampleStateCreateInfo _multisampling {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
 	VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
-	VkPipelineDepthStencilStateCreateInfo _depthStencil = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
-	VkPipelineRenderingCreateInfo _renderInfo = {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineDepthStencilStateCreateInfo _depthStencil {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
+	VkPipelineRenderingCreateInfo _renderInfo {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
 	VkFormat _colorAttachmentformat = VK_FORMAT_MAX_ENUM;
 
 	inline PipelineBuilder()

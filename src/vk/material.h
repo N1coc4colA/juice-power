@@ -38,28 +38,28 @@ struct MaterialInstance
 
 struct GLTFMetallic_Roughness
 {
-	MaterialPipeline opaquePipeline = {};
-	MaterialPipeline transparentPipeline = {};
+	MaterialPipeline opaquePipeline {};
+	MaterialPipeline transparentPipeline {};
 
 	VkDescriptorSetLayout materialLayout = VK_NULL_HANDLE;
 
 	struct MaterialConstants {
-		glm::vec4 colorFactors = {};
-		glm::vec4 metal_rough_factors = {};
+		glm::vec4 colorFactors {};
+		glm::vec4 metal_rough_factors {};
 		//padding, we need it anyway for uniform buffers
 		glm::vec4 extra[14];
 	};
 
 	struct MaterialResources {
-		AllocatedImage colorImage = {};
+		AllocatedImage colorImage {};
 		VkSampler colorSampler = VK_NULL_HANDLE;
-		AllocatedImage metalRoughImage = {};
+		AllocatedImage metalRoughImage {};
 		VkSampler metalRoughSampler = VK_NULL_HANDLE;
 		VkBuffer dataBuffer = VK_NULL_HANDLE;
 		uint32_t dataBufferOffset = -1;
 	};
 
-	DescriptorWriter writer = {};
+	DescriptorWriter writer {};
 
 	void build_pipelines(Engine &engine);
 	void clear_resources(VkDevice device);

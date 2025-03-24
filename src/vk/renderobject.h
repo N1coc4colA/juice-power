@@ -22,15 +22,15 @@ struct RenderObject
 
 	MaterialInstance *material = nullptr;
 
-	Bounds bounds = {};
-	glm::mat4 transform = {};
+	Bounds bounds {};
+	glm::mat4 transform {};
 	VkDeviceAddress vertexBufferAddress = 0;
 };
 
 struct DrawContext
 {
-	std::vector<RenderObject> OpaqueSurfaces = {};
-	std::vector<RenderObject> TransparentSurfaces = {};
+	std::vector<RenderObject> OpaqueSurfaces {};
+	std::vector<RenderObject> TransparentSurfaces {};
 };
 
 

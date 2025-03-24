@@ -23,25 +23,25 @@ struct GLTFMaterial
 };
 
 struct Bounds {
-	glm::vec3 origin = {};
+	glm::vec3 origin {};
 	float sphereRadius = 0.f;
-	glm::vec3 extents = {};
+	glm::vec3 extents {};
 };
 
 struct GeoSurface
 {
 	uint32_t startIndex = -1;
 	uint32_t count = -1;
-	Bounds bounds = {};
-	std::shared_ptr<GLTFMaterial> material = {};
+	Bounds bounds {};
+	std::shared_ptr<GLTFMaterial> material {};
 };
 
 struct MeshAsset
 {
 	std::string name = "";
 
-	std::vector<GeoSurface> surfaces = {};
-	GPUMeshBuffers meshBuffers = {};
+	std::vector<GeoSurface> surfaces {};
+	GPUMeshBuffers meshBuffers {};
 };
 
 
