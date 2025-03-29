@@ -17,35 +17,47 @@ enum FailureType
 	SDLInitialisation,
 	SDLWindowCreation,
 	SDLVkSurfaceCreation,
-	VkCommandBfferCreation,
+	VkBufferAllocation,
+	VkCommandBufferCreation,
 	VkCommandPoolCreation,
+	VkDebugMessengerCreation,
 	VkDescriptorCreation,
+	VkDescriptorLayoutCreation,
+	VkDescriptorUpdate,
 	VkDescriptorPoolCreation,
 	VkDeviceCreation,
 	VkFenceCreation,
-	VkMessengerCreation,
+	VkInstanceCreation,
 	VkPipelineCreation,
 	VkPipelineLayoutCreation,
 	VkQueueCreation,
 	VkSamplerCreation,
 	VkSemaphoreCreation,
+	VkSurfaceCreation1,
+	VkSurfaceCreation2,
 	VkSwapchainCreation,
+	VkSwapchainImagesCreation,
 	VMAInitialisation,
 	VMAImageCreation,
 	VMAImageViewCreation,
 
-	PipelineCreation,
+	MappedAccess,
 
-	First = PipelineCreation,
-	Last = PipelineCreation,
+	ComputeShader,
+	FragmentShader,
+	VertexShader,
+
+	First = ImguiContext,
+	Last = VertexShader,
 };
 
 
-class Exception
+class Failure
 	: public std::exception
 {
 public:
-	explicit Exception(FailureType type, const std::string &message);
+	explicit Failure(FailureType type, const std::string &message);
+	Failure(FailureType type);
 
 	virtual const char* what() const noexcept override;
 

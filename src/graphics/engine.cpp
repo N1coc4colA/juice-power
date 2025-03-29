@@ -72,7 +72,9 @@ AllocatedBuffer Engine::createBuffer(size_t allocSize, VkBufferUsageFlags usage,
 	// allocate the buffer
 	AllocatedBuffer newBuffer {};
 	VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
-	assert(newBuffer.buffer != VK_NULL_HANDLE);
+	if (newBuffer.buffer == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkBufferAllocation);
+	}
 
 	return newBuffer;
 }
@@ -113,7 +115,9 @@ void Engine::initSDL()
 
 	// We initialize SDL and create a window with it.
 	const bool sdlInitd = SDL_Init(SDL_INIT_VIDEO);
-	assert(sdlInitd);
+	if (!sdlInitd) {
+		throw new Failure(FailureType::SDLInitialisation);
+	}
 
 	constexpr SDL_WindowFlags window_flags = 0
 		| SDL_WINDOW_VULKAN
@@ -126,7 +130,9 @@ void Engine::initSDL()
 		window_flags
 	);
 
-	assert(window != nullptr);
+	if (window == nullptr) {
+		throw new Failure(FailureType::SDLWindowCreation);
+	}
 }
 
 void Engine::initVulkan()
@@ -147,14 +153,19 @@ void Engine::initVulkan()
 
 	//store the instance
 	instance = vkb_inst.instance;
+	if (instance == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkInstanceCreation);
+	}
 	//store the debug messenger
 	debugMessenger = vkb_inst.debug_messenger;
-
-	assert(instance != VK_NULL_HANDLE);
-	assert(debugMessenger != VK_NULL_HANDLE);
+	if (debugMessenger == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkDebugMessengerCreation);
+	}
 
 	const bool surfaceCreated = SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
-	assert(surfaceCreated);
+	if (!surfaceCreated) {
+		throw new Failure(FailureType::VkSurfaceCreation1);
+	}
 
 	constexpr VkPhysicalDeviceVulkan13Features features13 {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
@@ -192,9 +203,15 @@ void Engine::initVulkan()
 	graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
 	graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 
-	assert(surface != VK_NULL_HANDLE);
-	assert(device != VK_NULL_HANDLE);
-	assert(graphicsQueue != VK_NULL_HANDLE);
+	if (surface == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkSurfaceCreation2);
+	}
+	if (device == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkDeviceCreation);
+	}
+	if (graphicsQueue == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkQueueCreation);
+	}
 }
 
 void Engine::initVMA()
@@ -210,7 +227,9 @@ void Engine::initVMA()
 		.vulkanApiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0),
 	};
 	VK_CHECK(vmaCreateAllocator(&allocatorInfo, &allocator));
-	assert(allocator != VK_NULL_HANDLE);
+	if (allocator == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VMAInitialisation);
+	}
 
 	mainDeletionQueue.push_function([this]() {
 		vmaDestroyAllocator(allocator);
@@ -252,13 +271,17 @@ void Engine::initSwapchain()
 
 	//allocate and create the image
 	VK_CHECK(vmaCreateImage(allocator, &rimg_info, &rimg_allocinfo, &drawImage.image, &drawImage.allocation, nullptr));
-	assert(drawImage.image != VK_NULL_HANDLE);
+	if (drawImage.image == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VMAImageCreation, "Drawing");
+	}
 
 	//build a image-view for the draw image to use for rendering
 	const VkImageViewCreateInfo rview_info = vkinit::imageview_create_info(drawImage.imageFormat, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	VK_CHECK(vkCreateImageView(device, &rview_info, nullptr, &drawImage.imageView));
-	assert(drawImage.imageView != VK_NULL_HANDLE);
+	if (drawImage.imageView == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VMAImageViewCreation, "Drawing");
+	}
 
 	//add to deletion queues
 	mainDeletionQueue.push_function([this]() {
@@ -275,13 +298,17 @@ void Engine::initSwapchain()
 
 	//allocate and create the image
 	VK_CHECK(vmaCreateImage(allocator, &dimg_info, &rimg_allocinfo, &depthImage.image, &depthImage.allocation, nullptr));
-	assert(depthImage.image != VK_NULL_HANDLE);
+	if (depthImage.image == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VMAImageCreation, "Depth");
+	}
 
 	//build a image-view for the draw image to use for rendering
 	const VkImageViewCreateInfo dview_info = vkinit::imageview_create_info(depthImage.imageFormat, depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 	VK_CHECK(vkCreateImageView(device, &dview_info, nullptr, &depthImage.imageView));
-	assert(depthImage.imageView != VK_NULL_HANDLE);
+	if (depthImage.imageView == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VMAImageViewCreation, "Depth");
+	}
 
 	mainDeletionQueue.push_function([this]() {
 		vkDestroyImageView(device, depthImage.imageView, nullptr);
@@ -299,23 +326,31 @@ void Engine::initCommands()
 
 	for (int i = 0; i < FRAME_OVERLAP; i++) {
 		VK_CHECK(vkCreateCommandPool(device, &commandPoolInfo, nullptr, &frames[i]._commandPool));
-		assert(frames[i]._commandPool != VK_NULL_HANDLE);
+		if (frames[i]._commandPool == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkCommandPoolCreation, "Frame");
+		}
 
 		// allocate the default command buffer that we will use for rendering
 		const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(frames[i]._commandPool, 1);
 
 		VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &frames[i]._mainCommandBuffer));
-		assert(frames[i]._mainCommandBuffer != VK_NULL_HANDLE);
+		if (frames[i]._mainCommandBuffer == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkCommandBufferCreation, "Frame");
+		}
 	}
 
 	VK_CHECK(vkCreateCommandPool(device, &commandPoolInfo, nullptr, &immCommandPool));
-	assert(immCommandPool != VK_NULL_HANDLE);
+	if (immCommandPool == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkCommandPoolCreation, "Immediate");
+	}
 
 	// allocate the command buffer for immediate submits
 	const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(immCommandPool, 1);
 
 	VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &immCommandBuffer));
-	assert(immCommandBuffer != VK_NULL_HANDLE);
+	if (immCommandBuffer == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkCommandBufferCreation, "Immediate");
+	}
 
 	mainDeletionQueue.push_function([this]() {
 		vkDestroyCommandPool(device, immCommandPool, nullptr);
@@ -335,16 +370,24 @@ void Engine::initSyncStructures()
 
 	for (int i = 0; i < FRAME_OVERLAP; i++) {
 		VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frames[i]._renderFence));
-		assert(frames[i]._renderFence != VK_NULL_HANDLE);
+		if (frames[i]._renderFence == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkFenceCreation, "Frame");
+		}
 
 		VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i]._swapchainSemaphore));
-		assert(frames[i]._swapchainSemaphore != VK_NULL_HANDLE);
+		if (frames[i]._swapchainSemaphore == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkSwapchainCreation, "Frame");
+		}
 		VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i]._renderSemaphore));
-		assert(frames[i]._renderSemaphore != VK_NULL_HANDLE);
+		if (frames[i]._renderSemaphore == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkSemaphoreCreation, "Frame");
+		}
 	}
 
 	VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &immFence));
-	assert(immFence != VK_NULL_HANDLE);
+	if (immFence == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkFenceCreation, "Immediate");
+	}
 
 	mainDeletionQueue.push_function([this]() {
 		vkDestroyFence(device, immFence, nullptr);
@@ -368,6 +411,9 @@ void Engine::initDescriptors()
 		DescriptorLayoutBuilder builder {};
 		builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 		drawImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_COMPUTE_BIT);
+		if (drawImageDescriptorLayout == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkDescriptorCreation, "Draw");
+		}
 	}
 
 	//allocate a descriptor set for our draw image
@@ -376,6 +422,9 @@ void Engine::initDescriptors()
 	DescriptorWriter writer {};
 	writer.write_image(0, drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	writer.update_set(device, drawImageDescriptors);
+	if (drawImageDescriptors == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkDescriptorUpdate, "Draw");
+	}
 
 	for (int i = 0; i < FRAME_OVERLAP; i++) {
 		// create a descriptor pool
@@ -398,14 +447,19 @@ void Engine::initDescriptors()
 		DescriptorLayoutBuilder builder {};
 		builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 		gpuSceneDataDescriptorLayout = builder.build(device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+		if (gpuSceneDataDescriptorLayout == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkDescriptorLayoutCreation, "GPU");
+		}
 	}
 
 	{
 		DescriptorLayoutBuilder builder {};
 		builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 		singleImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
+		if (singleImageDescriptorLayout == VK_NULL_HANDLE) {
+			throw new Failure(FailureType::VkDescriptorLayoutCreation, "Single");
+		}
 	}
-
 
 	//make sure both the descriptor allocator and the new layout get cleaned up properly
 	mainDeletionQueue.push_function([this]() {
@@ -463,16 +517,12 @@ void Engine::initMeshPipeline()
 
 	VkShaderModule triangleFragShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/tex_image.frag.spv", device, triangleFragShader)) {
-		std::cout << "Error when building the fragment shader" << std::endl;
-	} else {
-		std::cout << "Triangle fragment shader succesfully loaded" << std::endl;
+		throw new Failure(FailureType::FragmentShader, "Triangle");
 	}
 
 	VkShaderModule triangleVertexShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle_mesh.vert.spv", device, triangleVertexShader)) {
-		std::cout << "Error when building the vertex shader" << std::endl;
-	} else {
-		std::cout << "Triangle vertex shader succesfully loaded" << std::endl;
+		throw new Failure(FailureType::VertexShader, "Triangle");
 	}
 
 	const VkPushConstantRange bufferRange {
@@ -488,7 +538,9 @@ void Engine::initMeshPipeline()
 	pipeline_layout_info.setLayoutCount = 1;
 
 	VK_CHECK(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &meshPipelineLayout));
-	assert(meshPipelineLayout != VK_NULL_HANDLE);
+	if (meshPipelineLayout == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkPipelineLayoutCreation);
+	}
 
 	PipelineBuilder pipelineBuilder;
 	//use the triangle layout we created
@@ -514,6 +566,9 @@ void Engine::initMeshPipeline()
 
 	//finally build the pipeline
 	meshPipeline = pipelineBuilder.build_pipeline(device);
+	if (meshPipeline == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkPipelineCreation);
+	}
 
 	//clean structures
 	vkDestroyShaderModule(device, triangleFragShader, nullptr);
@@ -545,12 +600,14 @@ void Engine::initBackgroundPipelines()
 	};
 
 	VK_CHECK(vkCreatePipelineLayout(device, &computeLayout, nullptr, &gradientPipelineLayout));
-	assert(gradientPipelineLayout != VK_NULL_HANDLE);
+	if (gradientPipelineLayout == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkPipelineLayoutCreation, "Gradient");
+	}
 
 	//layout code
 	VkShaderModule computeDrawShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/gradient.comp.spv", device, computeDrawShader)) {
-		std::cout << "Error when building the compute shader" << std::endl;
+		throw new Failure(FailureType::ComputeShader);
 	}
 
 	const VkPipelineShaderStageCreateInfo stageinfo {
@@ -569,7 +626,9 @@ void Engine::initBackgroundPipelines()
 	};
 
 	VK_CHECK(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &gradientPipeline));
-	assert(gradientPipeline != VK_NULL_HANDLE);
+	if (gradientPipeline == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkPipelineCreation, "Gradient");
+	}
 
 	vkDestroyShaderModule(device, computeDrawShader, nullptr);
 
@@ -610,17 +669,23 @@ void Engine::initImgui()
 
 	VkDescriptorPool imguiPool = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateDescriptorPool(device, &pool_info, nullptr, &imguiPool));
-	assert(imguiPool != VK_NULL_HANDLE);
+	if (imguiPool == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkDescriptorPoolCreation);
+	}
 
 	// 2: initialize imgui library
 
 	// this initializes the core structures of imgui
 	const auto igCtx = ImGui::CreateContext();
-	assert(igCtx != nullptr);
+	if (igCtx == nullptr) {
+		throw new Failure(FailureType::ImguiContext);
+	}
 
 	// this initializes imgui for SDL
 	const bool igS3VkInited = ImGui_ImplSDL3_InitForVulkan(window);
-	assert(igS3VkInited);
+	if (!igS3VkInited) {
+		throw new Failure(FailureType::ImguiInitialisation);
+	}
 
 	// this initializes imgui for Vulkan
 	ImGui_ImplVulkan_InitInfo init_info {
@@ -643,10 +708,14 @@ void Engine::initImgui()
 	};
 
 	const bool igVkInited = ImGui_ImplVulkan_Init(&init_info);
-	assert(igVkInited);
+	if (!igVkInited) {
+		throw new Failure(FailureType::ImguiVkInitialisation);
+	}
 
 	const bool igFtInited = ImGui_ImplVulkan_CreateFontsTexture();
-	assert(igFtInited);
+	if (!igFtInited) {
+		throw new Failure(FailureType::ImguiFontsInitialisation);
+	}
 
 	// add the destroy the imgui created structures
 	mainDeletionQueue.push_function([this, imguiPool]() {
@@ -1071,6 +1140,7 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 
 		writer.update_set(device, imageSet);
 	}
+	assert(imageSet != VK_NULL_HANDLE);
 
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
 
@@ -1117,7 +1187,9 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 	const AllocatedBuffer staging = createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
 	void *data = getMappedData(staging.allocation);
-	assert(data != nullptr);
+	if (data == nullptr) {
+		throw new Failure(FailureType::MappedAccess);
+	}
 
 	// copy vertex buffer
 	std::memcpy(data, vertices.data(), vertexBufferSize);
@@ -1180,12 +1252,16 @@ void Engine::initDefaultData()
 	};
 
 	VK_CHECK(vkCreateSampler(device, &sampl, nullptr, &defaultSamplerNearest));
-	assert(defaultSamplerNearest != VK_NULL_HANDLE);
+	if (defaultSamplerNearest == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkSamplerCreation, "Nearest");
+	}
 
 	sampl.magFilter = VK_FILTER_LINEAR;
 	sampl.minFilter = VK_FILTER_LINEAR;
 	VK_CHECK(vkCreateSampler(device, &sampl, nullptr, &defaultSamplerLinear));
-	assert(defaultSamplerLinear != VK_NULL_HANDLE);
+	if (defaultSamplerLinear == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkSamplerCreation, "Linear");
+	}
 
 	mainDeletionQueue.push_function([this](){
 		vkDestroySampler(device, defaultSamplerNearest, nullptr);
@@ -1255,9 +1331,12 @@ void Engine::createSwapchain(uint32_t w, uint32_t h)
 	swapchainImageViews = vkbSwapchain.get_image_views().value();
 	swapchainExtent = vkbSwapchain.extent;
 
-	assert(swapchain != VK_NULL_HANDLE);
-	assert(swapchainImages.size() > 1);
-	assert(swapchainImages.size() == swapchainImageViews.size());
+	if (swapchain == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VkSwapchainCreation);
+	}
+	if (swapchainImages.size() <= 1) {
+		throw new Failure(FailureType::VkSwapchainImagesCreation);
+	}
 }
 
 void Engine::destroySwapchain()
@@ -1315,7 +1394,9 @@ AllocatedImage Engine::createImage(const VkExtent3D &size, const VkFormat format
 
 	// allocate and create the image
 	VK_CHECK(vmaCreateImage(allocator, &img_info, &allocinfo, &newImage.image, &newImage.allocation, nullptr));
-	assert(newImage.image != VK_NULL_HANDLE);
+	if (newImage.image == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VMAImageCreation);
+	}
 
 	// if the format is a depth format, we will need to have it use the correct
 	// aspect flag
@@ -1328,7 +1409,9 @@ AllocatedImage Engine::createImage(const VkExtent3D &size, const VkFormat format
 	view_info.subresourceRange.levelCount = img_info.mipLevels;
 
 	VK_CHECK(vkCreateImageView(device, &view_info, nullptr, &newImage.imageView));
-	assert(newImage.imageView != VK_NULL_HANDLE);
+	if (newImage.imageView == VK_NULL_HANDLE) {
+		throw new Failure(FailureType::VMAImageViewCreation);
+	}
 
 	return newImage;
 }

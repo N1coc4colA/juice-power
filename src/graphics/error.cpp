@@ -6,12 +6,17 @@
 namespace Graphics
 {
 
-Exception::Exception(FailureType type, const std::string &message)
+Failure::Failure(FailureType type, const std::string &message)
 	: msg(std::string(magic_enum::enum_name(type)) + message)
 {
 }
 
-const char *Exception::what() const noexcept
+Failure::Failure(FailureType type)
+	: msg(magic_enum::enum_name(type))
+{
+}
+
+const char *Failure::what() const noexcept
 {
 	return msg.c_str();
 }
