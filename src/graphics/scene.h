@@ -5,12 +5,18 @@
 #include "chunk.h"
 
 
+namespace Graphics
+{
+
 class Scene
 {
 public:
-	Resources *res;
+	Resources &res;
 	std::vector<Chunk> chunks {};
+	std::vector<Mesh> meshes {};
 };
+
+}
 
 
 #endif // SCENE_H

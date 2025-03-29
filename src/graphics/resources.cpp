@@ -3,6 +3,6 @@
 #include "../vk/engine.h"
 
 
-void Resources::build(Engine &engine)
+void Graphics::Resources::build(Engine &engine)
 {
 }

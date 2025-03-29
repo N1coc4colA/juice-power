@@ -1,21 +1,22 @@
 #ifndef GRAPHICS_ENGINE_H
 #define GRAPHICS_ENGINE_H
 
+#include <cstring>
 #include <span>
-#include <functional>
 
 #include <vulkan/vulkan.h>
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
-#include "../vk/descriptors.h"
-#include "../vk/structs.h"
-#include "../vk/types.h"
-#include "../vk/allocatedimage.h"
+#include "src/vk/descriptors.h"
+#include "src/vk/loader.h"
+#include "src/vk/structs.h"
+#include "src/vk/types.h"
+#include "src/vk/renderobject.h"
 
 
-typedef struct SDL_Window SDL_Window;
 class Scene;
+struct SDL_Window;
 
 
 namespace Graphics
@@ -23,12 +24,12 @@ namespace Graphics
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
-
 class Engine
 {
 public:
-	/// Getter for the engine instance
 	static Engine &get();
+
+	Scene *scene = nullptr;
 
 	void init();
 	void run();
@@ -36,62 +37,60 @@ public:
 
 	GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
 
-	AllocatedImage createImage(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
-	AllocatedImage createImage(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
-	void destroyImage(const AllocatedImage &img);
-
-	void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
-
-	Scene *scene = nullptr;
-
 protected:
-	void initVulkan();
 	void initSDL();
+	void initVulkan();
 	void initVMA();
-	void initSwapChain();
+	void initSwapchain();
 	void initCommands();
 	void initSyncStructures();
 	void initDescriptors();
 	void initPipelines();
+	void initMeshPipeline();
 	void initBackgroundPipelines();
 	void initImgui();
-
-	void createSwapChain(uint32_t w, uint32_t h);
-	void resizeSwapChain();
+	void initDefaultData();
 
 	void draw();
 	void drawBackground(VkCommandBuffer cmd);
 	void drawImgui(VkCommandBuffer cmd, VkImageView targetImageView);
-	void drawGeometry();
+	void drawGeometry(VkCommandBuffer cmd);
 
-	void destroySwapChain();
+	void createSwapchain(uint32_t w, uint32_t h);
+	void destroySwapchain();
+	void resizeSwapchain();
 
+private:
 	inline FrameData &getCurrentFrame()
 	{
 		return frames[frameNumber % FRAME_OVERLAP];
 	};
 
+	AllocatedImage createImage(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+	AllocatedImage createImage(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+	void destroyImage(const AllocatedImage &img);
+
 	AllocatedBuffer createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
-	void destroyBuffer(const AllocatedBuffer &buffer);
+	void destroyBuffer(const AllocatedBuffer& buffer);
 
-private:
-	/* Engine Resources */
+	void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
-	/// Whether the engine has been properly setup.
+	/* General */
+
 	bool isInitialized = false;
-	/// Current frame ID.
 	int frameNumber = 0;
 	bool stopRendering = false;
 	bool resizeRequested = false;
-	VkExtent2D windowExtent = { 1700 , 900 };
-	SDL_Window *window = nullptr;
-	FrameData frames[FRAME_OVERLAP];
-
-	/* General Resources */
-
-	VmaAllocator allocator = VK_NULL_HANDLE;
+	float renderScale = 1.f;
 
 	DeletionQueue mainDeletionQueue {};
+
+	/* Windowing */
+
+	VkExtent2D windowExtent = {1700, 900};
+	struct SDL_Window *window = nullptr;
+
+	/* Vulkan */
 
 	VkInstance instance = VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
@@ -100,48 +99,68 @@ private:
 	VkPhysicalDevice chosenGPU = VK_NULL_HANDLE;
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	uint32_t graphicsQueueFamily = 0;
+	FrameData frames[FRAME_OVERLAP];
+	VmaAllocator allocator = VK_NULL_HANDLE;
 
-	/* SwapChain Resources */
+	/* Swapchain */
 
-	/// Our Vulkan swap chain
-	VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-	/// Image format expected by the windowing system
-	VkFormat swapChainImageFormat = VK_FORMAT_MAX_ENUM;
-	/// Array of images from the swapchain
-	std::vector<VkImage> swapChainImages {};
-	/// Array of image-views from the swapchain
-	std::vector<VkImageView> swapChainImageViews {};
-	VkExtent2D swapChainExtent = {0, 0};
+	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+	VkFormat swapchainImageFormat = VK_FORMAT_MAX_ENUM;
+	std::vector<VkImage> swapchainImages {};
+	std::vector<VkImageView> swapchainImageViews {};
+	VkExtent2D swapchainExtent = {0, 0};
 
-	/* Drawing Resources */
+	/* Drawing */
 
 	AllocatedImage drawImage {};
 	AllocatedImage depthImage {};
 	VkExtent2D drawExtent = {0, 0};
-	float renderingScale = 1.f;
 
 	DescriptorAllocatorGrowable globalDescriptorAllocator {};
 
 	VkDescriptorSet drawImageDescriptors = VK_NULL_HANDLE;
-	VkDescriptorSetLayout drawImageDescriptorLayout = VK_NULL_HANDLE;
-	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout drawImageDescriptorLayout;
+
+	/* Imaging */
+
+	// Geometry
+	VkPipelineLayout meshPipelineLayout = VK_NULL_HANDLE;
+	VkPipeline meshPipeline = VK_NULL_HANDLE;
+	GPUMeshBuffers meshBuffers {};
+
+	void generateMeshes();
+
+	// Bg
+	VkPipeline gradientPipeline = VK_NULL_HANDLE;
+	VkPipelineLayout gradientPipelineLayout = VK_NULL_HANDLE;
+
+	// Other
+	VkSampler defaultSamplerLinear = VK_NULL_HANDLE;
+	VkSampler defaultSamplerNearest = VK_NULL_HANDLE;
 	VkDescriptorSetLayout singleImageDescriptorLayout = VK_NULL_HANDLE;
+
+	MaterialInstance defaultData {};
+	GLTFMetallic_Roughness metalRoughMaterial {};
+
+	/* Direct rendering */
 
 	VkFence immFence = VK_NULL_HANDLE;
 	VkCommandBuffer immCommandBuffer = VK_NULL_HANDLE;
 	VkCommandPool immCommandPool = VK_NULL_HANDLE;
 
-	AllocatedImage _errorCheckerboardImage {};
+	/* Images */
 
-	VkSampler _defaultSamplerLinear = VK_NULL_HANDLE;
-	VkSampler _defaultSamplerNearest = VK_NULL_HANDLE;
+	AllocatedImage whiteImage {};
+	AllocatedImage blackImage {};
+	AllocatedImage greyImage {};
+	AllocatedImage errorCheckerboardImage {};
 
-	EngineStats stats {};
+	/* Scene */
 
-	/* Temporaries */
+	GPUSceneData sceneData {};
+	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
 
-	VkPipeline gradientPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout gradientPipelineLayout = VK_NULL_HANDLE;
+	friend struct ::GLTFMetallic_Roughness;
 };
 
 }

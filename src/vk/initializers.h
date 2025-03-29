@@ -40,6 +40,15 @@ VkImageViewCreateInfo imageview_create_info(const VkFormat format, VkImage image
 VkPipelineLayoutCreateInfo pipeline_layout_create_info();
 VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry = "main");
 
+
+VkSamplerCreateInfo sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+VkPipelineDepthStencilStateCreateInfo depth_stencil_create_info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp);
+VkPipelineColorBlendAttachmentState color_blend_attachment_state();
+VkPipelineMultisampleStateCreateInfo multisampling_state_create_info();
+VkPipelineRasterizationStateCreateInfo rasterization_state_create_info(VkPolygonMode polygonMode);
+VkPipelineInputAssemblyStateCreateInfo input_assembly_create_info(VkPrimitiveTopology topology);
+VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info();
+
 };
 
 

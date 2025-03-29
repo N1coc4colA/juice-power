@@ -488,18 +488,22 @@ void Engine::init_mesh_pipeline()
 	pipeline_layout_info.pPushConstantRanges = &bufferRange;
 	pipeline_layout_info.pushConstantRangeCount = 1;*/
 
+
+	/**/
+
+
 	VkShaderModule triangleFragShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/tex_image.frag.spv", _device, triangleFragShader)) {
-		fmt::print("Error when building the fragment shader\n");
+		std::cout << "Error when building the fragment shader" << std::endl;
 	} else {
-		fmt::print("Triangle fragment shader succesfully loaded\n");
+		std::cout << "Triangle fragment shader succesfully loaded" << std::endl;
 	}
 
 	VkShaderModule triangleVertexShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle_mesh.vert.spv", _device, triangleVertexShader)) {
-		fmt::print("Error when building the vertex shader\n");
+		std::cout << "Error when building the vertex shader" << std::endl;
 	} else {
-		fmt::print("Triangle vertex shader succesfully loaded\n");
+		std::cout << "Triangle vertex shader succesfully loaded" << std::endl;
 	}
 
 	const VkPushConstantRange bufferRange {
@@ -514,6 +518,7 @@ void Engine::init_mesh_pipeline()
 	pipeline_layout_info.pSetLayouts = &_singleImageDescriptorLayout;
 	pipeline_layout_info.setLayoutCount = 1;
 	VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &_meshPipelineLayout));
+	assert(_meshPipelineLayout != VK_NULL_HANDLE);
 
 	PipelineBuilder pipelineBuilder;
 
@@ -551,6 +556,10 @@ void Engine::init_mesh_pipeline()
 		vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
 		vkDestroyPipeline(_device, _meshPipeline, nullptr);
 	});
+
+
+	/**/
+
 
 	/*VkPushConstantRange bufferRange{};
 	bufferRange.offset = 0;
@@ -628,7 +637,7 @@ void Engine::init_background_pipelines()
 	//layout code
 	VkShaderModule computeDrawShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/gradient.comp.spv", _device, computeDrawShader)) {
-		fmt::print("Error when building the compute shader \n");
+		std::cout << "Error when building the compute shader" << std::endl;
 	}
 
 	const VkPipelineShaderStageCreateInfo stageinfo {
@@ -1099,7 +1108,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 
 	assert(cmd != VK_NULL_HANDLE);
 
-	//reset counters
+	/*/reset counters
 	stats.drawcall_count = 0;
 	stats.triangle_count = 0;
 	//begin clock
@@ -1141,7 +1150,7 @@ void Engine::draw_geometry(VkCommandBuffer cmd)
 		} else {
 			return A.material < B.material;
 		}
-	});
+	});*/
 
 	//begin a render pass  connected to our draw image
 	VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);

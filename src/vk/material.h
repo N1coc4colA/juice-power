@@ -10,6 +10,11 @@
 
 
 class Engine;
+namespace Graphics
+{
+class Engine;
+class Ngine;
+}
 
 
 struct MaterialPipeline
@@ -61,7 +66,8 @@ struct GLTFMetallic_Roughness
 
 	DescriptorWriter writer {};
 
-	void build_pipelines(Engine &engine);
+	void build_pipelines(Graphics::Engine &engine);
+	void build_pipelines(::Engine &engine);
 	void clear_resources(VkDevice device);
 
 	MaterialInstance write_material(VkDevice device, const MaterialPass pass, const MaterialResources &resources, DescriptorAllocatorGrowable &descriptorAllocator);

@@ -46,6 +46,7 @@ struct MeshAsset
 
 
 std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Engine &engine, const std::filesystem::path &filePath);
+std::optional<std::vector<std::shared_ptr<MeshAsset>>> loadGltfMeshes(Graphics::Engine &engine, const std::filesystem::path &filePath);
 std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Engine &engine, const std::filesystem::path &filePath);
 std::optional<AllocatedImage> load_image(Engine &engine, fastgltf::Asset &asset, fastgltf::Image &image);
 

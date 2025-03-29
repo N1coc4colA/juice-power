@@ -6,6 +6,9 @@
 #include <glm/glm.hpp>
 
 
+namespace Graphics
+{
+
 class Chunk
 {
 public:
@@ -27,6 +30,8 @@ public:
 	 */
 	std::vector<glm::mat4> transforms {};
 };
+
+}
 
 
 #endif

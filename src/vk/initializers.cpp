@@ -387,3 +387,102 @@ VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(VkShad
 
 	return info;
 }
+
+VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAddressMode)
+{
+	const VkSamplerCreateInfo info {
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.magFilter = filters,
+		.minFilter = filters,
+		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+		.addressModeU = samplerAddressMode,
+		.addressModeV = samplerAddressMode,
+		.addressModeW = samplerAddressMode,
+		.mipLodBias = 0.0f,
+		.anisotropyEnable = VK_FALSE,
+		//.anisotropyEnable = VK_TRUE,
+		.maxAnisotropy = 16.0f,
+		.compareEnable = VK_FALSE,
+		.compareOp = VK_COMPARE_OP_ALWAYS,
+		.minLod = 0.0f,
+		.maxLod = VK_LOD_CLAMP_NONE,
+		.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+		.unnormalizedCoordinates = VK_FALSE,
+	};
+
+	return info;
+}
+
+VkPipelineVertexInputStateCreateInfo vkinit::vertex_input_state_create_info()
+{
+	VkPipelineVertexInputStateCreateInfo info {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+	};
+
+	return info;
+}
+
+VkPipelineInputAssemblyStateCreateInfo vkinit::input_assembly_create_info(VkPrimitiveTopology topology)
+{
+	VkPipelineInputAssemblyStateCreateInfo info {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.topology = topology,
+		.primitiveRestartEnable = VK_FALSE,
+	};
+
+	return info;
+}
+
+VkPipelineRasterizationStateCreateInfo vkinit::rasterization_state_create_info(VkPolygonMode polygonMode)
+{
+	VkPipelineRasterizationStateCreateInfo info {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.depthClampEnable = VK_FALSE,
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode = polygonMode,
+		.cullMode = VK_CULL_MODE_BACK_BIT,
+		.frontFace = VK_FRONT_FACE_CLOCKWISE,
+		.depthBiasEnable = VK_FALSE,
+		.lineWidth = 1.0f,
+	};
+
+	return info;
+}
+
+VkPipelineMultisampleStateCreateInfo vkinit::multisampling_state_create_info()
+{
+	VkPipelineMultisampleStateCreateInfo info {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+		.sampleShadingEnable = VK_FALSE,
+	};
+
+	return info;
+}
+
+VkPipelineColorBlendAttachmentState vkinit::color_blend_attachment_state()
+{
+	VkPipelineColorBlendAttachmentState info {
+		.blendEnable = VK_FALSE,
+		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+						  VK_COLOR_COMPONENT_G_BIT |
+						  VK_COLOR_COMPONENT_B_BIT |
+						  VK_COLOR_COMPONENT_A_BIT,
+	};
+
+	return info;
+}
+
+VkPipelineDepthStencilStateCreateInfo vkinit::depth_stencil_create_info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp)
+{
+	VkPipelineDepthStencilStateCreateInfo info {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.depthTestEnable = bDepthTest ? VK_TRUE : VK_FALSE,
+		.depthWriteEnable = bDepthWrite ? VK_TRUE : VK_FALSE,
+		.depthCompareOp = bDepthTest ? compareOp : VK_COMPARE_OP_ALWAYS,
+		.depthBoundsTestEnable = VK_FALSE,
+		.stencilTestEnable = VK_FALSE,
+	};
+
+	return info;
+}
