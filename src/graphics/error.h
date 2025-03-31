@@ -1,5 +1,5 @@
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef GRAPHICS_ERROR_H
+#define GRAPHICS_ERROR_H
 
 #include <exception>
 #include <string>
@@ -69,4 +69,4 @@ private:
 }
 
 
-#endif // ERROR_H
+#endif // GRAPHICS_ERROR_H

@@ -1,5 +1,5 @@
-#ifndef MATERIAL_H
-#define MATERIAL_H
+#ifndef GRAPHICS_MATERIAL_H
+#define GRAPHICS_MATERIAL_H
 
 #include <vulkan/vulkan_core.h>
 
@@ -67,11 +67,10 @@ struct GLTFMetallic_Roughness
 	DescriptorWriter writer {};
 
 	void build_pipelines(Graphics::Engine &engine);
-	void build_pipelines(::Engine &engine);
 	void clear_resources(VkDevice device);
 
 	MaterialInstance write_material(VkDevice device, const MaterialPass pass, const MaterialResources &resources, DescriptorAllocatorGrowable &descriptorAllocator);
 };
 
 
-#endif // MATERIAL_H
+#endif // GRAPHICS_MATERIAL_H

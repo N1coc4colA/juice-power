@@ -1,5 +1,5 @@
-#ifndef STRUCTS_H
-#define STRUCTS_H
+#ifndef GRAPHICS_STRUCTS_H
+#define GRAPHICS_STRUCTS_H
 
 #include <deque>
 #include <functional>
@@ -35,4 +35,4 @@ struct FrameData
 };
 
 
-#endif // STRUCTS_H
+#endif // GRAPHICS_STRUCTS_H

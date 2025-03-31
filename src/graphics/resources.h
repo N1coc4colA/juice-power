@@ -1,12 +1,12 @@
-#ifndef RESOURCES_H
-#define RESOURCES_H
+#ifndef GRAPHICS_RESOURCES_H
+#define GRAPHICS_RESOURCES_H
 
 #include <vector>
 
 #include <glm/glm.hpp>
 
-#include "../vk/allocatedimage.h"
-#include "../vk/types.h"
+#include "allocatedimage.h"
+#include "types.h"
 
 
 namespace Graphics
@@ -68,4 +68,4 @@ public:
 }
 
 
-#endif // RESOURCES_H
+#endif // GRAPHICS_RESOURCES_H

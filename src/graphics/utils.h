@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef GRAPHICS_UTILS_H
+#define GRAPHICS_UTILS_H
 
 #include <vulkan/vulkan.h>
 
@@ -17,4 +17,4 @@ void generate_mipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize);
 };
 
 
-#endif // UTILS_H
+#endif // GRAPHICS_UTILS_H

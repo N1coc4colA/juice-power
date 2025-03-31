@@ -22,13 +22,12 @@
 
 #include "error.h"
 
-#include "src/vk/defines.h"
-#include "src/vk/initializers.h"
-#include "src/vk/loadedgltf.h"
-#include "src/vk/utils.h"
-#include "src/vk/pipelinebuilder.h"
-//#include "src/vk/loader.h"
-#include "src/vk/vma.h"
+#include "defines.h"
+#include "initializers.h"
+//#include "loadedgltf.h"
+#include "utils.h"
+#include "pipelinebuilder.h"
+#include "vma.h"
 
 
 #define LOGFN() {std::cout << __func__ << std::endl;}

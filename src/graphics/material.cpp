@@ -12,48 +12,6 @@
 #include "../graphics/engine.h"
 
 
-void GLTFMetallic_Roughness::build_pipelines(::Engine &engine)
-{
-	VkShaderModule meshFragShader = VK_NULL_HANDLE;
-	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/mesh.frag.spv", engine._device, meshFragShader)) {
-		fmt::println("Error when building the triangle fragment shader module\n");
-	}
-
-	VkShaderModule meshVertexShader = VK_NULL_HANDLE;
-	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/mesh.vert.spv", engine._device, meshVertexShader)) {
-		fmt::println("Error when building the triangle vertex shader module\n");
-	}
-
-	const VkPushConstantRange matrixRange {
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		.offset = 0,
-		.size = sizeof(GPUDrawPushConstants),
-	};
-
-	DescriptorLayoutBuilder layoutBuilder;
-	layoutBuilder.add_binding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-	layoutBuilder.add_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-	materialLayout = layoutBuilder.build(engine._device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-	const VkDescriptorSetLayout layouts[] = {
-		engine._gpuSceneDataDescriptorLayout,
-		materialLayout
-	};
-
-	VkPipelineLayoutCreateInfo mesh_layout_info = vkinit::pipeline_layout_create_info();
-	mesh_layout_info.setLayoutCount = 2;
-	mesh_layout_info.pSetLayouts = layouts;
-	mesh_layout_info.pPushConstantRanges = &matrixRange;
-	mesh_layout_info.pushConstantRangeCount = 1;
-
-	VkPipelineLayout newLayout = VK_NULL_HANDLE;
-	VK_CHECK(vkCreatePipelineLayout(engine._device, &mesh_layout_info, nullptr, &newLayout));
-
-	opaquePipeline.layout = newLayout;
-	transparentPipeline.layout = newLayout;
-
 
 	/*
 
@@ -91,9 +49,6 @@ void GLTFMetallic_Roughness::build_pipelines(::Engine &engine)
 
 
 	*/
-
-
-}
 
 void GLTFMetallic_Roughness::build_pipelines(Graphics::Engine &engine)
 {

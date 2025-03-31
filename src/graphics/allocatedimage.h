@@ -1,5 +1,5 @@
-#ifndef ALLOCATEDIMAGE_H
-#define ALLOCATEDIMAGE_H
+#ifndef GRAPHICS_ALLOCATEDIMAGE_H
+#define GRAPHICS_ALLOCATEDIMAGE_H
 
 #include <vulkan/vulkan.h>
 
@@ -16,4 +16,4 @@ struct AllocatedImage
 };
 
 
-#endif // ALLOCATEDIMAGE_H
+#endif // GRAPHICS_ALLOCATEDIMAGE_H

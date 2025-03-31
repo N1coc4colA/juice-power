@@ -1,7 +1,7 @@
-#ifndef DESCRIPTORBUILDER_H
-#define DESCRIPTORBUILDER_H
+#ifndef GRAPHICS_DESCRIPTORBUILDER_H
+#define GRAPHICS_DESCRIPTORBUILDER_H
 
-#include "src/vk/descriptors.h"
+#include "descriptors.h"
 
 
 class DescriptorBuilder
@@ -18,4 +18,4 @@ private:
 };
 
 
-#endif // DESCRIPTORBUILDER_H
+#endif // GRAPHICS_DESCRIPTORBUILDER_H

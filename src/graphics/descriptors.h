@@ -1,5 +1,5 @@
-#ifndef DESCRIPTORS_H
-#define DESCRIPTORS_H
+#ifndef GRAPHICS_DESCRIPTORS_H
+#define GRAPHICS_DESCRIPTORS_H
 
 #include <deque>
 #include <vector>
@@ -75,4 +75,4 @@ private:
 };
 
 
-#endif // DESCRIPTORS_H
+#endif // GRAPHICS_DESCRIPTORS_H

@@ -1,5 +1,5 @@
-#ifndef INITIALIZERS_H
-#define INITIALIZERS_H
+#ifndef GRAPHICS_INITIALIZERS_H
+#define GRAPHICS_INITIALIZERS_H
 
 #include <vulkan/vulkan.h>
 
@@ -52,4 +52,4 @@ VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info();
 };
 
 
-#endif // INITIALIZERS_H
+#endif // GRAPHICS_INITIALIZERS_H

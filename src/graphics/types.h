@@ -1,5 +1,5 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef GRAPHICS_TYPES_H
+#define GRAPHICS_TYPES_H
 
 #include <vulkan/vulkan.h>
 
@@ -83,4 +83,4 @@ struct GPUSceneData
 };
 
 
-#endif // TYPES_H
+#endif // GRAPHICS_TYPES_H

@@ -8,11 +8,11 @@
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
-#include "src/vk/descriptors.h"
-#include "src/vk/loader.h"
-#include "src/vk/structs.h"
-#include "src/vk/types.h"
-#include "src/vk/renderobject.h"
+#include "allocatedimage.h"
+#include "descriptors.h"
+#include "material.h"
+#include "structs.h"
+#include "types.h"
 
 
 class Scene;

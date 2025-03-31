@@ -1,5 +1,5 @@
-#ifndef SCENE_H
-#define SCENE_H
+#ifndef GRAPHICS_SCENE_H
+#define GRAPHICS_SCENE_H
 
 #include "resources.h"
 #include "chunk.h"
@@ -19,4 +19,4 @@ public:
 }
 
 
-#endif // SCENE_H
+#endif // GRAPHICS_SCENE_H
