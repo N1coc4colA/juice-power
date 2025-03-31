@@ -7,3 +7,6 @@
 [submodule "submodules/VulkanMemoryAllocator"]
 	path = submodules/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "submodules/glaze"]
+	path = submodules/glaze
+	url = https://github.com/stephenberry/glaze.git

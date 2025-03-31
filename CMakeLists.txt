@@ -21,17 +21,6 @@ set(MAGIC_ENUM_INCL_DIR "")
 enable_testing()
 
 
-## Find deps ##
-
-add_subdirectory("submodules/fastgltf")
-add_subdirectory("submodules/vk-bootstrap")
-add_subdirectory("submodules") # For ImGui
-
-find_package(Vulkan REQUIRED)
-find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
-find_package(fmt CONFIG REQUIRED)			# Convenience dependency
-find_package(magic_enum CONFIG REQUIRED)	# Convenience dependency
-
 message(STATUS "[BT] ${PROJECT_NAME}: ${CMAKE_BUILD_TYPE}")
 
 
@@ -129,6 +118,20 @@ foreach(shader_source ${SHADER_SOURCES})
 endforeach()
 
 
+## Find deps ##
+
+add_subdirectory("submodules/vk-bootstrap")
+add_subdirectory("submodules/glaze")
+add_subdirectory("submodules") # For ImGui
+
+find_package(Vulkan REQUIRED)
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
+find_package(fmt CONFIG REQUIRED)			# Convenience dependency
+find_package(magic_enum CONFIG REQUIRED)	# Convenience dependency
+
+
+## Continue targets build ##
+
 # Check if the include directory is flat or nested
 get_target_property(magic_enum_include_dirs magic_enum::magic_enum INTERFACE_INCLUDE_DIRECTORIES)
 
@@ -141,7 +144,6 @@ foreach(dir ${magic_enum_include_dirs})
 		break()
 	endif()
 endforeach()
-
 
 # Used to compile the shaders
 add_custom_target(
@@ -179,10 +181,10 @@ juice-power
 		SDL3::SDL3
 		fmt::fmt
 		magic_enum::magic_enum
-		fastgltf::fastgltf
 		imgui
 		imgui_impl_sdl3
 		imgui_impl_vulkan
+		glaze::glaze
 )
 
 ## Testing part ##
