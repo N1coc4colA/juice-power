@@ -8,8 +8,8 @@ class DescriptorBuilder
 {
 public:
 	static DescriptorBuilder begin(DescriptorAllocatorGrowable* allocator, VkDescriptorSetLayout layout);
-	DescriptorBuilder& bind_image(uint32_t binding, VkImageView imageView, VkSampler sampler, VkImageLayout layout, VkDescriptorType type);
-	bool build(VkDevice device, VkDescriptorSet& set);
+	DescriptorBuilder &bindImage(const uint32_t binding, VkImageView imageView, VkSampler sampler, const VkImageLayout layout, const VkDescriptorType type);
+	bool build(VkDevice device, VkDescriptorSet &set);
 
 private:
 	std::vector<VkWriteDescriptorSet> writes {};

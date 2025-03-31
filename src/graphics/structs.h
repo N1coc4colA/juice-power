@@ -23,15 +23,15 @@ struct DeletionQueue
 
 struct FrameData
 {
-	VkCommandPool _commandPool = VK_NULL_HANDLE;
-	VkCommandBuffer _mainCommandBuffer = VK_NULL_HANDLE;
+	VkCommandPool commandPool = VK_NULL_HANDLE;
+	VkCommandBuffer mainCommandBuffer = VK_NULL_HANDLE;
 
-	VkSemaphore _swapchainSemaphore = VK_NULL_HANDLE,
-				_renderSemaphore = VK_NULL_HANDLE;
-	VkFence _renderFence = VK_NULL_HANDLE;
+	VkSemaphore swapchainSemaphore = VK_NULL_HANDLE,
+				renderSemaphore = VK_NULL_HANDLE;
+	VkFence renderFence = VK_NULL_HANDLE;
 
-	DeletionQueue _deletionQueue {};
-	DescriptorAllocatorGrowable _frameDescriptors {};
+	DeletionQueue deletionQueue {};
+	DescriptorAllocatorGrowable frameDescriptors {};
 };
 
 

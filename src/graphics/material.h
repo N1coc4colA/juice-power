@@ -50,7 +50,7 @@ struct GLTFMetallic_Roughness
 
 	struct MaterialConstants {
 		glm::vec4 colorFactors {};
-		glm::vec4 metal_rough_factors {};
+		glm::vec4 metalRoughFactors {};
 		//padding, we need it anyway for uniform buffers
 		glm::vec4 extra[14];
 	};
@@ -66,10 +66,10 @@ struct GLTFMetallic_Roughness
 
 	DescriptorWriter writer {};
 
-	void build_pipelines(Graphics::Engine &engine);
-	void clear_resources(VkDevice device);
+	void buildPipelines(Graphics::Engine &engine);
+	void clearResources(VkDevice device);
 
-	MaterialInstance write_material(VkDevice device, const MaterialPass pass, const MaterialResources &resources, DescriptorAllocatorGrowable &descriptorAllocator);
+	MaterialInstance writeMaterial(VkDevice device, const MaterialPass pass, const MaterialResources &resources, DescriptorAllocatorGrowable &descriptorAllocator);
 };
 
 

@@ -50,7 +50,7 @@
 
 	*/
 
-void GLTFMetallic_Roughness::build_pipelines(Graphics::Engine &engine)
+void GLTFMetallic_Roughness::buildPipelines(Graphics::Engine &engine)
 {
 	VkShaderModule meshFragShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/mesh.frag.spv", engine.device, meshFragShader)) {
@@ -63,21 +63,21 @@ void GLTFMetallic_Roughness::build_pipelines(Graphics::Engine &engine)
 	}
 
 	const VkPushConstantRange matrixRange {
-	    .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-	    .offset = 0,
-	    .size = sizeof(GPUDrawPushConstants),
+		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		.offset = 0,
+		.size = sizeof(GPUDrawPushConstants),
 	};
 
 	DescriptorLayoutBuilder layoutBuilder;
-	layoutBuilder.add_binding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-	layoutBuilder.add_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	layoutBuilder.addBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	layoutBuilder.addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	layoutBuilder.addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
 	materialLayout = layoutBuilder.build(engine.device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	const VkDescriptorSetLayout layouts[] = {
-	    engine.gpuSceneDataDescriptorLayout,
-	    materialLayout
+		engine.gpuSceneDataDescriptorLayout,
+		materialLayout
 	};
 
 	VkPipelineLayoutCreateInfo mesh_layout_info = vkinit::pipeline_layout_create_info();
@@ -94,12 +94,12 @@ void GLTFMetallic_Roughness::build_pipelines(Graphics::Engine &engine)
 }
 
 
-void GLTFMetallic_Roughness::clear_resources(VkDevice device)
+void GLTFMetallic_Roughness::clearResources(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 }
 
-MaterialInstance GLTFMetallic_Roughness::write_material(VkDevice device, const MaterialPass pass, const MaterialResources &resources, DescriptorAllocatorGrowable &descriptorAllocator)
+MaterialInstance GLTFMetallic_Roughness::writeMaterial(VkDevice device, const MaterialPass pass, const MaterialResources &resources, DescriptorAllocatorGrowable &descriptorAllocator)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(pass != MaterialPass::Invalid);
@@ -113,11 +113,11 @@ MaterialInstance GLTFMetallic_Roughness::write_material(VkDevice device, const M
 	};
 
 	writer.clear();
-	writer.write_buffer(0, resources.dataBuffer, sizeof(MaterialConstants), resources.dataBufferOffset, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	writer.write_image(1, resources.colorImage.imageView, resources.colorSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-	writer.write_image(2, resources.metalRoughImage.imageView, resources.metalRoughSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	writer.writeBuffer(0, resources.dataBuffer, sizeof(MaterialConstants), resources.dataBufferOffset, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	writer.writeImage(1, resources.colorImage.imageView, resources.colorSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	writer.writeImage(2, resources.metalRoughImage.imageView, resources.metalRoughSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
-	writer.update_set(device, matData.materialSet);
+	writer.updateSet(device, matData.materialSet);
 
 	return matData;
 }

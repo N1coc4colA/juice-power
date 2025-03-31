@@ -7,7 +7,7 @@
 #include "defines.h"
 
 
-void DescriptorLayoutBuilder::add_binding(const uint32_t binding, const VkDescriptorType type)
+void DescriptorLayoutBuilder::addBinding(const uint32_t binding, const VkDescriptorType type)
 {
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 
@@ -46,7 +46,7 @@ VkDescriptorSetLayout DescriptorLayoutBuilder::build(VkDevice device, const VkSh
 	return set;
 }
 
-void DescriptorAllocator::init_pool(VkDevice device, const uint32_t maxSets, const std::span<const PoolSizeRatio> &poolRatios)
+void DescriptorAllocator::initPool(VkDevice device, const uint32_t maxSets, const std::span<const PoolSizeRatio> &poolRatios)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(maxSets != 0);
@@ -72,14 +72,14 @@ void DescriptorAllocator::init_pool(VkDevice device, const uint32_t maxSets, con
 	VK_CHECK(vkCreateDescriptorPool(device, &pool_info, nullptr, &pool));
 }
 
-void DescriptorAllocator::clear_descriptors(VkDevice device)
+void DescriptorAllocator::clearDescriptors(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
 	VK_CHECK(vkResetDescriptorPool(device, pool, 0));
 }
 
-void DescriptorAllocator::destroy_pool(VkDevice device)
+void DescriptorAllocator::destroyPool(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -105,7 +105,7 @@ VkDescriptorSet DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLa
 	return ds;
 }
 
-void DescriptorWriter::write_image(const int binding, VkImageView image, VkSampler sampler,  const VkImageLayout layout, const VkDescriptorType type)
+void DescriptorWriter::writeImage(const int binding, VkImageView image, VkSampler sampler,  const VkImageLayout layout, const VkDescriptorType type)
 {
 	assert(image != VK_NULL_HANDLE);
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
@@ -127,7 +127,7 @@ void DescriptorWriter::write_image(const int binding, VkImageView image, VkSampl
 	});
 }
 
-void DescriptorWriter::write_buffer(const int binding, VkBuffer buffer, const size_t size, const size_t offset, const VkDescriptorType type)
+void DescriptorWriter::writeBuffer(const int binding, VkBuffer buffer, const size_t size, const size_t offset, const VkDescriptorType type)
 {
 	assert(buffer != VK_NULL_HANDLE);
 	assert(size != 0);
@@ -156,7 +156,7 @@ void DescriptorWriter::clear()
 	bufferInfos.clear();
 }
 
-void DescriptorWriter::update_set(VkDevice device, VkDescriptorSet set)
+void DescriptorWriter::updateSet(VkDevice device, VkDescriptorSet set)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(set != VK_NULL_HANDLE);
@@ -179,12 +179,12 @@ void DescriptorAllocatorGrowable::init(VkDevice device, const uint32_t maxSets, 
 	}
 
 	setsPerPool = maxSets * 1.5; //grow it next allocation
-	const VkDescriptorPool newPool = create_pool(device, maxSets, poolRatios);
+	const VkDescriptorPool newPool = createPool(device, maxSets, poolRatios);
 
 	readyPools.push_back(newPool);
 }
 
-void DescriptorAllocatorGrowable::clear_pools(VkDevice device)
+void DescriptorAllocatorGrowable::clearPools(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -199,7 +199,7 @@ void DescriptorAllocatorGrowable::clear_pools(VkDevice device)
 	fullPools.clear();
 }
 
-void DescriptorAllocatorGrowable::destroy_pools(VkDevice device)
+void DescriptorAllocatorGrowable::destroyPools(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -214,7 +214,7 @@ void DescriptorAllocatorGrowable::destroy_pools(VkDevice device)
 	fullPools.clear();
 }
 
-VkDescriptorPool DescriptorAllocatorGrowable::get_pool(VkDevice device)
+VkDescriptorPool DescriptorAllocatorGrowable::getPool(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -222,7 +222,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::get_pool(VkDevice device)
 
 	if (readyPools.empty()) {
 		//need to create a new pool
-		newPool = create_pool(device, setsPerPool, ratios);
+		newPool = createPool(device, setsPerPool, ratios);
 
 		setsPerPool = setsPerPool * 1.5;
 		if (setsPerPool > 4092) {
@@ -236,7 +236,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::get_pool(VkDevice device)
 	return newPool;
 }
 
-VkDescriptorPool DescriptorAllocatorGrowable::create_pool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
+VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(setCount != 0);
@@ -271,7 +271,7 @@ VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescrip
 	assert(layout != VK_NULL_HANDLE);
 
 	//get or create a pool to allocate from
-	VkDescriptorPool poolToUse = get_pool(device);
+	VkDescriptorPool poolToUse = getPool(device);
 
 	VkDescriptorSetAllocateInfo allocInfo {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -290,7 +290,7 @@ VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescrip
 
 		fullPools.push_back(poolToUse);
 
-		poolToUse = get_pool(device);
+		poolToUse = getPool(device);
 		allocInfo.descriptorPool = poolToUse;
 
 		VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &ds));

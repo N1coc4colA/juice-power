@@ -324,16 +324,16 @@ void Engine::initCommands()
 	const VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	for (int i = 0; i < FRAME_OVERLAP; i++) {
-		VK_CHECK(vkCreateCommandPool(device, &commandPoolInfo, nullptr, &frames[i]._commandPool));
-		if (frames[i]._commandPool == VK_NULL_HANDLE) {
+		VK_CHECK(vkCreateCommandPool(device, &commandPoolInfo, nullptr, &frames[i].commandPool));
+		if (frames[i].commandPool == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkCommandPoolCreation, "Frame");
 		}
 
 		// allocate the default command buffer that we will use for rendering
-		const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(frames[i]._commandPool, 1);
+		const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(frames[i].commandPool, 1);
 
-		VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &frames[i]._mainCommandBuffer));
-		if (frames[i]._mainCommandBuffer == VK_NULL_HANDLE) {
+		VK_CHECK(vkAllocateCommandBuffers(device, &cmdAllocInfo, &frames[i].mainCommandBuffer));
+		if (frames[i].mainCommandBuffer == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkCommandBufferCreation, "Frame");
 		}
 	}
@@ -368,17 +368,17 @@ void Engine::initSyncStructures()
 	const VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
 
 	for (int i = 0; i < FRAME_OVERLAP; i++) {
-		VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frames[i]._renderFence));
-		if (frames[i]._renderFence == VK_NULL_HANDLE) {
+		VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &frames[i].renderFence));
+		if (frames[i].renderFence == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkFenceCreation, "Frame");
 		}
 
-		VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i]._swapchainSemaphore));
-		if (frames[i]._swapchainSemaphore == VK_NULL_HANDLE) {
+		VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i].swapchainSemaphore));
+		if (frames[i].swapchainSemaphore == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkSwapchainCreation, "Frame");
 		}
-		VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i]._renderSemaphore));
-		if (frames[i]._renderSemaphore == VK_NULL_HANDLE) {
+		VK_CHECK(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &frames[i].renderSemaphore));
+		if (frames[i].renderSemaphore == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkSemaphoreCreation, "Frame");
 		}
 	}
@@ -408,7 +408,7 @@ void Engine::initDescriptors()
 	//make the descriptor set layout for our compute draw
 	{
 		DescriptorLayoutBuilder builder {};
-		builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+		builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 		drawImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_COMPUTE_BIT);
 		if (drawImageDescriptorLayout == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkDescriptorCreation, "Draw");
@@ -419,8 +419,8 @@ void Engine::initDescriptors()
 	drawImageDescriptors = globalDescriptorAllocator.allocate(device, drawImageDescriptorLayout);
 
 	DescriptorWriter writer {};
-	writer.write_image(0, drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-	writer.update_set(device, drawImageDescriptors);
+	writer.writeImage(0, drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	writer.updateSet(device, drawImageDescriptors);
 	if (drawImageDescriptors == VK_NULL_HANDLE) {
 		throw new Failure(FailureType::VkDescriptorUpdate, "Draw");
 	}
@@ -434,17 +434,17 @@ void Engine::initDescriptors()
 			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
 		};
 
-		frames[i]._frameDescriptors = DescriptorAllocatorGrowable();
-		frames[i]._frameDescriptors.init(device, 1000, frame_sizes);
+		frames[i].frameDescriptors = DescriptorAllocatorGrowable();
+		frames[i].frameDescriptors.init(device, 1000, frame_sizes);
 
 		mainDeletionQueue.push_function([this, i]() {
-			frames[i]._frameDescriptors.destroy_pools(device);
+			frames[i].frameDescriptors.destroyPools(device);
 		});
 	}
 
 	{
 		DescriptorLayoutBuilder builder {};
-		builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 		gpuSceneDataDescriptorLayout = builder.build(device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 		if (gpuSceneDataDescriptorLayout == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkDescriptorLayoutCreation, "GPU");
@@ -453,7 +453,7 @@ void Engine::initDescriptors()
 
 	{
 		DescriptorLayoutBuilder builder {};
-		builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+		builder.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 		singleImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
 		if (singleImageDescriptorLayout == VK_NULL_HANDLE) {
 			throw new Failure(FailureType::VkDescriptorLayoutCreation, "Single");
@@ -462,14 +462,14 @@ void Engine::initDescriptors()
 
 	//make sure both the descriptor allocator and the new layout get cleaned up properly
 	mainDeletionQueue.push_function([this]() {
-		globalDescriptorAllocator.destroy_pools(device);
+		globalDescriptorAllocator.destroyPools(device);
 
 		vkDestroyDescriptorSetLayout(device, drawImageDescriptorLayout, nullptr);
 		vkDestroyDescriptorSetLayout(device, gpuSceneDataDescriptorLayout, nullptr);
 		vkDestroyDescriptorSetLayout(device, singleImageDescriptorLayout, nullptr);
 	});
 
-	metalRoughMaterial.build_pipelines(*this);
+	metalRoughMaterial.buildPipelines(*this);
 }
 
 void Engine::initPipelines()
@@ -479,7 +479,7 @@ void Engine::initPipelines()
 	initBackgroundPipelines();
 	initMeshPipeline();
 
-	metalRoughMaterial.build_pipelines(*this);
+	metalRoughMaterial.buildPipelines(*this);
 }
 
 void Engine::initMeshPipeline()
@@ -543,28 +543,28 @@ void Engine::initMeshPipeline()
 
 	PipelineBuilder pipelineBuilder;
 	//use the triangle layout we created
-	pipelineBuilder._pipelineLayout = meshPipelineLayout;
+	pipelineBuilder.pipelineLayout = meshPipelineLayout;
 	//connecting the vertex and pixel shaders to the pipeline
-	pipelineBuilder.set_shaders(triangleVertexShader, triangleFragShader);
+	pipelineBuilder.setShaders(triangleVertexShader, triangleFragShader);
 	//it will draw triangles
-	pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+	pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	//filled triangles
-	pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+	pipelineBuilder.setPolygonMode(VK_POLYGON_MODE_FILL);
 	//no backface culling
-	pipelineBuilder.set_cull_mode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+	pipelineBuilder.setCullMode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 	//no multisampling
-	pipelineBuilder.set_multisampling_none();
+	pipelineBuilder.setMultisamplingNone();
 	//no blending
 	//pipelineBuilder.disable_blending();
-	pipelineBuilder.enable_blending_additive();
+	pipelineBuilder.enableBlendingAdditive();
 	//pipelineBuilder.disable_depthtest();
-	pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+	pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
 	//connect the image format we will draw into, from draw image
-	pipelineBuilder.set_color_attachment_format(drawImage.imageFormat);
-	pipelineBuilder.set_depth_format(depthImage.imageFormat);
+	pipelineBuilder.setColorAttachmentFormat(drawImage.imageFormat);
+	pipelineBuilder.setDepthFormat(depthImage.imageFormat);
 
 	//finally build the pipeline
-	meshPipeline = pipelineBuilder.build_pipeline(device);
+	meshPipeline = pipelineBuilder.buildPipeline(device);
 	if (meshPipeline == VK_NULL_HANDLE) {
 		throw new Failure(FailureType::VkPipelineCreation);
 	}
@@ -764,23 +764,23 @@ void Engine::cleanup()
 		// we can destroy the command pools.
 		// It may crash the app otherwise.
 		for (int i = 0; i < FRAME_OVERLAP; i++) {
-			vkDestroyCommandPool(device, frames[i]._commandPool, nullptr);
+			vkDestroyCommandPool(device, frames[i].commandPool, nullptr);
 		}
 		for (int i = 0; i < FRAME_OVERLAP; i++) {
 			//already written from before
-			vkDestroyCommandPool(device, frames[i]._commandPool, nullptr);
+			vkDestroyCommandPool(device, frames[i].commandPool, nullptr);
 
 			//destroy sync objects
-			vkDestroyFence(device, frames[i]._renderFence, nullptr);
-			vkDestroySemaphore(device, frames[i]._renderSemaphore, nullptr);
-			vkDestroySemaphore(device, frames[i]._swapchainSemaphore, nullptr);
+			vkDestroyFence(device, frames[i].renderFence, nullptr);
+			vkDestroySemaphore(device, frames[i].renderSemaphore, nullptr);
+			vkDestroySemaphore(device, frames[i].swapchainSemaphore, nullptr);
 
-			frames[i]._deletionQueue.flush();
+			frames[i].deletionQueue.flush();
 
-			frames[i]._commandPool = VK_NULL_HANDLE;
-			frames[i]._renderFence = VK_NULL_HANDLE;
-			frames[i]._renderSemaphore = VK_NULL_HANDLE;
-			frames[i]._swapchainSemaphore = VK_NULL_HANDLE;
+			frames[i].commandPool = VK_NULL_HANDLE;
+			frames[i].renderFence = VK_NULL_HANDLE;
+			frames[i].renderSemaphore = VK_NULL_HANDLE;
+			frames[i].swapchainSemaphore = VK_NULL_HANDLE;
 		}
 
 		//flush the global deletion queue
@@ -907,30 +907,30 @@ void Engine::draw()
 
 	auto &currFrame = getCurrentFrame();
 
-	assert(currFrame._renderFence != VK_NULL_HANDLE);
+	assert(currFrame.renderFence != VK_NULL_HANDLE);
 	// wait until the gpu has finished rendering the last frame. Timeout of 1
 	// second
-	VK_CHECK(vkWaitForFences(device, 1, &currFrame._renderFence, true, 1000000000));
-	currFrame._deletionQueue.flush();
-	currFrame._frameDescriptors.clear_pools(device);
+	VK_CHECK(vkWaitForFences(device, 1, &currFrame.renderFence, true, 1000000000));
+	currFrame.deletionQueue.flush();
+	currFrame.frameDescriptors.clearPools(device);
 
 	assert(device != VK_NULL_HANDLE);
 	assert(swapchain != VK_NULL_HANDLE);
-	assert(currFrame._swapchainSemaphore != VK_NULL_HANDLE);
+	assert(currFrame.swapchainSemaphore != VK_NULL_HANDLE);
 	//request image from the swapchain
 
 	uint32_t swapchainImageIndex = -1;
-	const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, 1000000000, currFrame._swapchainSemaphore, nullptr, &swapchainImageIndex);
+	const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, 1000000000, currFrame.swapchainSemaphore, nullptr, &swapchainImageIndex);
 	if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
 		resizeRequested = true;
 		return;
 	}
 	// [NOTE] Maybe also check if it has been VK_SUBOPTIMAL_KHR for too long.
 
-	VK_CHECK(vkResetFences(device, 1, &currFrame._renderFence));
+	VK_CHECK(vkResetFences(device, 1, &currFrame.renderFence));
 
 	//naming it cmd for shorter writing
-	VkCommandBuffer cmd = currFrame._mainCommandBuffer;
+	VkCommandBuffer cmd = currFrame.mainCommandBuffer;
 	assert(cmd != VK_NULL_HANDLE);
 
 	// now that we are sure that the commands finished executing, we can safely
@@ -980,14 +980,14 @@ void Engine::draw()
 
 	VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
 
-	VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currFrame._swapchainSemaphore);
-	VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame._renderSemaphore);
+	VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currFrame.swapchainSemaphore);
+	VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame.renderSemaphore);
 
 	const VkSubmitInfo2 submit = vkinit::submit_info(&cmdinfo, &signalInfo, &waitInfo);
 
 	//submit command buffer to the queue and execute it.
 	// _renderFence will now block until the graphic commands finish execution
-	VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, currFrame._renderFence));
+	VK_CHECK(vkQueueSubmit2(graphicsQueue, 1, &submit, currFrame.renderFence));
 
 	//prepare present
 	// this will put the image we just rendered to into the visible window.
@@ -997,7 +997,7 @@ void Engine::draw()
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 		.pNext = nullptr,
 		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = &currFrame._renderSemaphore,
+		.pWaitSemaphores = &currFrame.renderSemaphore,
 		.swapchainCount = 1,
 		.pSwapchains = &swapchain,
 		.pImageIndices = &swapchainImageIndex,
@@ -1131,13 +1131,13 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
 
 	//bind a texture
-	VkDescriptorSet imageSet = getCurrentFrame()._frameDescriptors.allocate(device, singleImageDescriptorLayout);
+	VkDescriptorSet imageSet = getCurrentFrame().frameDescriptors.allocate(device, singleImageDescriptorLayout);
 	{
 		DescriptorWriter writer;
 
-		writer.write_image(0, errorCheckerboardImage.imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+		writer.writeImage(0, errorCheckerboardImage.imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
-		writer.update_set(device, imageSet);
+		writer.updateSet(device, imageSet);
 	}
 	assert(imageSet != VK_NULL_HANDLE);
 
@@ -1185,7 +1185,7 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
 
 	const AllocatedBuffer staging = createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-	void *data = getMappedData(staging.allocation);
+	void *data = get_mapped_data(staging.allocation);
 	if (data == nullptr) {
 		throw new Failure(FailureType::MappedAccess);
 	}
@@ -1262,7 +1262,7 @@ void Engine::initDefaultData()
 		throw new Failure(FailureType::VkSamplerCreation, "Linear");
 	}
 
-	mainDeletionQueue.push_function([this](){
+	mainDeletionQueue.push_function([this]() {
 		vkDestroySampler(device, defaultSamplerNearest, nullptr);
 		vkDestroySampler(device, defaultSamplerLinear, nullptr);
 
@@ -1272,7 +1272,7 @@ void Engine::initDefaultData()
 		destroyImage(errorCheckerboardImage);
 	});
 
-	GLTFMetallic_Roughness::MaterialResources materialResources = {
+	GLTFMetallic_Roughness::MaterialResources materialResources {
 		//default the material textures
 		.colorImage = whiteImage,
 		.colorSampler = defaultSamplerLinear,
@@ -1284,10 +1284,10 @@ void Engine::initDefaultData()
 	const AllocatedBuffer materialConstants = createBuffer(sizeof(GLTFMetallic_Roughness::MaterialConstants), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 	//write the buffer
-	GLTFMetallic_Roughness::MaterialConstants *sceneUniformData = reinterpret_cast<GLTFMetallic_Roughness::MaterialConstants *>(getMappedData(materialConstants.allocation));
+	GLTFMetallic_Roughness::MaterialConstants *sceneUniformData = reinterpret_cast<GLTFMetallic_Roughness::MaterialConstants *>(get_mapped_data(materialConstants.allocation));
 	assert(sceneUniformData != nullptr);
 	sceneUniformData->colorFactors = glm::vec4{1.f, 1.f, 1.f, 1.f};
-	sceneUniformData->metal_rough_factors = glm::vec4{1.f, 0.5f, 0.f, 0.f};
+	sceneUniformData->metalRoughFactors = glm::vec4{1.f, 0.5f, 0.f, 0.f};
 
 	mainDeletionQueue.push_function([=, this]() {
 		destroyBuffer(materialConstants);
@@ -1296,7 +1296,7 @@ void Engine::initDefaultData()
 	materialResources.dataBuffer = materialConstants.buffer;
 	materialResources.dataBufferOffset = 0;
 
-	defaultData = metalRoughMaterial.write_material(device, MaterialPass::MainColor, materialResources, globalDescriptorAllocator);
+	defaultData = metalRoughMaterial.writeMaterial(device, MaterialPass::MainColor, materialResources, globalDescriptorAllocator);
 }
 
 void Engine::createSwapchain(uint32_t w, uint32_t h)

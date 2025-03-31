@@ -36,16 +36,16 @@ struct AllocatedBuffer
 {
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
-	VmaAllocationInfo info = {.deviceMemory = VK_NULL_HANDLE};
+	VmaAllocationInfo info {.deviceMemory = VK_NULL_HANDLE};
 };
 
 struct EngineStats
 {
-	float frametime = 0.f;
-	int triangle_count = 0.f;
-	int drawcall_count = 0.f;
-	float scene_update_time = 0.f;
-	float mesh_draw_time = 0.f;
+	float frameTime = 0.f;
+	int triangleCount = 0.f;
+	int drawcallCount = 0.f;
+	float sceneUpdateTime = 0.f;
+	float meshDrawTime = 0.f;
 };
 
 struct Vertex
