@@ -1494,21 +1494,21 @@ void Engine::generateMeshes()
 		.position = {0.f, 1.f, 0.f},
 		.uv_x = 0.f,
 		.normal = {0.f, 0.f, 1.f},
-		.uv_y = 0.f,
+		.uv_y = 1.f,
 		.color = glm::vec4(1.f, 0.f, 0.f, 1.f),
 	};
 	vertices[2] = {
 		.position = {1.f, 0.f, 0.f},
-		.uv_x = 0.f,
+		.uv_x = 1.f,
 		.normal = {0.f, 0.f, 1.f},
 		.uv_y = 0.f,
 		.color = glm::vec4(0.f, 0.f, 1.f, 1.f),
 	};
 	vertices[3] = {
 		.position = {1.f, 1.f, 0.f},
-		.uv_x = 0.f,
+		.uv_x = 1.f,
 		.normal = {0.f, 0.f, 1.f},
-		.uv_y = 0.f,
+		.uv_y = 1.f,
 		.color = glm::vec4(1.f, 1.f, 0.f, 1.f),
 	};
 
