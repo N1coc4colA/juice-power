@@ -133,7 +133,7 @@ void DescriptorWriter::writeBuffer(const int binding, VkBuffer buffer, const siz
 	assert(size != 0);
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 
-	VkDescriptorBufferInfo &info = bufferInfos.emplace_back(VkDescriptorBufferInfo {
+	const VkDescriptorBufferInfo &info = bufferInfos.emplace_back(VkDescriptorBufferInfo {
 		.buffer = buffer,
 		.offset = offset,
 		.range = size
@@ -245,7 +245,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const 
 	poolSizes.reserve(poolRatios.size());
 
 	for (const PoolSizeRatio &ratio : poolRatios) {
-		poolSizes.push_back(VkDescriptorPoolSize{
+		poolSizes.push_back(VkDescriptorPoolSize {
 			.type = ratio.type,
 			.descriptorCount = static_cast<uint32_t>(ratio.ratio * setCount),
 		});
@@ -265,7 +265,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const 
 	return newPool;
 }
 
-VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayout layout)
+VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, const VkDescriptorSetLayout layout)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(layout != VK_NULL_HANDLE);

@@ -1,4 +1,4 @@
-#include "error.h"
+#include "failure.h"
 
 #include <magic_enum.hpp>
 

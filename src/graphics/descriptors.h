@@ -62,7 +62,7 @@ public:
 	void clearPools(VkDevice device);
 	void destroyPools(VkDevice device);
 
-	VkDescriptorSet allocate(VkDevice device, VkDescriptorSetLayout layout);
+	VkDescriptorSet allocate(VkDevice device, const VkDescriptorSetLayout layout);
 
 private:
 	VkDescriptorPool getPool(VkDevice device);

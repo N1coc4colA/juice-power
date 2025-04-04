@@ -56,7 +56,7 @@ protected:
 	void drawImgui(VkCommandBuffer cmd, VkImageView targetImageView);
 	void drawGeometry(VkCommandBuffer cmd);
 
-	void createSwapchain(uint32_t w, uint32_t h);
+	void createSwapchain(const uint32_t w, const uint32_t h);
 	void destroySwapchain();
 	void resizeSwapchain();
 
@@ -71,7 +71,7 @@ private:
 	void destroyImage(const AllocatedImage &img);
 
 	AllocatedBuffer createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
-	void destroyBuffer(const AllocatedBuffer& buffer);
+	void destroyBuffer(const AllocatedBuffer &buffer);
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
@@ -99,7 +99,7 @@ private:
 	VkPhysicalDevice chosenGPU = VK_NULL_HANDLE;
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	uint32_t graphicsQueueFamily = 0;
-	FrameData frames[FRAME_OVERLAP];
+	FrameData frames[FRAME_OVERLAP] {};
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
 	/* Swapchain */
@@ -119,7 +119,7 @@ private:
 	DescriptorAllocatorGrowable globalDescriptorAllocator {};
 
 	VkDescriptorSet drawImageDescriptors = VK_NULL_HANDLE;
-	VkDescriptorSetLayout drawImageDescriptorLayout;
+	VkDescriptorSetLayout drawImageDescriptorLayout = VK_NULL_HANDLE;
 
 	/* Imaging */
 
@@ -151,8 +151,6 @@ private:
 	/* Images */
 
 	AllocatedImage whiteImage {};
-	AllocatedImage blackImage {};
-	AllocatedImage greyImage {};
 	AllocatedImage errorCheckerboardImage {};
 
 	/* Scene */

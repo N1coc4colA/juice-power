@@ -12,44 +12,6 @@
 #include "../graphics/engine.h"
 
 
-
-	/*
-
-
-	// build the stage-create-info for both vertex and fragment stages. This lets
-	// the pipeline know the shader modules per stage
-	PipelineBuilder pipelineBuilder;
-	pipelineBuilder.set_shaders(meshVertexShader, meshFragShader);
-	pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-	pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-	pipelineBuilder.set_multisampling_none();
-	pipelineBuilder.disable_blending();
-	pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
-
-	//render format
-	pipelineBuilder.set_color_attachment_format(engine._drawImage.imageFormat);
-	pipelineBuilder.set_depth_format(engine._depthImage.imageFormat);
-
-	// use the triangle layout we created
-	pipelineBuilder._pipelineLayout = newLayout;
-
-	// finally build the pipeline
-	opaquePipeline.pipeline = pipelineBuilder.build_pipeline(engine._device);
-
-	// create the transparent variant
-	pipelineBuilder.enable_blending_additive();
-
-	pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_GREATER_OR_EQUAL);
-
-	transparentPipeline.pipeline = pipelineBuilder.build_pipeline(engine._device);
-
-	vkDestroyShaderModule(engine._device, meshFragShader, nullptr);
-	vkDestroyShaderModule(engine._device, meshVertexShader, nullptr);
-
-
-	*/
-
 void GLTFMetallic_Roughness::buildPipelines(Graphics::Engine &engine)
 {
 	VkShaderModule meshFragShader = VK_NULL_HANDLE;

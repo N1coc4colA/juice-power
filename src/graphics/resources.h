@@ -2,6 +2,7 @@
 #define GRAPHICS_RESOURCES_H
 
 #include <vector>
+#include <string>
 
 #include <glm/glm.hpp>
 
@@ -38,29 +39,34 @@ struct Mesh {
 class Resources
 {
 public:
-	/* Ojbects' Descriptions */
-
-	std::vector<Vertex[6]> vertices;
+	/* Objects' Descriptions */
 
 	/**
-	 * @brief Sizes of the different models.
-	 * Mainly used for rendering.
+	 * @brief Paths for the images to use.
 	 */
-	std::vector<std::vector<glm::vec3>> geometries {};
+	std::vector<std::string> imagePaths {};
+
+	/**
+	 * @brief Vertices for each element.
+	 */
+	std::vector<Vertex[4]> vertices {};
+
 	/**
 	 * @brief Surfaces of the different models.
 	 * Used only for physics.
 	 */
 	std::vector<std::vector<glm::vec4>> surfaces {};
+
 	/**
 	 * @brief Images of the different models.
 	 */
 	std::vector<AllocatedImage> images {};
+
 	/**
 	 * @brief Types of the models.
 	 * Used by the physics engine, never used in graphics.
 	 */
-	uint32_t types = 0;
+	std::vector<uint32_t> types {};
 
 	void build(Engine &engine);
 };

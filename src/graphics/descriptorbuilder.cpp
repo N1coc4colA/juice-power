@@ -3,9 +3,9 @@
 #include <cassert>
 
 
-DescriptorBuilder DescriptorBuilder::begin(DescriptorAllocatorGrowable* allocator, VkDescriptorSetLayout layout)
+DescriptorBuilder DescriptorBuilder::begin(DescriptorAllocatorGrowable *allocator, VkDescriptorSetLayout layout)
 {
-	DescriptorBuilder builder  {};
+	DescriptorBuilder builder {};
 	builder.currentAllocator = allocator;
 	builder.currentLayout = layout;
 
@@ -19,13 +19,13 @@ DescriptorBuilder &DescriptorBuilder::bindImage(const uint32_t binding, VkImageV
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 
-	VkDescriptorImageInfo imageInfo {
+	const VkDescriptorImageInfo imageInfo {
 		.sampler = sampler,
 		.imageView = imageView,
 		.imageLayout = layout
 	};
 
-	VkWriteDescriptorSet write {
+	const VkWriteDescriptorSet write {
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstBinding = binding,
 		.dstArrayElement = 0,
@@ -37,25 +37,6 @@ DescriptorBuilder &DescriptorBuilder::bindImage(const uint32_t binding, VkImageV
 	writes.push_back(write);
 	return *this;
 }
-
-/*bool DescriptorBuilder::build(VkDevice device, VkDescriptorSet &set)
-{
-	assert(device != VK_NULL_HANDLE);
-	assert(currentAllocator != nullptr);
-	assert(currentLayout != VK_NULL_HANDLE);
-
-	bool success = currentAllocator->allocate(device, currentLayout);
-	if (!success) {
-		return false;
-	}
-
-	for (auto &write : writes) {
-		write.dstSet = set;
-	}
-
-	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-	return true;
-}*/
 
 bool DescriptorBuilder::build(VkDevice device, VkDescriptorSet &set)
 {

@@ -54,7 +54,7 @@ do { \
 #define VMA_IMPLEMENTATION
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
-void *get_mapped_data(VmaAllocation alloc)
+void *get_mapped_data(const VmaAllocation alloc)
 {
 	assert(alloc != VK_NULL_HANDLE);
 

@@ -54,7 +54,7 @@ VkPipeline PipelineBuilder::buildPipeline(VkDevice device)
 	};
 
 	// completely clear VertexInputStateCreateInfo, as we have no need for it
-	const VkPipelineVertexInputStateCreateInfo _vertexInputInfo {
+	const VkPipelineVertexInputStateCreateInfo vertexInputInfo {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
 	};
 
@@ -79,7 +79,7 @@ VkPipeline PipelineBuilder::buildPipeline(VkDevice device)
 
 		.stageCount = static_cast<uint32_t>(shaderStages.size()),
 		.pStages = shaderStages.data(),
-		.pVertexInputState = &_vertexInputInfo,
+		.pVertexInputState = &vertexInputInfo,
 		.pInputAssemblyState = &inputAssembly,
 		.pViewportState = &viewportState,
 		.pRasterizationState = &rasterizer,

@@ -103,17 +103,15 @@ VkCommandBufferSubmitInfo vkinit::command_buffer_submit_info(VkCommandBuffer cmd
 	return info;
 }
 
-VkSubmitInfo2 vkinit::submit_info(VkCommandBufferSubmitInfo *cmd, VkSemaphoreSubmitInfo *signalSemaphoreInfo, VkSemaphoreSubmitInfo *waitSemaphoreInfo)
+VkSubmitInfo2 vkinit::submit_info(const VkCommandBufferSubmitInfo &cmd, const VkSemaphoreSubmitInfo *signalSemaphoreInfo, const VkSemaphoreSubmitInfo *waitSemaphoreInfo)
 {
-	assert(cmd != nullptr);
-
 	const VkSubmitInfo2 info {
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
 		.pNext = nullptr,
 		.waitSemaphoreInfoCount = static_cast<uint32_t>(waitSemaphoreInfo == nullptr ? 0 : 1),
 		.pWaitSemaphoreInfos = waitSemaphoreInfo,
 		.commandBufferInfoCount = 1,
-		.pCommandBufferInfos = cmd,
+		.pCommandBufferInfos = &cmd,
 		.signalSemaphoreInfoCount = static_cast<uint32_t>(signalSemaphoreInfo == nullptr ? 0 : 1),
 		.pSignalSemaphoreInfos = signalSemaphoreInfo,
 	};
@@ -123,7 +121,7 @@ VkSubmitInfo2 vkinit::submit_info(VkCommandBufferSubmitInfo *cmd, VkSemaphoreSub
 
 VkPresentInfoKHR vkinit::present_info()
 {
-	const VkPresentInfoKHR info {
+	constexpr VkPresentInfoKHR info {
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 		.pNext = 0,
 		.waitSemaphoreCount = 0,
@@ -136,7 +134,7 @@ VkPresentInfoKHR vkinit::present_info()
 	return info;
 }
 
-VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view, VkClearValue *clear, const VkImageLayout layout)
+VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view, const VkClearValue *clear, const VkImageLayout layout)
 {
 	assert(view != VK_NULL_HANDLE);
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
@@ -180,7 +178,7 @@ VkRenderingAttachmentInfo vkinit::depth_attachment_info(VkImageView view, const 
 	return depthAttachment;
 }
 
-VkRenderingInfo vkinit::rendering_info(const VkExtent2D &renderExtent, VkRenderingAttachmentInfo *colorAttachment, VkRenderingAttachmentInfo *depthAttachment)
+VkRenderingInfo vkinit::rendering_info(const VkExtent2D &renderExtent, const VkRenderingAttachmentInfo *colorAttachment, const VkRenderingAttachmentInfo *depthAttachment)
 {
 	const VkRenderingInfo renderInfo {
 		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -212,7 +210,7 @@ VkImageSubresourceRange vkinit::image_subresource_range(VkImageAspectFlags aspec
 	return subImage;
 }
 
-VkDescriptorSetLayoutBinding vkinit::descriptorset_layout_binding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding)
+VkDescriptorSetLayoutBinding vkinit::descriptorset_layout_binding(const VkDescriptorType type, const VkShaderStageFlags stageFlags, const uint32_t binding)
 {
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 	assert(stageFlags != VK_PIPELINE_LAYOUT_CREATE_FLAG_BITS_MAX_ENUM);
@@ -228,9 +226,8 @@ VkDescriptorSetLayoutBinding vkinit::descriptorset_layout_binding(VkDescriptorTy
 	return setbind;
 }
 
-VkDescriptorSetLayoutCreateInfo vkinit::descriptorset_layout_create_info(VkDescriptorSetLayoutBinding *bindings, uint32_t bindingCount)
+VkDescriptorSetLayoutCreateInfo vkinit::descriptorset_layout_create_info(const VkDescriptorSetLayoutBinding &bindings, const uint32_t bindingCount)
 {
-	assert(bindings != nullptr);
 	assert(bindingCount != 0);
 
 	const VkDescriptorSetLayoutCreateInfo info {
@@ -238,17 +235,16 @@ VkDescriptorSetLayoutCreateInfo vkinit::descriptorset_layout_create_info(VkDescr
 		.pNext = nullptr,
 		.flags = 0,
 		.bindingCount = bindingCount,
-		.pBindings = bindings,
+		.pBindings = &bindings,
 	};
 
 	return info;
 }
 
-VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo *imageInfo, uint32_t binding)
+VkWriteDescriptorSet vkinit::write_descriptor_image(const VkDescriptorType type, VkDescriptorSet dstSet, const VkDescriptorImageInfo &imageInfo, const uint32_t binding)
 {
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 	assert(dstSet != VK_NULL_HANDLE);
-	assert(imageInfo != nullptr);
 
 	const VkWriteDescriptorSet write {
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -257,17 +253,16 @@ VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDes
 		.dstBinding = binding,
 		.descriptorCount = 1,
 		.descriptorType = type,
-		.pImageInfo = imageInfo,
+		.pImageInfo = &imageInfo,
 	};
 
 	return write;
 }
 
-VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo *bufferInfo, uint32_t binding)
+VkWriteDescriptorSet vkinit::write_descriptor_buffer(const VkDescriptorType type, VkDescriptorSet dstSet, const VkDescriptorBufferInfo &bufferInfo, const uint32_t binding)
 {
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 	assert(dstSet != VK_NULL_HANDLE);
-	assert(bufferInfo != nullptr);
 
 	const VkWriteDescriptorSet write {
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -276,7 +271,7 @@ VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDe
 		.dstBinding = binding,
 		.descriptorCount = 1,
 		.descriptorType = type,
-		.pBufferInfo = bufferInfo,
+		.pBufferInfo = &bufferInfo,
 	};
 
 	return write;
@@ -325,7 +320,7 @@ VkImageCreateInfo vkinit::image_create_info(const VkFormat format, const VkImage
 	return info;
 }
 
-VkImageViewCreateInfo vkinit::imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
+VkImageViewCreateInfo vkinit::imageview_create_info(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags)
 {
 	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(image != VK_NULL_HANDLE);
@@ -352,7 +347,7 @@ VkImageViewCreateInfo vkinit::imageview_create_info(VkFormat format, VkImage ima
 
 VkPipelineLayoutCreateInfo vkinit::pipeline_layout_create_info()
 {
-	const VkPipelineLayoutCreateInfo info {
+	constexpr VkPipelineLayoutCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 
@@ -367,7 +362,7 @@ VkPipelineLayoutCreateInfo vkinit::pipeline_layout_create_info()
 	return info;
 }
 
-VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry)
+VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry)
 {
 	assert(stage != VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
 	assert(shaderModule != VK_NULL_HANDLE);
@@ -388,7 +383,7 @@ VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(VkShad
 	return info;
 }
 
-VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAddressMode)
+VkSamplerCreateInfo vkinit::sampler_create_info(const VkFilter filters, const VkSamplerAddressMode samplerAddressMode)
 {
 	const VkSamplerCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -415,16 +410,16 @@ VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddre
 
 VkPipelineVertexInputStateCreateInfo vkinit::vertex_input_state_create_info()
 {
-	VkPipelineVertexInputStateCreateInfo info {
+	constexpr VkPipelineVertexInputStateCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 	};
 
 	return info;
 }
 
-VkPipelineInputAssemblyStateCreateInfo vkinit::input_assembly_create_info(VkPrimitiveTopology topology)
+VkPipelineInputAssemblyStateCreateInfo vkinit::input_assembly_create_info(const VkPrimitiveTopology topology)
 {
-	VkPipelineInputAssemblyStateCreateInfo info {
+	const VkPipelineInputAssemblyStateCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 		.topology = topology,
 		.primitiveRestartEnable = VK_FALSE,
@@ -433,7 +428,7 @@ VkPipelineInputAssemblyStateCreateInfo vkinit::input_assembly_create_info(VkPrim
 	return info;
 }
 
-VkPipelineRasterizationStateCreateInfo vkinit::rasterization_state_create_info(VkPolygonMode polygonMode)
+VkPipelineRasterizationStateCreateInfo vkinit::rasterization_state_create_info(const VkPolygonMode polygonMode)
 {
 	VkPipelineRasterizationStateCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -451,7 +446,7 @@ VkPipelineRasterizationStateCreateInfo vkinit::rasterization_state_create_info(V
 
 VkPipelineMultisampleStateCreateInfo vkinit::multisampling_state_create_info()
 {
-	VkPipelineMultisampleStateCreateInfo info {
+	constexpr VkPipelineMultisampleStateCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
 		.sampleShadingEnable = VK_FALSE,
@@ -462,7 +457,7 @@ VkPipelineMultisampleStateCreateInfo vkinit::multisampling_state_create_info()
 
 VkPipelineColorBlendAttachmentState vkinit::color_blend_attachment_state()
 {
-	VkPipelineColorBlendAttachmentState info {
+	constexpr VkPipelineColorBlendAttachmentState info {
 		.blendEnable = VK_FALSE,
 		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
 						  VK_COLOR_COMPONENT_G_BIT |
@@ -473,9 +468,9 @@ VkPipelineColorBlendAttachmentState vkinit::color_blend_attachment_state()
 	return info;
 }
 
-VkPipelineDepthStencilStateCreateInfo vkinit::depth_stencil_create_info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp)
+VkPipelineDepthStencilStateCreateInfo vkinit::depth_stencil_create_info(const bool bDepthTest, const bool bDepthWrite, const VkCompareOp compareOp)
 {
-	VkPipelineDepthStencilStateCreateInfo info {
+	const VkPipelineDepthStencilStateCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 		.depthTestEnable = bDepthTest ? VK_TRUE : VK_FALSE,
 		.depthWriteEnable = bDepthWrite ? VK_TRUE : VK_FALSE,

@@ -20,11 +20,10 @@
 #include <imgui/backends/imgui_impl_sdl3.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 
-#include "error.h"
+#include "failure.h"
 
 #include "defines.h"
 #include "initializers.h"
-//#include "loadedgltf.h"
 #include "utils.h"
 #include "pipelinebuilder.h"
 #include "vma.h"
@@ -48,7 +47,7 @@ Engine &Engine::get()
 	return *loadedEngine;
 }
 
-AllocatedBuffer Engine::createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
+AllocatedBuffer Engine::createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage)
 {
 	LOGFN();
 
@@ -138,10 +137,8 @@ void Engine::initVulkan()
 {
 	LOGFN();
 
-	vkb::InstanceBuilder builder {};
-
 	//make the Vulkan instance, with basic debug features
-	const auto instRet = builder
+	const auto instRet = vkb::InstanceBuilder()
 		.set_app_name("Example Vulkan Application")
 		.request_validation_layers(bUseValidationLayers)
 		.require_api_version(1, 3, 0) // We use Vulkan API 1.3, nothing from earlier versions.
@@ -174,8 +171,7 @@ void Engine::initVulkan()
 
 	//use vkbootstrap to select a GPU.
 	//We want a GPU that can write to the SDL surface and supports Vulkan 1.3
-	vkb::PhysicalDeviceSelector selector(vkb_inst);
-	const vkb::PhysicalDevice physicalDevice = selector
+	const vkb::PhysicalDevice physicalDevice = vkb::PhysicalDeviceSelector(vkb_inst)
 		.set_minimum_version(1, 3)  // We run on Vulkan 1.3+
 		.set_required_features_13(features13)
 		.set_surface(surface)
@@ -188,9 +184,7 @@ void Engine::initVulkan()
 	};
 
 	//create the final Vulkan device
-	vkb::DeviceBuilder deviceBuilder(physicalDevice);
-
-	const vkb::Device vkbDevice = deviceBuilder
+	const vkb::Device vkbDevice = vkb::DeviceBuilder(physicalDevice)
 		.add_pNext(&bufferDeviceAddressFeatures)
 		.build()
 		.value();
@@ -225,6 +219,7 @@ void Engine::initVMA()
 		.instance = instance,
 		.vulkanApiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0),
 	};
+
 	VK_CHECK(vmaCreateAllocator(&allocatorInfo, &allocator));
 	if (allocator == VK_NULL_HANDLE) {
 		throw new Failure(FailureType::VMAInitialisation);
@@ -398,7 +393,7 @@ void Engine::initDescriptors()
 	LOGFN();
 
 	//create a descriptor pool that will hold 10 sets with 1 image each
-	constexpr DescriptorAllocatorGrowable::PoolSizeRatio sizes[] = {
+	constexpr DescriptorAllocatorGrowable::PoolSizeRatio sizes[] {
 		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
 		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
 	};
@@ -486,34 +481,6 @@ void Engine::initMeshPipeline()
 {
 	LOGFN();
 
-	/*VkShaderModule triangleFragShader;
-	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle.frag.spv", device, triangleFragShader)) {
-		fmt::print("Error when building the triangle fragment shader module");
-	} else {
-		fmt::print("Triangle fragment shader succesfully loaded\n");
-	}
-
-	VkShaderModule triangleVertexShader;
-	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/colored_triangle_mesh.vert.spv", device, triangleVertexShader)) {
-		fmt::print("Error when building the triangle vertex shader module\n");
-	} else {
-		fmt::print("Triangle vertex shader succesfully loaded\n");
-	}
-
-	const VkPushConstantRange bufferRange {
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		.offset = 0,
-		.size = sizeof(GPUDrawPushConstants),
-	};
-
-	VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
-	pipeline_layout_info.pPushConstantRanges = &bufferRange;
-	pipeline_layout_info.pushConstantRangeCount = 1;*/
-
-
-	/**/
-
-
 	VkShaderModule triangleFragShader = VK_NULL_HANDLE;
 	if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/tex_image.frag.spv", device, triangleFragShader)) {
 		throw new Failure(FailureType::FragmentShader, "Triangle");
@@ -541,7 +508,7 @@ void Engine::initMeshPipeline()
 		throw new Failure(FailureType::VkPipelineLayoutCreation);
 	}
 
-	PipelineBuilder pipelineBuilder;
+	PipelineBuilder pipelineBuilder {};
 	//use the triangle layout we created
 	pipelineBuilder.pipelineLayout = meshPipelineLayout;
 	//connecting the vertex and pixel shaders to the pipeline
@@ -551,7 +518,8 @@ void Engine::initMeshPipeline()
 	//filled triangles
 	pipelineBuilder.setPolygonMode(VK_POLYGON_MODE_FILL);
 	//no backface culling
-	pipelineBuilder.setCullMode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+	pipelineBuilder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+	//pipelineBuilder.setCullMode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 	//no multisampling
 	pipelineBuilder.setMultisamplingNone();
 	//no blending
@@ -644,7 +612,7 @@ void Engine::initImgui()
 	// 1: create descriptor pool for IMGUI
 	//  the size of the pool is very oversize, but it's copied from imgui demo
 	//  itself.
-	constexpr VkDescriptorPoolSize pool_sizes[] = {
+	constexpr VkDescriptorPoolSize pool_sizes[] {
 		{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
 		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
 		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
@@ -733,7 +701,7 @@ void Engine::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&functio
 	VK_CHECK(vkResetFences(device, 1, &immFence));
 	VK_CHECK(vkResetCommandBuffer(immCommandBuffer, 0));
 
-	VkCommandBuffer cmd = immCommandBuffer;
+	const VkCommandBuffer cmd = immCommandBuffer;
 
 	const VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -743,8 +711,8 @@ void Engine::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&functio
 
 	VK_CHECK(vkEndCommandBuffer(cmd));
 
-	VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
-	const VkSubmitInfo2 submit = vkinit::submit_info(&cmdinfo, nullptr, nullptr);
+	const VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
+	const VkSubmitInfo2 submit = vkinit::submit_info(cmdinfo, nullptr, nullptr);
 
 	// submit command buffer to the queue and execute it.
 	//  _renderFence will now block until the graphic commands finish execution
@@ -903,8 +871,6 @@ void Engine::run()
 
 void Engine::draw()
 {
-	LOGFN();
-
 	auto &currFrame = getCurrentFrame();
 
 	assert(currFrame.renderFence != VK_NULL_HANDLE);
@@ -930,7 +896,7 @@ void Engine::draw()
 	VK_CHECK(vkResetFences(device, 1, &currFrame.renderFence));
 
 	//naming it cmd for shorter writing
-	VkCommandBuffer cmd = currFrame.mainCommandBuffer;
+	const VkCommandBuffer cmd = currFrame.mainCommandBuffer;
 	assert(cmd != VK_NULL_HANDLE);
 
 	// now that we are sure that the commands finished executing, we can safely
@@ -941,7 +907,7 @@ void Engine::draw()
 	drawExtent.width = std::min(swapchainExtent.width, drawImage.imageExtent.width) * renderScale;
 
 	//begin the command buffer recording. We will use this command buffer exactly once, so we want to let vulkan know that
-	VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	const VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 
 	VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
@@ -978,12 +944,12 @@ void Engine::draw()
 	//we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
 	//we will signal the _renderSemaphore, to signal that rendering has finished
 
-	VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
+	const VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
 
-	VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currFrame.swapchainSemaphore);
-	VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame.renderSemaphore);
+	const VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currFrame.swapchainSemaphore);
+	const VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame.renderSemaphore);
 
-	const VkSubmitInfo2 submit = vkinit::submit_info(&cmdinfo, &signalInfo, &waitInfo);
+	const VkSubmitInfo2 submit = vkinit::submit_info(cmdinfo, &signalInfo, &waitInfo);
 
 	//submit command buffer to the queue and execute it.
 	// _renderFence will now block until the graphic commands finish execution
@@ -1015,8 +981,6 @@ void Engine::draw()
 
 void Engine::drawBackground(VkCommandBuffer cmd)
 {
-	LOGFN();
-
 	assert(cmd != VK_NULL_HANDLE);
 
 	//make a clear-color from frame number. This will flash with a 120 frame period.
@@ -1027,21 +991,10 @@ void Engine::drawBackground(VkCommandBuffer cmd)
 
 	//clear image
 	vkCmdClearColorImage(cmd, drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
-
-	/*/ bind the gradient drawing compute pipeline
-	//vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientPipeline);
-
-	// bind the descriptor set containing the draw image for the compute pipeline
-	//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientPipelineLayout, 0, 1, &drawImageDescriptors, 0, nullptr);
-
-	// execute the compute pipeline dispatch. We are using 16x16 workgroup size so we need to divide by it
-	//vkCmdDispatch(cmd, std::ceil(drawExtent.width / 16.0), std::ceil(drawExtent.height / 16.0), 1);*/
 }
 
 void Engine::drawImgui(VkCommandBuffer cmd, VkImageView targetImageView)
 {
-	LOGFN();
-
 	assert(cmd != VK_NULL_HANDLE);
 	assert(targetImageView != VK_NULL_HANDLE);
 
@@ -1060,13 +1013,11 @@ const auto startTime = std::chrono::high_resolution_clock::now();
 
 void Engine::drawGeometry(VkCommandBuffer cmd)
 {
-	LOGFN();
-
 	assert(cmd != VK_NULL_HANDLE);
 
 	//begin a render pass  connected to our draw image
-	VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+	const VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	const VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
 	const VkRenderingInfo renderInfo = vkinit::rendering_info(windowExtent, &colorAttachment, &depthAttachment);
 
@@ -1226,13 +1177,8 @@ void Engine::initDefaultData()
 
 	//3 default textures, white, grey, black. 1 pixel each
 	const uint32_t white = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
-	whiteImage = createImage(reinterpret_cast<const void *>(&white), VkExtent3D{ 1, 1, 1 }, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
-
-	const uint32_t grey = glm::packUnorm4x8(glm::vec4(0.66f, 0.66f, 0.66f, 1.f));
-	greyImage = createImage(reinterpret_cast<const void *>(&grey), VkExtent3D{ 1, 1, 1 }, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
-
 	const uint32_t black = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
-	blackImage = createImage(reinterpret_cast<const void *>(&black), VkExtent3D{ 1, 1, 1 }, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+	whiteImage = createImage(reinterpret_cast<const void *>(&white), VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	//checkerboard image
 	const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
@@ -1267,8 +1213,6 @@ void Engine::initDefaultData()
 		vkDestroySampler(device, defaultSamplerLinear, nullptr);
 
 		destroyImage(whiteImage);
-		destroyImage(greyImage);
-		destroyImage(blackImage);
 		destroyImage(errorCheckerboardImage);
 	});
 
@@ -1299,7 +1243,7 @@ void Engine::initDefaultData()
 	defaultData = metalRoughMaterial.writeMaterial(device, MaterialPass::MainColor, materialResources, globalDescriptorAllocator);
 }
 
-void Engine::createSwapchain(uint32_t w, uint32_t h)
+void Engine::createSwapchain(const uint32_t w, const uint32_t h)
 {
 	LOGFN();
 
@@ -1471,45 +1415,36 @@ void Engine::destroyImage(const AllocatedImage &img)
 
 void Engine::generateMeshes()
 {
-	std::vector<uint32_t> indices {};
-	indices.resize(6);
-	std::vector<Vertex> vertices {};
-	vertices.resize(4);
-
-	indices[0] = 0;
-	indices[1] = 1;
-	indices[2] = 3;
-	indices[3] = 0;
-	indices[4] = 3;
-	indices[5] = 2;
-
-	vertices[0] = {
-		.position = {0.f, 0.f, 0.f},
-		.uv_x = 0.f,
-		.normal = {0.f, 0.f, 1.f},
-		.uv_y = 0.f,
-		.color = glm::vec4(0.f, 1.f, 0.f, 1.f),
-	};
-	vertices[1] = {
-		.position = {0.f, 1.f, 0.f},
-		.uv_x = 0.f,
-		.normal = {0.f, 0.f, 1.f},
-		.uv_y = 1.f,
-		.color = glm::vec4(1.f, 0.f, 0.f, 1.f),
-	};
-	vertices[2] = {
-		.position = {1.f, 0.f, 0.f},
-		.uv_x = 1.f,
-		.normal = {0.f, 0.f, 1.f},
-		.uv_y = 0.f,
-		.color = glm::vec4(0.f, 0.f, 1.f, 1.f),
-	};
-	vertices[3] = {
-		.position = {1.f, 1.f, 0.f},
-		.uv_x = 1.f,
-		.normal = {0.f, 0.f, 1.f},
-		.uv_y = 1.f,
-		.color = glm::vec4(1.f, 1.f, 0.f, 1.f),
+	const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
+	const std::vector<Vertex> vertices {
+		{
+			.position = {0.f, 0.f, 0.f},
+			.uv_x = 0.f,
+			.normal = {0.f, 0.f, 1.f},
+			.uv_y = 0.f,
+			.color = glm::vec4(0.f, 1.f, 0.f, 1.f),
+		},
+		{
+			.position = {0.f, 1.f, 0.f},
+			.uv_x = 0.f,
+			.normal = {0.f, 0.f, 1.f},
+			.uv_y = 1.f,
+			.color = glm::vec4(1.f, 0.f, 0.f, 1.f),
+		},
+		{
+			.position = {1.f, 0.f, 0.f},
+			.uv_x = 1.f,
+			.normal = {0.f, 0.f, 1.f},
+			.uv_y = 0.f,
+			.color = glm::vec4(0.f, 0.f, 1.f, 1.f),
+		},
+		{
+			.position = {1.f, 1.f, 0.f},
+			.uv_x = 1.f,
+			.normal = {0.f, 0.f, 1.f},
+			.uv_y = 1.f,
+			.color = glm::vec4(1.f, 1.f, 0.f, 1.f),
+		},
 	};
 
 	meshBuffers = uploadMesh(indices, vertices);
