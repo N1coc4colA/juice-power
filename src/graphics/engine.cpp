@@ -463,8 +463,6 @@ void Engine::initDescriptors()
 		vkDestroyDescriptorSetLayout(device, gpuSceneDataDescriptorLayout, nullptr);
 		vkDestroyDescriptorSetLayout(device, singleImageDescriptorLayout, nullptr);
 	});
-
-	metalRoughMaterial.buildPipelines(*this);
 }
 
 void Engine::initPipelines()
@@ -473,8 +471,6 @@ void Engine::initPipelines()
 
 	initBackgroundPipelines();
 	initMeshPipeline();
-
-	metalRoughMaterial.buildPipelines(*this);
 }
 
 void Engine::initMeshPipeline()
@@ -735,20 +731,12 @@ void Engine::cleanup()
 			vkDestroyCommandPool(device, frames[i].commandPool, nullptr);
 		}
 		for (int i = 0; i < FRAME_OVERLAP; i++) {
-			//already written from before
-			vkDestroyCommandPool(device, frames[i].commandPool, nullptr);
-
 			//destroy sync objects
 			vkDestroyFence(device, frames[i].renderFence, nullptr);
 			vkDestroySemaphore(device, frames[i].renderSemaphore, nullptr);
 			vkDestroySemaphore(device, frames[i].swapchainSemaphore, nullptr);
 
 			frames[i].deletionQueue.flush();
-
-			frames[i].commandPool = VK_NULL_HANDLE;
-			frames[i].renderFence = VK_NULL_HANDLE;
-			frames[i].renderSemaphore = VK_NULL_HANDLE;
-			frames[i].swapchainSemaphore = VK_NULL_HANDLE;
 		}
 
 		//flush the global deletion queue
@@ -1215,32 +1203,6 @@ void Engine::initDefaultData()
 		destroyImage(whiteImage);
 		destroyImage(errorCheckerboardImage);
 	});
-
-	GLTFMetallic_Roughness::MaterialResources materialResources {
-		//default the material textures
-		.colorImage = whiteImage,
-		.colorSampler = defaultSamplerLinear,
-		.metalRoughImage = whiteImage,
-		.metalRoughSampler = defaultSamplerLinear,
-	};
-
-	//set the uniform buffer for the material data
-	const AllocatedBuffer materialConstants = createBuffer(sizeof(GLTFMetallic_Roughness::MaterialConstants), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-	//write the buffer
-	GLTFMetallic_Roughness::MaterialConstants *sceneUniformData = reinterpret_cast<GLTFMetallic_Roughness::MaterialConstants *>(get_mapped_data(materialConstants.allocation));
-	assert(sceneUniformData != nullptr);
-	sceneUniformData->colorFactors = glm::vec4{1.f, 1.f, 1.f, 1.f};
-	sceneUniformData->metalRoughFactors = glm::vec4{1.f, 0.5f, 0.f, 0.f};
-
-	mainDeletionQueue.push_function([=, this]() {
-		destroyBuffer(materialConstants);
-	});
-
-	materialResources.dataBuffer = materialConstants.buffer;
-	materialResources.dataBufferOffset = 0;
-
-	defaultData = metalRoughMaterial.writeMaterial(device, MaterialPass::MainColor, materialResources, globalDescriptorAllocator);
 }
 
 void Engine::createSwapchain(const uint32_t w, const uint32_t h)

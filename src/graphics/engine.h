@@ -10,7 +10,6 @@
 
 #include "allocatedimage.h"
 #include "descriptors.h"
-#include "material.h"
 #include "structs.h"
 #include "types.h"
 
@@ -139,9 +138,6 @@ private:
 	VkSampler defaultSamplerNearest = VK_NULL_HANDLE;
 	VkDescriptorSetLayout singleImageDescriptorLayout = VK_NULL_HANDLE;
 
-	MaterialInstance defaultData {};
-	GLTFMetallic_Roughness metalRoughMaterial {};
-
 	/* Direct rendering */
 
 	VkFence immFence = VK_NULL_HANDLE;
@@ -157,8 +153,6 @@ private:
 
 	GPUSceneData sceneData {};
 	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
-
-	friend struct ::GLTFMetallic_Roughness;
 };
 
 }
