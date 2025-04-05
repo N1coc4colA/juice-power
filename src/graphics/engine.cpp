@@ -41,6 +41,21 @@ namespace Graphics
 Engine *loadedEngine = nullptr;
 
 
+constexpr glm::mat4 createOrthographicProjection(const float left, const float right, const float bottom, const float top)
+{
+	const float h = (top - bottom);
+	const float w = (right - left);
+
+	glm::mat4 projection = glm::mat4(1.f);
+	projection[0][0] = 2.f / w;
+	projection[1][1] = 2.f / h;
+	projection[2][2] = 1.f;  // Z for layer ordering
+
+	projection[3][0] = -(right + left) / (right - left);
+	projection[3][1] = -(top + bottom) / (top - bottom);
+
+	return projection;
+}
 
 Engine &Engine::get()
 {
@@ -1030,37 +1045,9 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 		},
 	};
 
-	// Custom impl to show it nicely
-	// Calculate the elapsed time in seconds
-	const auto currentTime = std::chrono::high_resolution_clock::now();
-	const float time = std::chrono::duration<float>(currentTime - startTime).count();
-
-	// Define the rotation angle over time
-	const float angle = glm::radians(90.0f) * time; // Rotates 90 degrees per second
-
-	// Rotation matrix around the Y-axis
-	const glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
-
-	// Translation matrix to move the object back over time
-	const glm::mat4 backTranslation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f - time));
-
-	// Combine the transformations
-	const glm::mat4 worldMatrix = backTranslation * rotation;
-
-	// Calculate the view and projection matrices
-	const glm::mat4 view = glm::translate(glm::mat4(1.f), glm::vec3(0.0f, 0.0f, -5.0f));
-	glm::mat4 projection = glm::perspective(
-		glm::radians(70.0f),
-		static_cast<float>(drawExtent.width) / static_cast<float>(drawExtent.height),
-		0.1f, 10000.0f
-		);
-
-	// Invert the Y direction of the projection matrix for OpenGL compatibility
-	projection[1][1] *= -1.0f;
-
 	// Push constants with the animated world matrix
 	const GPUDrawPushConstants push_constants {
-		.worldMatrix = projection * view * worldMatrix,
+		.worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f),
 		.vertexBuffer = meshBuffers.vertexBufferAddress,
 	};
 
@@ -1075,7 +1062,6 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 		DescriptorWriter writer;
 
 		writer.writeImage(0, errorCheckerboardImage.imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
 		writer.updateSet(device, imageSet);
 	}
 	assert(imageSet != VK_NULL_HANDLE);
