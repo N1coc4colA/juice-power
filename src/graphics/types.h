@@ -17,6 +17,10 @@ struct MeshPushConstants
 	glm::mat4 render_matrix {};
 };
 
+/**
+ * @brief Push constants for compute shader operations
+ * @note Contains four vec4 for flexible compute shader parameter passing
+ */
 struct ComputePushConstants
 {
 	glm::vec4 data1 {};
@@ -35,10 +39,16 @@ struct ComputeEffect
 	ComputePushConstants data {};
 };
 
+/// @brief Vulkan buffer with VMA memory backing
 struct AllocatedBuffer
 {
+	/// @brief Vulkan buffer handle
 	VkBuffer buffer = VK_NULL_HANDLE;
+
+	/// @brief VMA allocation handle
 	VmaAllocation allocation = VK_NULL_HANDLE;
+
+	/// @brief Allocation metadata
 	VmaAllocationInfo info {.deviceMemory = VK_NULL_HANDLE};
 };
 
@@ -51,6 +61,9 @@ struct EngineStats
 	float meshDrawTime = 0.f;
 };
 
+/**
+ * @brief Vertex format for mesh rendering
+ */
 struct Vertex
 {
 	glm::vec3 position {};
@@ -60,7 +73,7 @@ struct Vertex
 	glm::vec4 color {};
 };
 
-// holds the resources needed for a mesh
+/// @brief GPU resources for a mesh
 struct GPUMeshBuffers
 {
 	AllocatedBuffer indexBuffer {};
@@ -68,7 +81,7 @@ struct GPUMeshBuffers
 	VkDeviceAddress vertexBufferAddress = 0;
 };
 
-// push constants for our mesh object draws
+/// @brief Push constants for indirect mesh drawing
 struct GPUDrawPushConstants
 {
 	glm::mat4 worldMatrix {};

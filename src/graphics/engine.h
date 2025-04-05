@@ -23,17 +23,33 @@ namespace Graphics
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
+/**
+ * @brief Class responsible of rendering.
+ *
+ * @warning Any allocation & deletion of resources must be called sync to GPU work.
+ *
+ **/
 class Engine
 {
 public:
+	/// @brief Returns the global engine instance.
 	static Engine &get();
 
 	Scene *scene = nullptr;
 
+	/// @brief Inits the engine & related libs
 	void init();
+	/// @brief Runs the main rendering loop
 	void run();
+	/// @brief Stops the engine, cleans the resources & notifies related libs.
 	void cleanup();
 
+	/**
+	 * @brief Uploads mesh data to GPU memory
+	 * @param indices Index data span
+	 * @param vertices Vertex data span (must match Vertex struct layout)
+	 * @return GPUMeshBuffers containing uploaded GPU resources
+	 */
 	GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
 
 protected:
@@ -65,13 +81,64 @@ private:
 		return frames[frameNumber % FRAME_OVERLAP];
 	};
 
+	/**
+	 * @brief Creates an empty GPU image
+	 * @param size Image dimensions in pixels (width, height, depth)
+	 * @param format Vulkan format
+	 * @param usage Combination of VkImageUsageFlagBits
+	 * @param mipmapped Whether to allocate full mip chain
+	 * @return Allocated image with image view
+	 *
+	 * @note Always allocates as GPU-only device-local memory
+	 * @note Automatically handles depth format aspect flags
+	 */
 	AllocatedImage createImage(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+
+	/**
+	 * @brief Creates and initializes a GPU image with pixel data
+	 * @param data Pointer to raw pixel data (must match format/size)
+	 * @param size Image dimensions in pixels
+	 * @param format Vulkan format for the image
+	 * @param usage Combination of VkImageUsageFlagBits
+	 * @param mipmapped Whether to generate full mip chain
+	 * @return Fully initialized image ready for shader access
+	 * @throws Failure on allocation or transfer failure
+	 *
+	 * @note Automatically handles:
+	 *	   - Staging buffer creation/copy
+	 *	   - Layout transitions
+	 *	   - Mipmap generation (if enabled)
+	 */
 	AllocatedImage createImage(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+
+	/**
+	 * @brief Destroys image resources
+	 * @param img Image to destroy (must not be in use by GPU)
+	 *
+	 * @note Automatically destroys both image and image view
+	 */
 	void destroyImage(const AllocatedImage &img);
 
+	/**
+	 * @brief Creates a GPU buffer
+	 * @param allocSize Size in bytes (must be > 0)
+	 * @param usage Combination of VkBufferUsageFlagBits
+	 * @param memoryUsage VMA memory usage type
+	 * @return Fully allocated buffer
+	 *
+	 * @note Creates with VMA_ALLOCATION_CREATE_MAPPED_BIT by default
+	 */
 	AllocatedBuffer createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
+
+	/**
+	 * @brief Destroys buffer resources
+	 * @param buffer Buffer to destroy (must not be in use by GPU)
+	 *
+	 * @warning Must ensure GPU work is complete before calling
+	 */
 	void destroyBuffer(const AllocatedBuffer &buffer);
 
+	/// @brief Generates ASAP exec of a drawing function, synced with GPU.
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
 	/* General */
