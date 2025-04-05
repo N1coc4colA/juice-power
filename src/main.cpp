@@ -2,9 +2,9 @@
 
 //#include "vk/engine.h"
 
-#include "graphics/chunk.h"
+#include "world/chunk.h"
 #include "graphics/resources.h"
-#include "graphics/scene.h"
+#include "world/scene.h"
 
 #include "graphics/engine.h"
 

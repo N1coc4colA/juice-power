@@ -1,7 +1,7 @@
 #ifndef GRAPHICS_SCENE_H
 #define GRAPHICS_SCENE_H
 
-#include "resources.h"
+#include "../graphics/resources.h"
 #include "chunk.h"
 
 
