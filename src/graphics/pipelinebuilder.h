@@ -6,6 +6,9 @@
 #include <vulkan/vulkan.h>
 
 
+namespace Graphics
+{
+
 class PipelineBuilder
 {
 public:
@@ -42,6 +45,9 @@ public:
 	void enableBlendingAdditive();
 	void enableBlendingAlphablend();
 };
+
+
+}
 
 
 #endif // PIPELINEBUILDER_H

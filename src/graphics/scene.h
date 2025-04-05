@@ -13,8 +13,8 @@ class Scene
 public:
 	Resources &res;
 	std::vector<Chunk> chunks {};
-	std::vector<Mesh> meshes {};
 };
+
 
 }
 

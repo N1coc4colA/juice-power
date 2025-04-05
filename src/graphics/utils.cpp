@@ -8,7 +8,7 @@
 #include "initializers.h"
 
 
-namespace vkutil
+namespace Graphics::vkutil
 {
 
 void transition_image(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout)

@@ -8,6 +8,10 @@
 #include <vulkan/vulkan.h>
 
 
+namespace Graphics
+{
+
+
 struct DescriptorLayoutBuilder
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings {};
@@ -73,6 +77,9 @@ private:
 	std::vector<VkDescriptorPool> readyPools {};
 	uint32_t setsPerPool = -1;
 };
+
+
+}
 
 
 #endif // GRAPHICS_DESCRIPTORS_H

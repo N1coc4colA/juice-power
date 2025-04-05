@@ -3,6 +3,9 @@
 #include <cassert>
 
 
+namespace Graphics
+{
+
 DescriptorBuilder DescriptorBuilder::begin(DescriptorAllocatorGrowable *allocator, VkDescriptorSetLayout layout)
 {
 	DescriptorBuilder builder {};
@@ -75,4 +78,7 @@ bool DescriptorBuilder::build(VkDevice device, VkDescriptorSet &set)
 	}
 
 	return true;
+}
+
+
 }

@@ -7,6 +7,9 @@
 #include "initializers.h"
 
 
+namespace Graphics
+{
+
 void PipelineBuilder::clear()
 {
 	// clear all of the structs we need back to 0 with their correct stype
@@ -237,4 +240,7 @@ void PipelineBuilder::enableBlendingAlphablend()
 	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+}
+
+
 }

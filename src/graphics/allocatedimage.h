@@ -6,6 +6,9 @@
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 
+namespace Graphics
+{
+
 struct AllocatedImage
 {
 	VkImage image = VK_NULL_HANDLE;
@@ -14,6 +17,9 @@ struct AllocatedImage
 	VkExtent3D imageExtent = {0, 0, 0};
 	VkFormat imageFormat = VK_FORMAT_MAX_ENUM;
 };
+
+
+}
 
 
 #endif // GRAPHICS_ALLOCATEDIMAGE_H

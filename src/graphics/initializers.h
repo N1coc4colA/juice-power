@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.h>
 
 
-namespace vkinit
+namespace Graphics::vkinit
 {
 
 VkCommandPoolCreateInfo command_pool_create_info(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags = 0);
@@ -49,7 +49,8 @@ VkPipelineRasterizationStateCreateInfo rasterization_state_create_info(const VkP
 VkPipelineInputAssemblyStateCreateInfo input_assembly_create_info(const VkPrimitiveTopology topology);
 VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info();
 
-};
+
+}
 
 
 #endif // GRAPHICS_INITIALIZERS_H

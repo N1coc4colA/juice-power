@@ -1,6 +1,9 @@
 #include "structs.h"
 
 
+namespace Graphics
+{
+
 void DeletionQueue::flush()
 {
 	// reverse iterate the deletion queue to execute all the functions
@@ -10,4 +13,7 @@ void DeletionQueue::flush()
 	}
 
 	deletors.clear();
+}
+
+
 }

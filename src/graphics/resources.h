@@ -16,26 +16,6 @@ namespace Graphics
 class Engine;
 
 
-struct Vertex
-{
-	glm::vec3 position {};
-	glm::vec3 color {};
-	glm::vec2 uv {};
-};
-
-struct Texture {
-	AllocatedImage image;
-	VkImageView imageView;
-	VkSampler sampler;
-};
-
-struct Mesh {
-	AllocatedBuffer vertexBuffer;
-	AllocatedBuffer indexBuffer;
-	uint32_t indexCount;
-	Texture texture;
-};
-
 class Resources
 {
 public:
@@ -70,6 +50,7 @@ public:
 
 	void build(Engine &engine);
 };
+
 
 }
 

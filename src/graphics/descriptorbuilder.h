@@ -4,10 +4,13 @@
 #include "descriptors.h"
 
 
+namespace Graphics
+{
+
 class DescriptorBuilder
 {
 public:
-	static DescriptorBuilder begin(DescriptorAllocatorGrowable* allocator, VkDescriptorSetLayout layout);
+	static DescriptorBuilder begin(DescriptorAllocatorGrowable *allocator, VkDescriptorSetLayout layout);
 	DescriptorBuilder &bindImage(const uint32_t binding, VkImageView imageView, VkSampler sampler, const VkImageLayout layout, const VkDescriptorType type);
 	bool build(VkDevice device, VkDescriptorSet &set);
 
@@ -16,6 +19,9 @@ private:
 	DescriptorAllocatorGrowable *currentAllocator = nullptr;
 	VkDescriptorSetLayout currentLayout = VK_NULL_HANDLE;
 };
+
+
+}
 
 
 #endif // GRAPHICS_DESCRIPTORBUILDER_H

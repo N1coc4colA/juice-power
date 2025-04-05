@@ -7,6 +7,9 @@
 #include "defines.h"
 
 
+namespace Graphics
+{
+
 void DescriptorLayoutBuilder::addBinding(const uint32_t binding, const VkDescriptorType type)
 {
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
@@ -298,4 +301,7 @@ VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, const VkD
 
 	readyPools.push_back(poolToUse);
 	return ds;
+}
+
+
 }

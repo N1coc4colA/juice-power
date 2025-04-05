@@ -8,6 +8,9 @@
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 
+namespace Graphics
+{
+
 struct MeshPushConstants
 {
 	glm::vec4 data {};
@@ -81,6 +84,9 @@ struct GPUSceneData
 	glm::vec4 sunlightDirection {}; // w for sun power
 	glm::vec4 sunlightColor {};
 };
+
+
+}
 
 
 #endif // GRAPHICS_TYPES_H

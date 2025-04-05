@@ -155,6 +155,7 @@ private:
 	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
 };
 
+
 }
 
 

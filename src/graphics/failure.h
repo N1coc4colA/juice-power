@@ -5,8 +5,8 @@
 #include <string>
 
 
-namespace Graphics {
-
+namespace Graphics
+{
 
 enum FailureType
 {

@@ -9,6 +9,9 @@
 #include "descriptors.h"
 
 
+namespace Graphics
+{
+
 struct DeletionQueue
 {
 	std::deque<std::function<void()>> deletors {};
@@ -33,6 +36,9 @@ struct FrameData
 	DeletionQueue deletionQueue {};
 	DescriptorAllocatorGrowable frameDescriptors {};
 };
+
+
+}
 
 
 #endif // GRAPHICS_STRUCTS_H
