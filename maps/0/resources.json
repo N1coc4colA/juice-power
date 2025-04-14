@@ -1,0 +1,16 @@
+[
+    {
+        "name": "tri",
+        "w": 1.0,
+        "h": 1.0,
+        "source": "tritest.jpg",
+        "type": 0
+    },
+    {
+        "name": "col",
+        "w": 1.0,
+        "h": 1.0,
+        "source": "colored.png",
+        "type": 0
+    }
+]
