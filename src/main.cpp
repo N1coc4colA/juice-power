@@ -1,49 +1,34 @@
 #include <iostream>
 
+#include <magic_enum.hpp>
+
 //#include "vk/engine.h"
 
 #include "world/chunk.h"
 #include "graphics/resources.h"
 #include "world/scene.h"
+#include "loaders/map.h"
 
 #include "graphics/engine.h"
 
 
 int main(int argc, char **argv)
 {
-	/*std::vector<glm::vec3> geometry {};
-	geometry.push_back({1, 1, 0});
-	geometry.push_back({0, 1, 0});
-	geometry.push_back({0, 0, 0});
-	geometry.push_back({1, 1, 0});
-	geometry.push_back({0, 0, 0});
-	geometry.push_back({1, 0, 0});
-
-	Graphics::Resources res {};
-	res.geometries.push_back(geometry);
-	res.geometries.push_back(geometry);
-	res.types = 1;
-
-	Graphics::Chunk chunk {};
-	chunk.descriptions.push_back(0);
-	chunk.descriptions.push_back(0);
-	chunk.positions.push_back({0, 0, 6});
-	chunk.positions.push_back({0, 0, -6});
-	chunk.transforms.push_back(glm::mat4{1});
-	chunk.transforms.push_back(glm::mat4{1});
-
-	Graphics::Scene s {
-		.res = res
-	};
-	s.chunks.push_back(chunk);*/
-
 	//Engine engine {};
 	Graphics::Engine engine;
+	World::Scene scene;
 	//engine.scene = &s;
 	//res.build(engine);
 
 	engine.init();
 	//engine.loadScene();
+
+	Loaders::Map mapLoader("/home/nicolas/Documents/projects/juice-power/maps/0");
+	const auto error = mapLoader.load(engine, scene);
+	if (error != Loaders::Status::Ok) {
+		std::cout << "Erreur: " << magic_enum::enum_name(error) << std::endl;
+		return 0;
+	}
 
 	engine.run();
 

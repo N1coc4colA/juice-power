@@ -20,33 +20,28 @@ class Resources
 {
 public:
 	/* Objects' Descriptions */
+	using Vertices = union { Vertex data[4]; };
 
-	/**
-	 * @brief Paths for the images to use.
-	 */
-	std::vector<std::string> imagePaths {};
-
-	/**
-	 * @brief Vertices for each element.
-	 */
-	std::vector<Vertex[4]> vertices {};
+	/// @brief Vertices for each element.
+	std::vector<Vertices> vertices {};
 
 	/**
 	 * @brief Surfaces of the different models.
-	 * Used only for physics.
+	 * @note Used by the physics engine, never used in graphics.
 	 */
 	std::vector<std::vector<glm::vec4>> surfaces {};
 
-	/**
-	 * @brief Images of the different models.
-	 */
+	/// @brief Images of the different models.
 	std::vector<AllocatedImage> images {};
 
 	/**
 	 * @brief Types of the models.
-	 * Used by the physics engine, never used in graphics.
+	 * @note Used by the physics engine, never used in graphics.
 	 */
 	std::vector<uint32_t> types {};
+
+	/// @brief Mesh buffers for vertices.
+	GPUMeshBuffers meshBuffers {};
 
 	void build(Engine &engine);
 };

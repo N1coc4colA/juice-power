@@ -17,11 +17,19 @@
 class Scene;
 struct SDL_Window;
 
+namespace Loaders
+{
+class Map;
+}
+
 
 namespace Graphics
 {
 
+class Resources;
+
 constexpr unsigned int FRAME_OVERLAP = 2;
+
 
 /**
  * @brief Class responsible of rendering.
@@ -220,6 +228,9 @@ private:
 
 	GPUSceneData sceneData {};
 	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
+
+	friend class ::Loaders::Map;
+	friend class Resources;
 };
 
 

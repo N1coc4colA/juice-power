@@ -1,17 +1,17 @@
-#ifndef GRAPHICS_SCENE_H
-#define GRAPHICS_SCENE_H
+#ifndef WORLD_SCENE_H
+#define WORLD_SCENE_H
 
 #include "../graphics/resources.h"
 #include "chunk.h"
 
 
-namespace Graphics
+namespace World
 {
 
 class Scene
 {
 public:
-	Resources &res;
+	Graphics::Resources *res = nullptr;
 	std::vector<Chunk> chunks {};
 };
 
@@ -19,4 +19,4 @@ public:
 }
 
 
-#endif // GRAPHICS_SCENE_H
+#endif // WORLD_SCENE_H

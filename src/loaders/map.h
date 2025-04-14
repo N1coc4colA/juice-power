@@ -2,15 +2,18 @@
 #define LOADERS_MAP_H
 
 #include <string>
-#include <vector>
 
+
+namespace Graphics
+{
+class Resources;
+class Engine;
+}
 
 namespace World
 {
-class Resources;
-class Chunk;
+class Scene;
 }
-
 
 namespace Loaders
 {
@@ -18,6 +21,8 @@ namespace Loaders
 enum Status
 {
 	Ok,
+	OpenError,
+	NotDir,
 	MissingDirectory,
 	JsonError,
 	MissingJson,
@@ -36,10 +41,14 @@ class Map
 public:
 	explicit Map(const std::string &path);
 
-	Status load();
+	/**
+	 * @brief Loads the map & associated resources from path provided to ctor.
+	 * @return The error status (Status::Ok if no error happened).
+	 */
+	Status load(Graphics::Engine &engine, World::Scene &m_scene);
 
 private:
-	const std::string m_path;
+	const std::string m_path {};
 };
 
 

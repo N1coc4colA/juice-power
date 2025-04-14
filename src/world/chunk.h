@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 
 
-namespace Graphics
+namespace World
 {
 
 class Chunk
