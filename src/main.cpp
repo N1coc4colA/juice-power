@@ -30,6 +30,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	engine.setScene(scene);
 	engine.run();
 
 	engine.cleanup();

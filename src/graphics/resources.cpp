@@ -26,8 +26,11 @@ void Resources::build(Engine &engine)
 		indices.push_back(v+2);
 	}
 
-	// a Vertices is an array of Vertex, so it's ok to cast it directly.
-	meshBuffers = engine.uploadMesh(indices, std::span<Vertex>(reinterpret_cast<Vertex *>(vertices.data()), size*4));
+	{
+		// Vertices is an array of Vertex, so it's ok to cast it directly.
+		const auto span = std::span<Vertex>(reinterpret_cast<Vertex *>(vertices.data()), size*4);
+		meshBuffers = engine.uploadMesh(indices, span);
+	}
 
 	engine.mainDeletionQueue.push_function([&engine, this]() {
 		engine.destroyBuffer(meshBuffers.indexBuffer);

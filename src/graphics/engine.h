@@ -22,6 +22,11 @@ namespace Loaders
 class Map;
 }
 
+namespace World
+{
+class Scene;
+}
+
 
 namespace Graphics
 {
@@ -43,14 +48,14 @@ public:
 	/// @brief Returns the global engine instance.
 	static Engine &get();
 
-	Scene *scene = nullptr;
-
 	/// @brief Inits the engine & related libs
 	void init();
 	/// @brief Runs the main rendering loop
 	void run();
 	/// @brief Stops the engine, cleans the resources & notifies related libs.
 	void cleanup();
+
+	void setScene(World::Scene &scene);
 
 	/**
 	 * @brief Uploads mesh data to GPU memory
@@ -228,6 +233,7 @@ private:
 
 	GPUSceneData sceneData {};
 	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
+	World::Scene *m_scene = nullptr;
 
 	friend class ::Loaders::Map;
 	friend class Resources;

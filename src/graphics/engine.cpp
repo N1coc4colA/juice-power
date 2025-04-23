@@ -20,6 +20,8 @@
 #include <imgui/backends/imgui_impl_sdl3.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 
+#include "../world/scene.h"
+
 #include "failure.h"
 
 #include "defines.h"
@@ -1045,36 +1047,67 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 		},
 	};
 
-	// Push constants with the animated world matrix
-	const GPUDrawPushConstants push_constants {
-		.worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f),
-		.vertexBuffer = meshBuffers.vertexBufferAddress,
-	};
-
-
 	vkCmdBeginRendering(cmd, &renderInfo);
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline);
 
-	//bind a texture
-	VkDescriptorSet imageSet = getCurrentFrame().frameDescriptors.allocate(device, singleImageDescriptorLayout);
-	{
-		DescriptorWriter writer;
-
-		writer.writeImage(0, errorCheckerboardImage.imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-		writer.updateSet(device, imageSet);
-	}
-	assert(imageSet != VK_NULL_HANDLE);
-
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
-
 	vkCmdSetViewport(cmd, 0, 1, &viewport);
 	vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-	vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
-	vkCmdBindIndexBuffer(cmd, meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+	// Naive impl for now.
+	if (m_scene) {
+		const auto worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f);
 
-	vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+		GPUDrawPushConstants push_constants {
+			.vertexBuffer = m_scene->res->meshBuffers.vertexBufferAddress,
+		};
+
+		for (const auto &chunk : m_scene->chunks) {
+			const size_t size = chunk.descriptions.size();
+			for (auto i = 0; i < size; i++) {
+				push_constants.worldMatrix = glm::translate(worldMatrix, chunk.positions[i]) * chunk.transforms[i];
+
+				//bind the texture
+				VkDescriptorSet imageSet = getCurrentFrame().frameDescriptors.allocate(device, singleImageDescriptorLayout);
+				{
+					DescriptorWriter writer;
+
+					writer.writeImage(0, m_scene->res->images[chunk.descriptions[i]].imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+					writer.updateSet(device, imageSet);
+				}
+				assert(imageSet != VK_NULL_HANDLE);
+
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
+
+				vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
+				vkCmdBindIndexBuffer(cmd, m_scene->res->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+				vkCmdDrawIndexed(cmd, 6, 1, chunk.descriptions[i] * 6, 0, 0);
+			}
+		}
+	} else {
+		const GPUDrawPushConstants push_constants {
+			.worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f),
+			.vertexBuffer = meshBuffers.vertexBufferAddress,
+		};
+
+		//bind a texture
+		VkDescriptorSet imageSet = getCurrentFrame().frameDescriptors.allocate(device, singleImageDescriptorLayout);
+		{
+			DescriptorWriter writer;
+
+			writer.writeImage(0, errorCheckerboardImage.imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+			writer.updateSet(device, imageSet);
+		}
+		assert(imageSet != VK_NULL_HANDLE);
+
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
+
+		vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
+		vkCmdBindIndexBuffer(cmd, meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+	}
 
 	vkCmdEndRendering(cmd);
 }
@@ -1403,5 +1436,10 @@ void Engine::generateMeshes()
 	});
 }
 
+
+void Engine::setScene(World::Scene &scene)
+{
+	m_scene = &scene;
+}
 
 }

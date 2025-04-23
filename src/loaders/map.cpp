@@ -186,7 +186,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 	m_scene.res->types.reserve(resSize);
 	//m_scene.res->vertices.reserve(resSize);
 
-	const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
+	//const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
 
 	size_t i = 0;
 	for (const auto &res : map.resources) {
@@ -258,9 +258,12 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		const auto &c = map.chunks[i];
 		const auto count = c.size();
 
+		// At first, all objects have their usual transform matrix.
+		s.transforms = std::vector(count, glm::mat4{1.f});
+
+		// We fill it in later to avoid constructing and then change the data.
 		s.descriptions.reserve(count);
 		s.positions.reserve(count);
-		//s.transforms.reserve(count);
 
 		for (const auto &e : c) {
 			s.descriptions.push_back(e.type);
