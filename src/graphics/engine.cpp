@@ -785,25 +785,27 @@ void Engine::cleanup()
 	loadedEngine = nullptr;
 }
 
-void Engine::run()
+void Engine::run(std::function<void()> &&prepare, std::function<void()> &&update)
 {
 	LOGFN();
 
 	SDL_Event e;
 	bool bQuit = false;
 
+	prepare();
+
 	// main loop
 	while (!bQuit) {
 		//begin clock
-		const auto start = std::chrono::system_clock::now();
+		//const auto start = std::chrono::system_clock::now();
 
 		//everything else
 
 		//get clock again, compare with start clock
-		const auto end = std::chrono::system_clock::now();
+		//const auto end = std::chrono::system_clock::now();
 
 		//convert to microseconds (integer), and then come back to miliseconds
-		const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+		//const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 		//stats.frametime = elapsed.count() / 1000.f;
 
 		// Handle events on queue
@@ -864,6 +866,7 @@ void Engine::run()
 
 		ImGui::Render();
 
+		update();
 		//update_scene();
 
 		draw();
@@ -1062,7 +1065,7 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 			.vertexBuffer = m_scene->res->meshBuffers.vertexBufferAddress,
 		};
 
-		for (const auto &chunk : m_scene->chunks) {
+		for (const auto &chunk : m_scene->view) {
 			const size_t size = chunk.descriptions.size();
 			for (auto i = 0; i < size; i++) {
 				push_constants.worldMatrix = glm::translate(worldMatrix, chunk.positions[i]) * chunk.transforms[i];

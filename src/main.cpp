@@ -10,11 +10,13 @@
 #include "loaders/map.h"
 
 #include "graphics/engine.h"
+#include "physics/engine.h"
 
 
 int main(int argc, char **argv)
 {
 	//Engine engine {};
+	Physics::Engine pe;
 	Graphics::Engine engine;
 	World::Scene scene;
 	//engine.scene = &s;
@@ -31,7 +33,14 @@ int main(int argc, char **argv)
 	}
 
 	engine.setScene(scene);
-	engine.run();
+	pe.setScene(scene);
+	engine.run(
+	[&pe]() {
+		pe.prepare();
+	},
+	[&pe]() {
+		pe.compute();
+	});
 
 	engine.cleanup();
 

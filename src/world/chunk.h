@@ -5,6 +5,8 @@
 
 #include <glm/glm.hpp>
 
+#include "../physics/entity.h"
+
 
 namespace World
 {
@@ -29,6 +31,8 @@ public:
 	 * @brief Objects Transformation
 	 */
 	std::vector<glm::mat4> transforms {};
+
+	std::vector<Physics::Entity> entities {};
 };
 
 

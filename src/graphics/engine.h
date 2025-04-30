@@ -51,7 +51,7 @@ public:
 	/// @brief Inits the engine & related libs
 	void init();
 	/// @brief Runs the main rendering loop
-	void run();
+	void run(std::function<void()> &&prepare, std::function<void()> &&update);
 	/// @brief Stops the engine, cleans the resources & notifies related libs.
 	void cleanup();
 
