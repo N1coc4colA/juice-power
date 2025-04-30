@@ -275,6 +275,8 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 	m_scene.res->build(engine);
 
+	m_scene.view = m_scene.chunks | std::ranges::views::drop(0) | std::ranges::views::take(std::min(size_t(2), csize));
+
 	return Status::Ok;
 }
 
