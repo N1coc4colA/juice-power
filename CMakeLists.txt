@@ -13,7 +13,7 @@ juice-power
 		CXX
 )
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Debug)
 set(FASTGLTF_COMPILE_AS_CPP20 1)
@@ -126,6 +126,7 @@ add_subdirectory("submodules") # For ImGui
 
 find_package(Vulkan REQUIRED)
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
+find_package(Boost REQUIRED)
 find_package(fmt CONFIG REQUIRED)			# Convenience dependency
 find_package(magic_enum CONFIG REQUIRED)	# Convenience dependency
 
@@ -165,6 +166,7 @@ juice-power
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}
 		${IMGUI_DIR}
+		${Boost_INCLUDE_DIR}
 )
 
 target_include_directories(
@@ -185,6 +187,7 @@ juice-power
 		imgui_impl_sdl3
 		imgui_impl_vulkan
 		glaze::glaze
+		${Boost_LIBRARIES}
 )
 
 ## Testing part ##
