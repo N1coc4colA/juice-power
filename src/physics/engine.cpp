@@ -16,27 +16,6 @@ Engine::Engine()
 void Engine::setScene(World::Scene &scene)
 {
 	m_scene = &scene;
-
-	for (auto &chunk : scene.chunks) {
-		chunk.entities.resize(chunk.positions.size());
-	}
-
-	for (auto &chunk : scene.chunks) {
-		const auto size = chunk.entities.size();
-		for (auto i = 0; i < size; i++) {
-			chunk.entities[i].position = chunk.positions[i];
-		}
-	}
-
-	for (auto &chunk : scene.chunks) {
-		const auto size = chunk.entities.size();
-		for (auto i = 0; i < size; i++) {
-			std::vector<glm::vec2> borders {};
-			borders.reserve(4);
-
-			//chunk.entities[i].borders = scene.res->vertices[chunk.descriptions[i]];
-		}
-	}
 }
 
 void Engine::prepare()

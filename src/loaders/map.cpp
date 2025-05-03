@@ -17,10 +17,14 @@
 #include "../world/scene.h"
 #include "../world/chunk.h"
 
+#include "../algorithms.h"
+
 #include "json.h"
 
 
 namespace fs = std::filesystem;
+
+using namespace algorithms;
 
 
 namespace Loaders
@@ -184,6 +188,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 	m_scene.res->images.reserve(resSize);
 	m_scene.res->surfaces.reserve(resSize);
 	m_scene.res->types.reserve(resSize);
+	m_scene.res->borders.reserve(resSize);
 	//m_scene.res->vertices.reserve(resSize);
 
 	//const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
@@ -201,6 +206,8 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 			return Status::OpenError;
 		}
 
+		const auto &h = res.h;
+		const auto &w = res.w;
 		const Graphics::Resources::Vertices vertices { .data = {
 			{
 				.position = {0.f, 0.f, 0.f},
@@ -210,21 +217,21 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 				.color = glm::vec4(0.f, 1.f, 0.f, 1.f),
 			},
 			{
-				.position = {0.f, 1.f, 0.f},
+				.position = {0.f, h, 0.f},
 				.uv_x = 0.f,
 				.normal = {0.f, 0.f, 1.f},
 				.uv_y = 1.f,
 				.color = glm::vec4(1.f, 0.f, 0.f, 1.f),
 			},
 			{
-				.position = {1.f, 0.f, 0.f},
+				.position = {w, 0.f, 0.f},
 				.uv_x = 1.f,
 				.normal = {0.f, 0.f, 1.f},
 				.uv_y = 0.f,
 				.color = glm::vec4(0.f, 0.f, 1.f, 1.f),
 			},
 			{
-				.position = {1.f, 1.f, 0.f},
+				.position = {w, h, 0.f},
 				.uv_x = 1.f,
 				.normal = {0.f, 0.f, 1.f},
 				.uv_y = 1.f,
@@ -235,12 +242,14 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		// Now make the Vk Image.
 		m_scene.res->types.push_back(res.type);
 		m_scene.res->vertices.push_back(vertices);
+		m_scene.res->borders.push_back(determineImageBorders(MatrixView(imgData, width, height)));
 		m_scene.res->images.push_back(engine.createImage(
 			imgData,
 			VkExtent3D {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
 			VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_USAGE_SAMPLED_BIT)
 		);
+
 		stbi_image_free(imgData);
 
 		// [TODO] Here we should generate the surfaces for the physics engine.
@@ -253,6 +262,8 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 	m_scene.chunks.resize(map.chunks.size());
 	const auto csize = map.chunks.size();
+
+	// Setup transform matrices
 	for (auto i = 0; i < csize; i++) {
 		auto &s = m_scene.chunks[i];
 		const auto &c = map.chunks[i];
@@ -260,16 +271,71 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 		// At first, all objects have their usual transform matrix.
 		s.transforms = std::vector(count, glm::mat4{1.f});
+	}
+
+	// Reserve space for our vectors.
+	for (auto i = 0; i < csize; i++) {
+		auto &s = m_scene.chunks[i];
+		const auto count = map.chunks[i].size();
 
 		// We fill it in later to avoid constructing and then change the data.
 		s.descriptions.reserve(count);
 		s.positions.reserve(count);
+	}
+
+	for (auto i = 0; i < csize; i++) {
+		const auto count = map.chunks[i].size();
+
+		m_scene.chunks[i].entities.resize(count);
+	}
+
+	// Fill in basic data
+	for (auto i = 0; i < csize; i++) {
+		const auto &c = map.chunks[i];
+		auto &s = m_scene.chunks[i];
 
 		for (const auto &e : c) {
 			s.descriptions.push_back(e.type);
 		}
 		for (const auto &e : c) {
 			s.positions.push_back(glm::vec3{e.position[0], e.position[1], e.position[2]});
+		}
+	}
+
+	// Update entities' information.
+	for (auto i = 0; i < csize; i++) {
+		const auto &c = map.chunks[i];
+		auto &s = m_scene.chunks[i];
+
+		const auto esize = s.entities.size();
+		for (auto j = 0; j < esize; i++) {
+			s.entities[j].mass = map.resources[s.descriptions[j]].mass;
+		}
+
+		for (auto j = 0; j < esize; i++) {
+			const auto &e = c[j];
+
+			s.entities[j].position = glm::vec2{e.position[0], e.position[1]};
+		}
+
+		for (auto j = 0; j < esize; i++) {
+			const auto &e = c[j];
+
+			s.entities[j].velocity = glm::vec2{e.velocity[0], e.velocity[1]};
+		}
+
+		for (auto j = 0; j < esize; i++) {
+			const auto &e = c[j];
+
+			s.entities[j].acceleration = glm::vec2{e.acceleration[0], e.acceleration[1]};
+		}
+
+		for (auto j = 0; j < esize; i++) {
+			s.entities[j].angularVelocity = c[j].angularVelocity;
+		}
+
+		for (auto j = 0; j < esize; i++) {
+			s.entities[j].MoI = c[j].MoI;
 		}
 	}
 

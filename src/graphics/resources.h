@@ -39,6 +39,13 @@ public:
 	 */
 	std::vector<uint32_t> types {};
 
+	/**
+	 * @brief Borders delimiting the limits of each resource.
+	 * This is determined when loading the resource, and then used by the
+	 * physics engine.
+	 */
+	std::vector<std::vector<glm::vec2>> borders {};
+
 	/// @brief Mesh buffers for vertices.
 	GPUMeshBuffers meshBuffers {};
 
