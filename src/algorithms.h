@@ -92,6 +92,12 @@ public:
 	ImageVectorizer();
 	~ImageVectorizer();
 
+	ImageVectorizer(const ImageVectorizer &) = delete;
+	ImageVectorizer(ImageVectorizer &&) = delete;
+
+	ImageVectorizer &operator =(const ImageVectorizer &) const = delete;
+	ImageVectorizer &operator =(ImageVectorizer &&) const = delete;
+
 	/**
 	 * @brief determineImageBorders
 	 * @param image

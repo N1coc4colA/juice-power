@@ -14,7 +14,14 @@ namespace World
 class Scene
 {
 public:
-	inline Scene(std::vector<Chunk> v = {})
+	/**
+	 * @brief Scene
+	 * @param v NEVER SET THE VALUE.
+	 *
+	 * The argument is used due to the requirement of an std::vector during initialization.
+	 * Passing a custom value as parameter has unknown effects.
+	 */
+	inline explicit Scene(std::vector<Chunk> v = {})
 		// We need to initialize it, but as we don't have anythin, we use a temporary vector at the start.
 		: view(v | std::ranges::views::drop(0) | std::ranges::views::take(0))
 	{

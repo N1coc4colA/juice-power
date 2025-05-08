@@ -3,6 +3,8 @@
 
 #include <magic_enum.hpp>
 
+#include "../defines.h"
+
 
 #define VK_CHECK(x)                                                            \
 do {                                                                           \

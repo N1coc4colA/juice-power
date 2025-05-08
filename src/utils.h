@@ -11,11 +11,13 @@
 #include <ranges>
 #include <type_traits>
 
+#include "defines.h"
+
 
 namespace utils
 {
 
-inline constexpr float cross(glm::vec2 &&a, glm::vec2 &&b)
+inline constexpr float cross(const glm::vec2 &a, const glm::vec2 &b)
 {
 	return (a.x * b.y) - (b.x * a.y);
 }
@@ -83,8 +85,6 @@ template<typename Path, typename T, auto Operation = std::plus<>(), class InputI
 requires is_access<Path>::value
 inline constexpr T accumulate(InputIterator first, InputIterator last, T init)
 {
-	using Second = typename Path::type;
-
 	for (; first != last; ++first) {
 		init = std::invoke(Operation, std::move(init), Path::get(*first));
 	}

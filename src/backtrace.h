@@ -15,7 +15,7 @@ struct BackTraceEntry
 	/// @brief The symbol corresponding to the call, may be empty or mangled.
 	std::string symbol;
 	/// @brief offset from the stack.
-	long long offset;
+	int64_t offset;
 };
 
 /**
@@ -26,14 +26,19 @@ struct BackTraceEntry
 class BackTrace
 {
 public:
-	BackTrace(unsigned int maxFrames);
+	explicit BackTrace(uint maxFrames);
 	BackTrace(const BackTrace &other);
+	BackTrace(BackTrace &&other) noexcept;
+	~BackTrace();
 
-	const std::span<BackTraceEntry> entries;
+	std::span<BackTraceEntry> entries;
 
 	void print() const;
 
-	static void easyPrint(unsigned int maxFrames);
+	BackTrace &operator =(const BackTrace &other);
+	BackTrace &operator =(BackTrace &&other) noexcept;
+
+	static void easyPrint(uint maxFrames);
 
 private:
 	std::shared_ptr<BackTraceEntry> bt;

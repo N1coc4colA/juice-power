@@ -60,7 +60,7 @@ void DescriptorAllocator::initPool(VkDevice device, const uint32_t maxSets, cons
 	for (const PoolSizeRatio &ratio : poolRatios) {
 		poolSizes.push_back(VkDescriptorPoolSize{
 			.type = ratio.type,
-			.descriptorCount = uint32_t(ratio.ratio * maxSets)
+			.descriptorCount = static_cast<uint32_t>(ratio.ratio * static_cast<float>(maxSets))
 		});
 	}
 
@@ -181,8 +181,8 @@ void DescriptorAllocatorGrowable::init(VkDevice device, const uint32_t maxSets, 
 		ratios.push_back(r);
 	}
 
-	setsPerPool = maxSets * 1.5; //grow it next allocation
-	const VkDescriptorPool newPool = createPool(device, maxSets, poolRatios);
+	setsPerPool = static_cast<uint32_t>(static_cast<float>(maxSets) * 1.5f); //grow it next allocation
+	VkDescriptorPool newPool = createPool(device, maxSets, poolRatios);
 
 	readyPools.push_back(newPool);
 }
@@ -227,7 +227,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::getPool(VkDevice device)
 		//need to create a new pool
 		newPool = createPool(device, setsPerPool, ratios);
 
-		setsPerPool = setsPerPool * 1.5;
+		setsPerPool = static_cast<uint32_t>(static_cast<float>(setsPerPool) * 1.5f);
 		if (setsPerPool > 4092) {
 			setsPerPool = 4092;
 		}
@@ -250,7 +250,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const 
 	for (const PoolSizeRatio &ratio : poolRatios) {
 		poolSizes.push_back(VkDescriptorPoolSize {
 			.type = ratio.type,
-			.descriptorCount = static_cast<uint32_t>(ratio.ratio * setCount),
+			.descriptorCount = static_cast<uint32_t>(ratio.ratio * static_cast<float>(setCount)),
 		});
 	}
 
@@ -268,7 +268,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const 
 	return newPool;
 }
 
-VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, const VkDescriptorSetLayout layout)
+VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayout layout)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(layout != VK_NULL_HANDLE);

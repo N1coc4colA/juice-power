@@ -18,7 +18,6 @@ public:
 	void compute();
 
 private:
-	bool first = true;
 	World::Scene *m_scene = nullptr;
 };
 

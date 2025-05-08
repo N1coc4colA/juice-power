@@ -6,7 +6,7 @@
 namespace Graphics
 {
 
-VkCommandPoolCreateInfo vkinit::command_pool_create_info(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags)
+VkCommandPoolCreateInfo vkinit::command_pool_create_info(const VkCommandPoolCreateFlags flags)
 {
 	assert(flags != VK_COMMAND_POOL_CREATE_FLAG_BITS_MAX_ENUM);
 

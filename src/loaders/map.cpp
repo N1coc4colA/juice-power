@@ -23,8 +23,7 @@
 
 
 namespace fs = std::filesystem;
-
-using namespace algorithms;
+namespace algo = algorithms;
 
 
 namespace Loaders
@@ -80,11 +79,11 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 	const auto size = fs::file_size(paths[pathsMapIndex]);
 	std::string mapContent(size, '\0');
-	f.read(&mapContent[0], size);
+	f.read(mapContent.data(), static_cast<std::streamsize>(size));
 
 	const auto mapJson = glz::read_json<JsonMap>(mapContent);
 	if (!mapJson.has_value()) {
-		std::cout << "Failed to open file " << paths[pathsMapIndex] << ':' << mapJson.error().location << ':' << magic_enum::enum_name(mapJson.error().ec) << mapJson.error().includer_error << std::endl;
+		std::cout << "Failed to open file " << paths[pathsMapIndex] << ':' << mapJson.error().location << ':' << magic_enum::enum_name(mapJson.error().ec) << mapJson.error().includer_error << '\n';
 		return Status::JsonError;
 	}
 
@@ -109,7 +108,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 		const auto size = std::filesystem::file_size(paths[pathsResIndex]);
 		std::string resContent(size, '\0');
-		f.read(&resContent[0], size);
+		f.read(resContent.data(), static_cast<std::streamsize>(size));
 
 		const auto resJson = glz::read_json<std::vector<JsonResourceElement>>(resContent);
 		if (!resJson.has_value()) {
@@ -119,7 +118,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 					  << ':' << magic_enum::enum_name(resJson.error().ec)
 					  << ':' << resJson.error().includer_error
 					  << ':' << resJson.error().custom_error_message
-					  << std::endl;
+					  << '\n';
 			return Status::JsonError;
 		}
 
@@ -140,7 +139,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		std::vector<std::vector<JsonChunkElement>> chunks {};
 
 		// Check that all files exist
-		for (auto i = 0; i < size; i++) {
+		for (size_t i = 0; i < size; i++) {
 			if (!fs::exists(m_path + '/' + std::to_string(i) + ".json")) {
 				return Status::MissingJson;
 			}
@@ -149,7 +148,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		chunks.reserve(size);
 
 		// Try to open & load all chunk files.
-		for (auto i = 0; i < size; i++) {
+		for (size_t i = 0; i < size; i++) {
 			const std::string chunkName = m_path + '/' + std::to_string(i) + ".json";
 			std::ifstream f {};
 			f.open(chunkName, std::ifstream::in);
@@ -159,7 +158,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 			const auto size = fs::file_size(chunkName);
 			std::string chunkContent(size, '\0');
-			f.read(&chunkContent[0], size);
+			f.read(chunkContent.data(), static_cast<std::streamsize>(size));
 
 			const auto chunkJson = glz::read_json<std::vector<JsonChunkElement>>(chunkContent);
 			if (!chunkJson.has_value()) {
@@ -167,7 +166,8 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 				std::cout << "Failed to open file " << chunkName
 						  << ':' << chunkJson.error().location
 						  << ':' << magic_enum::enum_name(chunkJson.error().ec)
-						  << ':' << chunkJson.error().includer_error << std::endl;
+						  << ':' << chunkJson.error().includer_error
+						  << '\n';
 				return Status::JsonError;
 			}
 
@@ -192,7 +192,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 	//const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
 
-	ImageVectorizer vectorizer {};
+	algo::ImageVectorizer vectorizer {};
 
 	size_t i = 0;
 	for (const auto &res : map.resources) {
@@ -243,7 +243,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		}};
 
 		// Because each pixel is the @var channels values, mult width by @var channels.
-		vectorizer.determineImageBorders(MatrixView(imgData, width*channels, height), channels);
+		vectorizer.determineImageBorders(algo::MatrixView(imgData, static_cast<size_t>(width*channels), static_cast<size_t>(height)), channels);
 
 		for (auto &p : vectorizer.points) {
 			p.x *= w;
@@ -254,9 +254,9 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		}
 
 		m_scene.res->types.push_back(res.type);
-		m_scene.res->vertices.push_back(std::move(vertices));
-		m_scene.res->borders.push_back(std::move(vectorizer.points));
-		m_scene.res->normals.push_back(std::move(vectorizer.normals));
+		m_scene.res->vertices.push_back(vertices);
+		m_scene.res->borders.push_back(vectorizer.points);
+		m_scene.res->normals.push_back(vectorizer.normals);
 
 		// Now make the Vk Image.
 		m_scene.res->images.push_back(engine.createImage(
@@ -277,7 +277,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 	const auto csize = map.chunks.size();
 
 	// Setup transform matrices
-	for (auto i = 0; i < csize; i++) {
+	for (size_t i = 0; i < csize; i++) {
 		auto &s = m_scene.chunks[i];
 		const auto &c = map.chunks[i];
 		const auto count = c.size();
@@ -287,7 +287,7 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 	}
 
 	// Reserve space for our vectors.
-	for (auto i = 0; i < csize; i++) {
+	for (size_t i = 0; i < csize; i++) {
 		auto &s = m_scene.chunks[i];
 		const auto count = map.chunks[i].size();
 
@@ -296,14 +296,14 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		s.positions.reserve(count);
 	}
 
-	for (auto i = 0; i < csize; i++) {
+	for (size_t i = 0; i < csize; i++) {
 		const auto count = map.chunks[i].size();
 
 		m_scene.chunks[i].entities.resize(count);
 	}
 
 	// Fill in basic data
-	for (auto i = 0; i < csize; i++) {
+	for (size_t i = 0; i < csize; i++) {
 		const auto &c = map.chunks[i];
 		auto &s = m_scene.chunks[i];
 
@@ -316,50 +316,50 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 	}
 
 	// Update entities' information.
-	for (auto i = 0; i < csize; i++) {
+	for (size_t i = 0; i < csize; i++) {
 		const auto &c = map.chunks[i];
 		auto &s = m_scene.chunks[i];
 
 		const auto esize = s.entities.size();
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].mass = map.resources[s.descriptions[j]].mass;
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			const auto &e = c[j];
 
 			s.entities[j].position = glm::vec2{e.position[0], e.position[1]};
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			const auto &e = c[j];
 
 			s.entities[j].velocity = glm::vec2{e.velocity[0], e.velocity[1]};
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			const auto &e = c[j];
 
 			s.entities[j].acceleration = glm::vec2{e.acceleration[0], e.acceleration[1]};
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].angularVelocity = c[j].angularVelocity;
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].MoI = c[j].MoI;
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].mass = map.resources[s.descriptions[j]].mass;
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].borders = m_scene.res->borders[s.descriptions[j]];
 		}
 
-		for (auto j = 0; j < esize; j++) {
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].normals = m_scene.res->normals[s.descriptions[j]];
 		}
 	}

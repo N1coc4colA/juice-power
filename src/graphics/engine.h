@@ -14,7 +14,6 @@
 #include "types.h"
 
 
-class Scene;
 struct SDL_Window;
 
 namespace Loaders
@@ -51,7 +50,7 @@ public:
 	/// @brief Inits the engine & related libs
 	void init();
 	/// @brief Runs the main rendering loop
-	void run(std::function<void()> &&prepare, std::function<void()> &&update);
+	void run(const std::function<void()> &prepare, const std::function<void()> &update);
 	/// @brief Stops the engine, cleans the resources & notifies related libs.
 	void cleanup();
 
@@ -152,7 +151,7 @@ private:
 	void destroyBuffer(const AllocatedBuffer &buffer);
 
 	/// @brief Generates ASAP exec of a drawing function, synced with GPU.
-	void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
+	void immediate_submit(const std::function<void(VkCommandBuffer cmd)> &function);
 
 	/* General */
 

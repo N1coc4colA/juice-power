@@ -2,9 +2,8 @@
 
 #include <magic_enum.hpp>
 
-//#include "vk/engine.h"
+#include "defines.h"
 
-#include "world/chunk.h"
 #include "graphics/resources.h"
 #include "world/scene.h"
 #include "loaders/map.h"
@@ -15,6 +14,9 @@
 
 int main(int argc, char **argv)
 {
+	UNUSED(argv);
+	UNUSED(argc);
+
 	//Engine engine {};
 	Physics::Engine pe;
 	Graphics::Engine engine;
@@ -28,7 +30,7 @@ int main(int argc, char **argv)
 	Loaders::Map mapLoader("/home/nicolas/Documents/projects/juice-power/maps/0");
 	const auto error = mapLoader.load(engine, scene);
 	if (error != Loaders::Status::Ok) {
-		std::cout << "Erreur: " << magic_enum::enum_name(error) << std::endl;
+		std::cout << "Erreur: " << magic_enum::enum_name(error) << '\n';
 		return 0;
 	}
 

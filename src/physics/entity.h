@@ -35,14 +35,14 @@ struct Projection
 {
 	float minProj = 0.f;
 	float maxProj = 0.f;
-	int minIndex = -1;
-	int maxIndex = -1;
+	size_t minIndex = -1;
+	size_t maxIndex = -1;
 };
 
 struct Forces
 {
 	glm::vec2 forces {};
-	double angularVelocity = 0.f;
+	double angularVelocity = 0.;
 };
 
 
@@ -116,7 +116,7 @@ public:
 	}
 
 	// Used for integration of forces. Here it's not King Kunta but King Kutta !!
-	void KingKutta(const Entity::state_type &y, Entity::state_type &dydt, const double t, const double gravity, const double kx, const double ky, const double kt) const;
+	void KingKutta(const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
 	Forces resultOfForces(const double timeStep) const;
 	void compute(const double timeDelta);
 
@@ -129,11 +129,11 @@ public:
 	{
 		float minProj = glm::dot(borders[0], axis);
 		float maxProj = minProj;
-		int minProjIndex = 0;
-		int maxProjIndex = 0;
+		size_t minProjIndex = 0;
+		size_t maxProjIndex = 0;
 
 		const auto size = borders.size();
-		for (auto i = 1; i < size; i++) {
+		for (size_t i = 1; i < size; i++) {
 			const float proj = glm::dot(borders[i], axis);
 			if (minProj > proj) {
 				minProj = proj;
@@ -164,7 +164,7 @@ public:
 		bool isSeparated = false;
 		{
 			const auto size = normals.size();
-			for (auto i = 0; i < size; i++) {
+			for (size_t i = 0; i < size; i++) {
 				const auto firstIntersect = getMinMax(tb, tn[i]);
 				const auto secondIntersect = getMinMax(ob, tn[i]);
 
@@ -177,7 +177,7 @@ public:
 
 		if (!isSeparated) {
 			const auto size = other.normals.size();
-			for (auto i = 0; i < size; i++) {
+			for (size_t i = 0; i < size; i++) {
 				const auto firstIntersect = getMinMax(tb, on[i]);
 				const auto secondIntersect = getMinMax(ob, on[i]);
 

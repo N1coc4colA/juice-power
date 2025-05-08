@@ -1,6 +1,7 @@
 #ifndef GRAPHICS_ERROR_H
 #define GRAPHICS_ERROR_H
 
+#include <cstdint>
 #include <exception>
 #include <string>
 
@@ -14,10 +15,10 @@ namespace Graphics
  * Categorizes all known failure points during engine initialization and operation,
  * with specific attention to Vulkan, SDL, and ImGui integration points.
  */
-enum FailureType
+enum FailureType : uint8_t
 {
 	// ImGui related failures
-	ImguiContext,               ///< Failed to create ImGui context
+	ImguiContext = 0,           ///< Failed to create ImGui context
 	ImguiInitialisation,        ///< General ImGui initialization failure
 	ImguiFontsInitialisation,   ///< Failed to load ImGui font atlas
 	ImguiVkInitialisation,      ///< Failed to initialize ImGui Vulkan backend
@@ -78,8 +79,8 @@ class Failure
 	: public std::exception
 {
 public:
-	explicit Failure(FailureType type, const std::string &message);
-	Failure(FailureType type);
+	explicit Failure(FailureType type);
+	Failure(FailureType type, const std::string &message);
 
 	virtual const char* what() const noexcept override;
 

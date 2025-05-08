@@ -3,11 +3,16 @@
 #include <chrono>
 
 
-namespace Physics
+namespace
 {
 
 static auto prevChrono = std::chrono::system_clock::now();
 
+}
+
+
+namespace Physics
+{
 
 Engine::Engine()
 {
@@ -26,7 +31,7 @@ void Engine::prepare()
 void Engine::compute()
 {
 	const auto currentTime = std::chrono::system_clock::now();
-	const auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count() / 200.0;
+	const auto delta = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count()) / 200.0;
 
 	for (auto &c : m_scene->view) {
 		for (auto &obj : c.entities) {
@@ -36,7 +41,7 @@ void Engine::compute()
 
 	for (auto &chunk : m_scene->view) {
 		const auto size = chunk.entities.size();
-		for (auto i = 0; i < size; i++) {
+		for (size_t i = 0; i < size; i++) {
 			chunk.positions[i].x = chunk.entities[i].position.x;
 			chunk.positions[i].y = chunk.entities[i].position.y;
 		}

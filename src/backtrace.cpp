@@ -9,7 +9,7 @@
 #include <fmt/printf.h>
 
 
-void BackTrace::easyPrint(unsigned int maxFrames)
+void BackTrace::easyPrint(uint maxFrames)
 {
 	assert(maxFrames != 0);
 
@@ -17,7 +17,7 @@ void BackTrace::easyPrint(unsigned int maxFrames)
 	void *addrlist[maxFrames + 1];
 
 	// Get the backtrace frames
-	const int num_frames = backtrace(addrlist, sizeof(addrlist) / sizeof(void *));
+	const auto num_frames = backtrace(addrlist, static_cast<int>(sizeof(addrlist) / sizeof(void *)));
 
 	if (!num_frames) {
 		std::cerr << "No stack trace available\n";
@@ -67,10 +67,11 @@ void BackTrace::easyPrint(unsigned int maxFrames)
 		}
 	}
 
+	// From the docs, no need to free the elements pointed-to within the array.
 	free(symbollist);
 }
 
-std::span<BackTraceEntry> backtrace_entries(int max_frames)
+std::span<BackTraceEntry> backtrace_entries(uint max_frames)
 {
 	assert(max_frames > 0);
 
@@ -78,10 +79,11 @@ std::span<BackTraceEntry> backtrace_entries(int max_frames)
 	void *addrlist[max_frames + 1];
 
 	// Get the backtrace frames
-	int num_frames = backtrace(addrlist, sizeof(addrlist) / sizeof(void *));
+	const int num_frames = backtrace(addrlist, static_cast<int>(sizeof(addrlist) / sizeof(void *)));
 
 	if (!num_frames) {
-		std::cout << "Failed to generate required BT." << std::endl;
+		std::cout << "Failed to generate required BT.\n";
+
 		return std::span<BackTraceEntry, 0>();
 	}
 
@@ -141,12 +143,13 @@ std::span<BackTraceEntry> backtrace_entries(int max_frames)
 		}
 	}
 
+	// From the docs, no need to free the elements pointed-to within the array.
 	free(symbollist);
 
 	return entries;
 }
 
-BackTrace::BackTrace(unsigned int maxFrames)
+BackTrace::BackTrace(uint maxFrames)
 	: entries(backtrace_entries(maxFrames))
 	, bt(entries.data(), [](BackTraceEntry *d) {delete [] d;})
 {
@@ -159,9 +162,43 @@ BackTrace::BackTrace(const BackTrace &other)
 {
 }
 
+BackTrace::BackTrace(BackTrace &&other) noexcept
+	: entries(other.entries)
+	, bt(std::move(other.bt))
+{
+}
+
+BackTrace::~BackTrace()
+{
+}
+
 void BackTrace::print() const
 {
 	for (const auto &e : entries) {
-		std::cout << '[' << e.frame << "] " << e.source << " : " << e.symbol << std::hex << std::showpos << std::showbase << e.offset << std::endl;
+		std::cout << '[' << e.frame << "] " << e.source << " : " << e.symbol << std::hex << std::showpos << std::showbase << e.offset << '\n';
 	}
+}
+
+BackTrace &BackTrace::operator =(const BackTrace &other)
+{
+	if (&other == this) {
+		return *this;
+	}
+
+	entries = other.entries;
+	bt = other.bt;
+
+	return *this;
+}
+
+BackTrace &BackTrace::operator =(BackTrace &&other) noexcept
+{
+	if (&other == this) {
+		return *this;
+	}
+
+	entries = other.entries;
+	bt = std::move(other.bt);
+
+	return *this;
 }

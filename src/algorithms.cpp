@@ -57,7 +57,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 		return;
 	}
 
-	const auto imgRealWidth = imageWidth/4;
+	const size_t imgRealWidth = imageWidth/4;
 
 	// Words per line.
 	const auto dy = (imgRealWidth + po_wbs_sub) / po_wbs;
@@ -73,11 +73,11 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
 	const auto img = image.flattened();
 
-	for (auto y = 0; y < image.height(); y++) {
-		for (auto x = 0; x < imgRealWidth; x++) {
+	for (size_t y = 0; y < image.height(); y++) {
+		for (size_t x = 0; x < imgRealWidth; x++) {
 			const auto wi = y*dy + x / po_wbs;
 			const auto bi = x % po_wbs;
-			const auto val = img[y*image.height() + x*4 +3];
+			const auto val = img[y*size_t(image.height()) + x*4 +3];
 
 			// Set to 1 or 0 depending on the transparency.
 			if (val > 0x80) {
@@ -121,7 +121,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
 	// We just have to walk through the top level paths, which are always outter-directed.
 	{
-		auto pointsCount = 0;
+		size_t pointsCount = 0;
 		potrace_path_t *path = st->plist;
 
 		while (path) {
@@ -203,10 +203,10 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
 	// Normalize the points within the image.
 	for (auto &p : points) {
-		p.x /= imgRealWidth;
+		p.x /= static_cast<float>(imgRealWidth);
 	}
 
-	const auto height = image.height();
+	const float height = static_cast<float>(image.height());
 	for (auto &p : points) {
 		p.y /= height;
 	}

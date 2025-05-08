@@ -69,7 +69,7 @@ struct JsonChunkElement
 	/// @brief Initial acceleration of the element.
 	std::array<float, 2> acceleration {};
 	/// @brief Initial angular velocity of the element.
-	double angularVelocity = 0.f;
+	float angularVelocity = 0.f;
 
 	// [TODO] See how to handle initial forces, frictions, thrusts & torques...
 };

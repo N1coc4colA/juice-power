@@ -24,7 +24,7 @@ struct DeletionQueue
 
 	inline void push_function(std::function<void()> &&function)
 	{
-		deletors.push_back(function);
+		deletors.push_back(std::move(function));
 	}
 
 	/// @brief Executes all queued cleanup operations

@@ -7,7 +7,7 @@
 namespace Graphics::vkinit
 {
 
-VkCommandPoolCreateInfo command_pool_create_info(const uint32_t queueFamilyIndex, const VkCommandPoolCreateFlags flags = 0);
+VkCommandPoolCreateInfo command_pool_create_info(const VkCommandPoolCreateFlags flags = 0);
 VkCommandBufferAllocateInfo command_buffer_allocate_info(VkCommandPool pool, const uint32_t count = 1);
 
 VkCommandBufferBeginInfo command_buffer_begin_info(const VkCommandBufferUsageFlags flags = 0);

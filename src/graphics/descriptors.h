@@ -175,7 +175,7 @@ public:
 	 * @param layout The layout for the descriptor set
 	 * @return The allocated descriptor set
 	 */
-	VkDescriptorSet allocate(VkDevice device, const VkDescriptorSetLayout layout);
+	VkDescriptorSet allocate(VkDevice device, VkDescriptorSetLayout layout);
 
 private:
 	/**

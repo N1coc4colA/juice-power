@@ -58,7 +58,7 @@ do { \
 namespace Graphics
 {
 
-void *get_mapped_data(const VmaAllocation alloc)
+void *get_mapped_data(VmaAllocation alloc)
 {
 	assert(alloc != VK_NULL_HANDLE);
 

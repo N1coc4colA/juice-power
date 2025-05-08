@@ -1,6 +1,7 @@
 #ifndef LOADERS_MAP_H
 #define LOADERS_MAP_H
 
+#include <cstdint>
 #include <string>
 
 
@@ -18,9 +19,9 @@ class Scene;
 namespace Loaders
 {
 
-enum Status
+enum Status : uint8_t
 {
-	Ok,
+	Ok = 0,
 	OpenError,
 	NotDir,
 	MissingDirectory,
@@ -48,7 +49,7 @@ public:
 	Status load(Graphics::Engine &engine, World::Scene &m_scene);
 
 private:
-	const std::string m_path {};
+	std::string m_path;
 };
 
 
