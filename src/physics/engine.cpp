@@ -58,7 +58,7 @@ void Engine::compute()
 			// Previous chunks' entities have already been checked against.
 			for (const auto &e : c.entities) {
 				for (size_t j = i; j < size; j++) {
-					auto &c2 = m_scene->view[j];
+					const auto &c2 = m_scene->view[j];
 
 					for (const auto &e2 : c2.entities) {
 						Projection proj;

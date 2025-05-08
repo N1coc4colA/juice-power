@@ -29,8 +29,6 @@ namespace algo = algorithms;
 namespace Loaders
 {
 
-using Pixel = union __attribute__((packed)) { struct __attribute__((packed)) {unsigned char r, g, b, a;}; unsigned char data[4]; uint32_t value; };
-
 Map::Map(const std::string &path)
 	: m_path(path)
 {
@@ -127,10 +125,8 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 	}
 
 	// Check that every resource does exist.
-	for (const auto &res : map.resources) {
-		if (!fs::exists(m_assets + res.source)) {
-			return Status::MissingResource;
-		}
+	if (!std::all_of(map.resources.cbegin(), map.resources.cend(), [&m_assets](const JsonResourceElement &res) { return fs::exists(m_assets + res.source); })) {
+		return Status::MissingResource;
 	}
 
 	if (map.chunksExternal) {

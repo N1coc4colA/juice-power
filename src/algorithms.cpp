@@ -122,7 +122,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 	// We just have to walk through the top level paths, which are always outter-directed.
 	{
 		size_t pointsCount = 0;
-		potrace_path_t *path = st->plist;
+		const potrace_path_t *path = st->plist;
 
 		while (path) {
 			const potrace_curve_t &curve = path->curve;
@@ -143,7 +143,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 	}
 
 	{
-		potrace_path_t *path = st->plist;
+		const potrace_path_t *path = st->plist;
 		while (path) {
 			const potrace_curve_t &curve = path->curve;
 
@@ -163,7 +163,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 	// Determine the normals.
 	{
 		auto p = 0;
-		potrace_path_t *path = st->plist;
+		const potrace_path_t *path = st->plist;
 		while (path->next) {
 			const potrace_curve_t &curve = path->curve;
 

@@ -103,20 +103,6 @@ struct DescriptorAllocator
 	VkDescriptorPool pool = VK_NULL_HANDLE;
 
 	/**
-	 * @brief Initializes the descriptor pool
-	 * @param device The Vulkan device
-	 * @param maxSets Maximum number of descriptor sets to allocate
-	 * @param poolRatios Ratios of different descriptor types in the pool
-	 */
-	void initPool(VkDevice device, const uint32_t maxSets, const std::span<const PoolSizeRatio> &poolRatios);
-
-	/**
-	 * @brief Resets the descriptor pool
-	 * @param device The Vulkan device
-	 */
-	void clearDescriptors(VkDevice device);
-
-	/**
 	 * @brief Destroys the descriptor pool
 	 * @param device The Vulkan device
 	 */
