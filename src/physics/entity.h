@@ -153,7 +153,7 @@ public:
 		};
 	}
 
-	constexpr bool collides(const Entity &other) const noexcept
+	constexpr bool collides(const Entity &other, Projection &outProj) const noexcept
 	{
 		// t: this, o: other, b: borders, n: normals
 		const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());

@@ -30,6 +30,8 @@ public:
 	Graphics::Resources *res = nullptr;
 	std::vector<Chunk> chunks {};
 
+	std::vector<std::pair<int, std::vector<Physics::Entity *>>> collisions {};
+
 	std::ranges::take_view<std::ranges::drop_view<std::ranges::ref_view<std::vector<Chunk>>>> view;
 };
 
