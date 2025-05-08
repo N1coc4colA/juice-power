@@ -33,6 +33,11 @@ void Engine::compute()
 	const auto currentTime = std::chrono::system_clock::now();
 	const auto delta = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count()) / 200.0;
 
+	// It's true that sometimes, delta is so small that it's 0, so we have to skip the operation.
+	if (delta == 0.) {
+		return;
+	}
+
 	for (auto &c : m_scene->view) {
 		for (auto &obj : c.entities) {
 			obj.compute(delta);
