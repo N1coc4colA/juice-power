@@ -186,12 +186,13 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 	std::map<std::string, int> mapped; // Maps name to resource ID.
 	const auto resSize = map.resources.size();
 	m_scene.res->images.reserve(resSize);
-	m_scene.res->surfaces.reserve(resSize);
 	m_scene.res->types.reserve(resSize);
 	m_scene.res->borders.reserve(resSize);
-	//m_scene.res->vertices.reserve(resSize);
+	m_scene.res->normals.reserve(resSize);
 
 	//const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
+
+	ImageVectorizer vectorizer {};
 
 	size_t i = 0;
 	for (const auto &res : map.resources) {
@@ -200,6 +201,8 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		int width = 0,
 			height = 0,
 			channels = 0;
+
+		// This gives an 8-bit per channel.
 		stbi_uc *imgData = stbi_load((m_assets + res.source).c_str(), &width, &height, &channels, 4); // Force 4 channels (RGBA)
 
 		if (!imgData) {
@@ -239,10 +242,23 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 			},
 		}};
 
-		// Now make the Vk Image.
+		// Because each pixel is the @var channels values, mult width by @var channels.
+		vectorizer.determineImageBorders(MatrixView(imgData, width*channels, height), channels);
+
+		for (auto &p : vectorizer.points) {
+			p.x *= w;
+		}
+
+		for (auto &p : vectorizer.points) {
+			p.y *= h;
+		}
+
 		m_scene.res->types.push_back(res.type);
-		m_scene.res->vertices.push_back(vertices);
-		m_scene.res->borders.push_back(determineImageBorders(MatrixView(imgData, width, height)));
+		m_scene.res->vertices.push_back(std::move(vertices));
+		m_scene.res->borders.push_back(std::move(vectorizer.points));
+		m_scene.res->normals.push_back(std::move(vectorizer.normals));
+
+		// Now make the Vk Image.
 		m_scene.res->images.push_back(engine.createImage(
 			imgData,
 			VkExtent3D {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
@@ -251,9 +267,6 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		);
 
 		stbi_image_free(imgData);
-
-		// [TODO] Here we should generate the surfaces for the physics engine.
-		//m_scene.res->surfaces.push_back(...);
 
 		// We succeed, let's add it.
 		mapped.insert({res.name, i});
@@ -308,34 +321,46 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		auto &s = m_scene.chunks[i];
 
 		const auto esize = s.entities.size();
-		for (auto j = 0; j < esize; i++) {
+		for (auto j = 0; j < esize; j++) {
 			s.entities[j].mass = map.resources[s.descriptions[j]].mass;
 		}
 
-		for (auto j = 0; j < esize; i++) {
+		for (auto j = 0; j < esize; j++) {
 			const auto &e = c[j];
 
 			s.entities[j].position = glm::vec2{e.position[0], e.position[1]};
 		}
 
-		for (auto j = 0; j < esize; i++) {
+		for (auto j = 0; j < esize; j++) {
 			const auto &e = c[j];
 
 			s.entities[j].velocity = glm::vec2{e.velocity[0], e.velocity[1]};
 		}
 
-		for (auto j = 0; j < esize; i++) {
+		for (auto j = 0; j < esize; j++) {
 			const auto &e = c[j];
 
 			s.entities[j].acceleration = glm::vec2{e.acceleration[0], e.acceleration[1]};
 		}
 
-		for (auto j = 0; j < esize; i++) {
+		for (auto j = 0; j < esize; j++) {
 			s.entities[j].angularVelocity = c[j].angularVelocity;
 		}
 
-		for (auto j = 0; j < esize; i++) {
+		for (auto j = 0; j < esize; j++) {
 			s.entities[j].MoI = c[j].MoI;
+		}
+
+		for (auto j = 0; j < esize; j++) {
+			s.entities[j].mass = map.resources[s.descriptions[j]].mass;
+		}
+
+		for (auto j = 0; j < esize; j++) {
+			s.entities[j].borders = m_scene.res->borders[s.descriptions[j]];
+		}
+
+		for (auto j = 0; j < esize; j++) {
+			s.entities[j].normals = m_scene.res->normals[s.descriptions[j]];
 		}
 	}
 

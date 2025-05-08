@@ -188,6 +188,7 @@ juice-power
 		imgui_impl_vulkan
 		glaze::glaze
 		${Boost_LIBRARIES}
+		potrace
 )
 
 ## Testing part ##

@@ -2,10 +2,12 @@
 #define JP_ALGORITHMS_H
 
 #include <vector>
-#include <array>
-#include <ranges>
+#include <span>
 
-#include <glm/fwd.hpp>
+#include <glm/vec2.hpp>
+
+
+typedef struct potrace_param_s potrace_param_t;
 
 
 namespace algorithms
@@ -42,15 +44,15 @@ public:
 	}
 
 	constexpr
-	inline auto operator[](const size_t h)
+	inline std::span<T> operator[](const size_t h)
 	{
-		return std::span(_data[h*_width], _width);
+		return std::span<T>(&_data[h*_width], _width);
 	}
 
 	constexpr
-	inline auto operator[](const size_t h) const
+	inline std::span<const T> operator[](const size_t h) const
 	{
-		return std::span(_data[h*_width], _width);
+		return std::span<const T>(&_data[h*_width], _width);
 	}
 
 	constexpr
@@ -65,14 +67,60 @@ public:
 		return _data;
 	}
 
+	constexpr
+	inline std::span<T> flattened()
+	{
+		return std::span<T>(_data, _width*_height);
+	}
+
+	constexpr
+	inline std::span<const T> flattened() const
+	{
+		return std::span<const T>(_data, _width*_height);
+	}
+
 private:
-	T *_data;
-	size_t _width;
-	size_t _height;
+	T *_data = nullptr;
+	size_t _width = 0;
+	size_t _height = 0;
 };
 
 
-std::vector<glm::vec2> determineImageBorders(const MatrixView<unsigned char> &image);
+class ImageVectorizer
+{
+public:
+	ImageVectorizer();
+	~ImageVectorizer();
+
+	/**
+	 * @brief determineImageBorders
+	 * @param image
+	 * Data layout is RBGA, each channel with 8 bits, in pixel order, row-major order.
+	 * This means that if your image is WxH, the input image must be (W*4)xH
+	 */
+	void determineImageBorders(const MatrixView<unsigned char> &image, int channelsCount);
+
+	/**
+	 *  @brief Resulting delimitation of the previous @fn determineImageBorders call.
+	 *  Vector for the points delimiting the object.
+	 *  Every point's location is normalized in the image's range.
+	 *  As every point is just following in order, but we may have 2 groups,
+	 *  when points switch from one group to another, the normal is null.
+	 */
+	std::vector<glm::vec2> points {};
+	/// @brief Resulting normals of the previous @fn determineImageBorders call.
+	std::vector<glm::vec2> normals {};
+
+private:
+	potrace_param_t *params = nullptr;
+
+	/**
+	 * @brief Continous data storage.
+	 * This is used to store data for Potrace, and is re-used through the different
+	 * calls to @fn determineImageBorders.
+	 */
+	std::vector<unsigned char> memory {};
+};
 
 
 }

@@ -24,12 +24,6 @@ public:
 	/// @brief Vertices for each element.
 	std::vector<Vertices> vertices {};
 
-	/**
-	 * @brief Surfaces of the different models.
-	 * @note Used by the physics engine, never used in graphics.
-	 */
-	std::vector<std::vector<glm::vec4>> surfaces {};
-
 	/// @brief Images of the different models.
 	std::vector<AllocatedImage> images {};
 
@@ -45,6 +39,13 @@ public:
 	 * physics engine.
 	 */
 	std::vector<std::vector<glm::vec2>> borders {};
+
+	/**
+	 * @brief Normals of the borders each resource.
+	 * This is determined when loading the resource, and then used by the
+	 * physics engine.
+	 */
+	std::vector<std::vector<glm::vec2>> normals {};
 
 	/// @brief Mesh buffers for vertices.
 	GPUMeshBuffers meshBuffers {};
