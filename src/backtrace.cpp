@@ -68,7 +68,7 @@ void BackTrace::easyPrint(uint maxFrames)
 	}
 
 	// From the docs, no need to free the elements pointed-to within the array.
-	free(symbollist);
+	free(reinterpret_cast<char *>(symbollist));
 }
 
 std::span<BackTraceEntry> backtrace_entries(uint max_frames)
@@ -144,7 +144,7 @@ std::span<BackTraceEntry> backtrace_entries(uint max_frames)
 	}
 
 	// From the docs, no need to free the elements pointed-to within the array.
-	free(symbollist);
+	free(reinterpret_cast<char *>(symbollist));
 
 	return entries;
 }
