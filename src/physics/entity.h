@@ -95,6 +95,7 @@ public:
 	float mass = 8.f;
 	float angle = 0.f;
 	float angularVelocity = 0.f;
+	float elasticity = 1.f;
 	/// @brief Moment of Inertia.
 	float MoI = 0.f;
 
@@ -161,34 +162,33 @@ public:
 		const auto ob = std::span<const glm::vec2>(other.borders.data(), other.borders.size());
 		const auto on = std::span<const glm::vec2>(other.normals.data(), other.normals.size());
 
-		bool isSeparated = false;
 		{
 			const auto size = normals.size();
 			for (size_t i = 0; i < size; i++) {
 				const auto firstIntersect = getMinMax(tb, tn[i]);
 				const auto secondIntersect = getMinMax(ob, tn[i]);
 
-				isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
+				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
 				if (isSeparated) {
-					return true;
+					return false;
 				}
 			}
 		}
 
-		if (!isSeparated) {
+		{
 			const auto size = other.normals.size();
 			for (size_t i = 0; i < size; i++) {
 				const auto firstIntersect = getMinMax(tb, on[i]);
 				const auto secondIntersect = getMinMax(ob, on[i]);
 
-				isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
+				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
 				if (isSeparated) {
-					return true;
+					return false;
 				}
 			}
 		}
 
-		return false;
+		return true;
 	}
 };
 
