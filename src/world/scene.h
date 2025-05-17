@@ -1,7 +1,9 @@
 #ifndef WORLD_SCENE_H
 #define WORLD_SCENE_H
 
+#include <map>
 #include <ranges>
+#include <set>
 
 #include "chunk.h"
 
@@ -30,7 +32,7 @@ public:
 	Graphics::Resources *res = nullptr;
 	std::vector<Chunk> chunks {};
 
-	std::vector<std::pair<int, std::vector<Physics::Entity *>>> collisions {};
+	std::map<const Physics::Entity *, std::set<Physics::Entity *>> collisions;
 
 	std::ranges::take_view<std::ranges::drop_view<std::ranges::ref_view<std::vector<Chunk>>>> view;
 };

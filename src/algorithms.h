@@ -117,6 +117,9 @@ public:
 	/// @brief Resulting normals of the previous @fn determineImageBorders call.
 	std::vector<glm::vec2> normals {};
 
+	glm::vec2 min {};
+	glm::vec2 max {};
+
 private:
 	potrace_param_t *params = nullptr;
 

@@ -244,10 +244,11 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		for (auto &p : vectorizer.points) {
 			p.x *= w;
 		}
-
 		for (auto &p : vectorizer.points) {
 			p.y *= h;
 		}
+
+		m_scene.res->boundingBoxes.push_back(std::tuple{vectorizer.min, vectorizer.max});
 
 		m_scene.res->types.push_back(res.type);
 		m_scene.res->vertices.push_back(vertices);
@@ -318,10 +319,6 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 		const auto esize = s.entities.size();
 		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].mass = map.resources[s.descriptions[j]].mass;
-		}
-
-		for (size_t j = 0; j < esize; j++) {
 			const auto &e = c[j];
 
 			s.entities[j].position = glm::vec2{e.position[0], e.position[1]};
@@ -344,6 +341,14 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		}
 
 		for (size_t j = 0; j < esize; j++) {
+			s.entities[j].canCollide = c[j].canCollide;
+		}
+
+		for (size_t j = 0; j < esize; j++) {
+			s.entities[j].isNotFixed = c[j].isNotFixed;
+		}
+
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].MoI = c[j].MoI;
 		}
 
@@ -352,11 +357,24 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		}
 
 		for (size_t j = 0; j < esize; j++) {
+			s.entities[j].elasticity = map.resources[s.descriptions[j]].elasticity;
+		}
+
+		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].borders = m_scene.res->borders[s.descriptions[j]];
 		}
 
 		for (size_t j = 0; j < esize; j++) {
 			s.entities[j].normals = m_scene.res->normals[s.descriptions[j]];
+		}
+
+		for (size_t j = 0; j < esize; j++) {
+			const auto &bb = m_scene.res->boundingBoxes[s.descriptions[j]];
+
+			s.entities[j].boundingBox = Physics::AABB {
+				.min = std::get<0>(bb),
+				.max = std::get<1>(bb),
+			};
 		}
 	}
 

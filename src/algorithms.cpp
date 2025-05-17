@@ -54,6 +54,9 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 		points[2] = glm::vec2{1.f, 1.f};
 		points[3] = glm::vec2{1.f, 0.f};
 
+		min = glm::vec2{0.f, 0.f};
+		max = glm::vec2{static_cast<float>(imageWidth / channelsCount), static_cast<float>(image.height())};
+
 		return;
 	}
 
@@ -106,6 +109,9 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 		points[1] = glm::vec2{0.f, 1.f};
 		points[2] = glm::vec2{1.f, 1.f};
 		points[3] = glm::vec2{1.f, 0.f};
+
+		min = glm::vec2{0.f, 0.f};
+		max = glm::vec2{static_cast<float>(imgRealWidth), static_cast<float>(image.height())};
 
 		return;
 	}
@@ -202,13 +208,39 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 	}
 
 	// Normalize the points within the image.
+	const float width = static_cast<float>(imgRealWidth);
 	for (auto &p : points) {
-		p.x /= static_cast<float>(imgRealWidth);
+		p.x /= width;
 	}
 
 	const float height = static_cast<float>(image.height());
 	for (auto &p : points) {
 		p.y /= height;
+	}
+
+	min = glm::vec2{width, height};
+	max = glm::vec2{0.f, 0.f};
+
+	for (auto &p : points) {
+		if (p.x < min.x) {
+			min.x = p.x;
+		}
+	}
+	for (auto &p : points) {
+		if (p.y < min.y) {
+			min.y = p.y;
+		}
+	}
+
+	for (auto &p : points) {
+		if (p.x > max.x) {
+			max.x = p.x;
+		}
+	}
+	for (auto &p : points) {
+		if (p.y > max.y) {
+			max.y = p.y;
+		}
 	}
 
 	potrace_state_free(st);

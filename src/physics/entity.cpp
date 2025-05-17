@@ -18,7 +18,7 @@ void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravi
 	auto vy = y[1];
 	const auto &theta = y[2];
 
-	if (!isFixed) {
+	if (isNotFixed) {
 		vx = (static_cast<double>(utils::accumulate<utils::access<&Thrust::vector, &glm::vec3::x>>(thrusts, 0.f)) - kx*vx) / static_cast<double>(mass);
 		// Because for us, Y is in the opposite direction, we have to invert the operation for the Weight & frictions.
 		vy = (static_cast<double>(utils::accumulate<utils::access<&Thrust::vector, &glm::vec3::y>>(thrusts, 0.f)) + static_cast<double>(mass)*gravity + ky*vy) / static_cast<double>(mass);

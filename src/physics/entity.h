@@ -39,6 +39,16 @@ struct Projection
 	size_t maxIndex = -1;
 };
 
+struct CollisionInfo
+{
+	/// @brief The collision's normal
+	glm::vec2 normal {};
+	/// @brief Contact point of the collision
+	glm::vec2 point {};
+	/// @brief Penetration depth of the collision
+	float depth = 0.f;
+};
+
 struct Forces
 {
 	glm::vec2 forces {};
@@ -97,14 +107,13 @@ public:
 	float angularVelocity = 0.f;
 	float elasticity = 1.f;
 	/// @brief Moment of Inertia.
-	float MoI = 0.f;
+	float MoI = 1.f;
 
 	/// @brief Tells if other objects have an impact on the entity.
 	/// @value true means the object will not be affected by other entity's interactions.
 	bool canCollide = false;
 	/// @brief Tells if the object is affected by gravity or not.
-	bool hasGravity = false;
-	bool isFixed = false;
+	bool isNotFixed = true;
 
 	constexpr glm::vec2 nextPosition(const float timeDelta) const noexcept
 	{
@@ -128,14 +137,14 @@ public:
 
 	constexpr Projection getMinMax(const std::span<const glm::vec2> &borders, const glm::vec2 &axis) const noexcept
 	{
-		float minProj = glm::dot(borders[0], axis);
+		float minProj = glm::dot(position + borders[0], axis);
 		float maxProj = minProj;
 		size_t minProjIndex = 0;
 		size_t maxProjIndex = 0;
 
 		const auto size = borders.size();
 		for (size_t i = 1; i < size; i++) {
-			const float proj = glm::dot(borders[i], axis);
+			const float proj = glm::dot(position + borders[i], axis);
 			if (minProj > proj) {
 				minProj = proj;
 				minProjIndex = i;
@@ -154,7 +163,7 @@ public:
 		};
 	}
 
-	constexpr bool collides(const Entity &other, Projection &outProj) const noexcept
+	constexpr bool collides(const Entity &other, CollisionInfo &info) const noexcept
 	{
 		// t: this, o: other, b: borders, n: normals
 		const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());
@@ -162,31 +171,53 @@ public:
 		const auto ob = std::span<const glm::vec2>(other.borders.data(), other.borders.size());
 		const auto on = std::span<const glm::vec2>(other.normals.data(), other.normals.size());
 
+		float minOverlap = std::numeric_limits<float>::max();
+		glm::vec2 smallestAxis {};
+
 		{
-			const auto size = normals.size();
-			for (size_t i = 0; i < size; i++) {
-				const auto firstIntersect = getMinMax(tb, tn[i]);
-				const auto secondIntersect = getMinMax(ob, tn[i]);
+			for (const auto &normal : tn) {
+				const auto firstIntersect = getMinMax(tb, normal);
+				const auto secondIntersect = other.getMinMax(ob, normal);
 
 				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
 				if (isSeparated) {
 					return false;
 				}
+
+				const float overlap = std::min(firstIntersect.maxProj - secondIntersect.minProj, secondIntersect.maxProj - firstIntersect.minProj);
+				if (overlap < minOverlap) {
+					minOverlap = overlap;
+					smallestAxis = normal;
+				}
 			}
 		}
 
 		{
-			const auto size = other.normals.size();
-			for (size_t i = 0; i < size; i++) {
-				const auto firstIntersect = getMinMax(tb, on[i]);
-				const auto secondIntersect = getMinMax(ob, on[i]);
+			for (const auto &normal : on) {
+				const auto firstIntersect = getMinMax(tb, normal);
+				const auto secondIntersect = other.getMinMax(ob, normal);
 
 				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
 				if (isSeparated) {
 					return false;
 				}
+
+				const float overlap = std::min(firstIntersect.maxProj - secondIntersect.minProj, secondIntersect.maxProj - firstIntersect.minProj);
+				if (overlap < minOverlap) {
+					minOverlap = overlap;
+					smallestAxis = normal;
+				}
 			}
 		}
+
+		const auto centerDelta = center() - other.center();
+		if (glm::dot(centerDelta, smallestAxis) < 0.f) {
+			// Means it's inverted, just invert it.
+			smallestAxis = -smallestAxis;
+		}
+
+		info.normal = smallestAxis;
+		info.depth = minOverlap;
 
 		return true;
 	}

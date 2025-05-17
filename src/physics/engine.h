@@ -17,8 +17,13 @@ public:
 	void prepare();
 	void compute();
 
+protected:
+	void resolveCollision(Physics::Entity &a, Physics::Entity &b, const CollisionInfo &info);
+
 private:
 	World::Scene *m_scene = nullptr;
+
+	void dump() const;
 };
 
 

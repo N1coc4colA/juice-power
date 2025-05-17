@@ -47,6 +47,11 @@ public:
 	 */
 	std::vector<std::vector<glm::vec2>> normals {};
 
+	/**
+	 * @brief Bounding box of the resource.
+	 */
+	std::vector<std::tuple<glm::vec2, glm::vec2>> boundingBoxes{};
+
 	/// @brief Mesh buffers for vertices.
 	GPUMeshBuffers meshBuffers {};
 

@@ -37,6 +37,9 @@ struct JsonResourceElement
 
 	/// @brief Mass of the elements of this resource type.
 	float mass = 1.f;
+
+	/// @brief Elesticity, bounciness of the resource.
+	float elasticity = 0.f;
 };
 
 struct JsonResourcesList
@@ -56,13 +59,12 @@ struct JsonChunkElement
 	 * @note The third value, Z, is the layer within the chunk, not affecting collisions.
 	 */
 	std::array<float, 3> position {0, 0, 0};
-	bool ignores = false;
 
 	/* Element's initial data. */
 	/// @brief Initial angle of the element. Not used for now.
 	float angle = 0.f;
 	/// @brief Initial moment of inertia.
-	float MoI = 0.f;
+	float MoI = 1.f;
 
 	/// @brief Initial velocity of the element.
 	std::array<float, 2> velocity {};
@@ -71,7 +73,12 @@ struct JsonChunkElement
 	/// @brief Initial angular velocity of the element.
 	float angularVelocity = 0.f;
 
-	// [TODO] See how to handle initial forces, frictions, thrusts & torques...
+	/// @brief If the object is affected by collisions.
+	bool canCollide = true;
+	/// @brief If the object is subject to gravity.
+	bool isNotFixed = true;
+
+	// [TODO] See how to handle initial frictions, thrusts & torques...
 };
 
 /**
