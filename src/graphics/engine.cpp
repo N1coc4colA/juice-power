@@ -1059,7 +1059,7 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 
 	// Naive impl for now.
 	if (m_scene) {
-		const auto worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f);
+		const auto worldMatrix = createOrthographicProjection(-80.f, 80.f, 50.f, -50.f);
 
 		GPUDrawPushConstants push_constants {
 			.vertexBuffer = m_scene->res->meshBuffers.vertexBufferAddress,

@@ -1,4 +1,3 @@
-
 #include "engine.h"
 
 #include <chrono>
@@ -9,6 +8,7 @@ namespace
 {
 
 static auto prevChrono = std::chrono::system_clock::now();
+constexpr double pi3_4 = M_PI_2 + M_PI;
 
 }
 
@@ -69,45 +69,50 @@ inline constexpr glm::vec2 rotate(const glm::vec2 &v) noexcept
 	return glm::vec2{-v.y, v.x};
 }
 
+inline constexpr glm::vec2 rotate(const glm::vec2 &v, const double angle)
+{
+	const auto c = glm::cos(angle);
+	const auto s = glm::sin(angle);
+
+	return glm::vec2 {v.x * c - v.y * s, v.x * s + v.y * c};
+}
+
 void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const CollisionInfo &info)
 {
-	// Relative points
-	const auto ca = info.point - a.center();
-	const auto cb = info.point - b.center();
+	const glm::vec2 comToPointA {};
+	const glm::vec2 comToPointB {};
 
-	// Calculate relative velocity
-	const auto rotVelA = rotate(ca) * a.angularVelocity;
-	const auto rotVelB = rotate(cb) * b.angularVelocity;
-	const auto velRel = b.velocity + rotVelB - a.velocity + rotVelA;
+	const auto rotSpeedA = glm::length(comToPointA);
+	const auto rotSpeedB = glm::length(comToPointB);
 
-	const float velocityOnNormal = glm::dot(velRel, info.normal);
-	if (velocityOnNormal < 0.f) {
-		return;
-	}
+	const auto perpRotVectA = rotate(comToPointA, pi3_4);
+	const auto perpRotVectB = rotate(comToPointB, pi3_4);
 
-	const float elasticity = std::min(a.elasticity, b.elasticity);
-	const float rotA = cross(rotVelA, info.normal);
-	const float rotB = cross(rotVelB, info.normal);
+	const auto rotVectA = perpRotVectA * rotSpeedA;
+	const auto rotVectB = perpRotVectB * rotSpeedB;
 
-	const float denominator = (1.f / a.mass) + (1.f / b.mass) +
-							  rotA*rotA / a.MoI + rotB*rotB / b.MoI;
+	const auto relPoint = (a.velocity + rotVectA) - (b.velocity + rotVectB);
 
-	// Calculate impulse
-	const float j = -(1.f + elasticity) * velocityOnNormal / denominator;
-	const auto impulse = j * info.normal;
+	const auto distVect = b.center() - a.center();
+	const auto perpImpVect = distVect / glm::length(distVect);
 
-	// Update values
-	if (a.isNotFixed) {
-		a.velocity -= impulse / a.mass;
-		a.angularVelocity -= cross(ca, impulse) / a.MoI;
-	}
+	const auto termA = glm::sqrt(cross(comToPointA, perpImpVect)) / a.MoI;
+	const auto termB = glm::sqrt(cross(comToPointB, perpImpVect)) / b.MoI;
+
+	const float elasticity = std::max(a.elasticity, b.elasticity);
+
+	const auto impulse = glm::dot(relPoint, perpImpVect) * -(1.f + elasticity) / (1.f / a.mass + 1.f / b.mass + termA + termB);
+	const auto perpImpVectImp = perpImpVect * impulse;
 
 	if (b.isNotFixed) {
-		b.velocity += impulse / b.mass;
-		b.angularVelocity += cross(cb, impulse) / b.MoI;
+		b.velocity -= perpImpVectImp / b.mass;
+		b.angularVelocity -= cross(comToPointB, perpImpVectImp) / b.MoI;
 	}
 
-	// [NOTE] Also use tangential impulse ?
+	if (a.isNotFixed) {
+		a.velocity += perpImpVectImp / a.mass;
+		a.angularVelocity += cross(comToPointA, perpImpVectImp) / a.MoI;
+	}
 }
 
 void Engine::compute()
@@ -118,6 +123,12 @@ void Engine::compute()
 	// It's true that sometimes, delta is so small that it's 0, so we have to skip the operation.
 	if (delta == 0.) {
 		return;
+	}
+
+	for (auto &c : m_scene->view) {
+		for (auto &obj : c.entities) {
+			obj.cleanup();
+		}
 	}
 
 	for (auto &c : m_scene->view) {
@@ -171,13 +182,6 @@ void Engine::compute()
 			chunk.positions[i].y = chunk.entities[i].position.y;
 		}
 	}
-
-	/*for (auto &chunk : m_scene->view) {
-		const auto size = chunk.entities.size();
-		for (size_t i = 0; i < size; i++) {
-			std::cout << i << ':' << chunk.positions[i].x << ':' << chunk.positions[i].y << '\n';
-		}
-	}*/
 
 	prevChrono = currentTime;
 }

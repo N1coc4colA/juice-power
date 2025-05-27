@@ -21,7 +21,7 @@ void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravi
 	if (isNotFixed) {
 		vx = (static_cast<double>(utils::accumulate<utils::access<&Thrust::vector, &glm::vec3::x>>(thrusts, 0.f)) - kx*vx) / static_cast<double>(mass);
 		// Because for us, Y is in the opposite direction, we have to invert the operation for the Weight & frictions.
-		vy = (static_cast<double>(utils::accumulate<utils::access<&Thrust::vector, &glm::vec3::y>>(thrusts, 0.f)) + static_cast<double>(mass)*gravity + ky*vy) / static_cast<double>(mass);
+		vy = (static_cast<double>(utils::accumulate<utils::access<&Thrust::vector, &glm::vec3::y>>(thrusts, 0.f)) - static_cast<double>(mass)*gravity - ky*vy) / static_cast<double>(mass);
 	}
 
 	dydt[0] = vx;
@@ -36,10 +36,19 @@ void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravi
 			   ) / static_cast<double>(MoI);
 }
 
+inline constexpr glm::vec2 glm_vec2_addition(const glm::vec2 &a, const glm::vec2 &b)
+{
+	return a + b;
+}
+
 Forces Entity::resultOfForces(const double timeStep) const
 {
 	// [vx, vy, theta]
-	state_type y {static_cast<double>(velocity.x), static_cast<double>(velocity.y), static_cast<double>(angularVelocity)};
+	state_type y {
+        static_cast<double>(velocity.x + temporaryVelocities.x),
+	    static_cast<double>(velocity.y + temporaryVelocities.y),
+	    static_cast<double>(angularVelocity + temporaryAngularVelocities)
+	};
 
 	// Use runge_kutta4 stepper with constant time step, we may have to use a variable one in the future.
 	boost::numeric::odeint::integrate_const(
@@ -72,5 +81,10 @@ void Entity::compute(const double timeDelta)
 	position = nextPosition(static_cast<float>(timeDelta));
 }
 
+void Entity::cleanup()
+{
+	temporaryVelocities = {};
+	temporaryAngularVelocities = 0.f;
+}
 
 }

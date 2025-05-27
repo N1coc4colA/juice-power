@@ -95,11 +95,14 @@ public:
 	std::vector<Friction> frictions {};
 
 	std::vector<Thrust> thrusts {};
-	std::vector<float> torques{};
+	std::vector<float> torques {};
 
 	glm::vec2 position {};
 	glm::vec2 velocity {};
 	glm::vec2 acceleration {};
+
+	glm::vec2 temporaryVelocities {};
+	float temporaryAngularVelocities = 0.f;
 
 	/// @brief Mass of the entity
 	float mass = 8.f;
@@ -221,6 +224,9 @@ public:
 
 		return true;
 	}
+
+	/// @brief Performs cleanups for post-position update.
+	void cleanup();
 };
 
 
