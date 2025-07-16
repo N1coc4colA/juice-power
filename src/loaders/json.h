@@ -39,7 +39,7 @@ struct JsonResourceElement
 	float mass = 1.f;
 
 	/// @brief Elesticity, bounciness of the resource.
-	float elasticity = 0.f;
+	float elasticity = 1.f;
 };
 
 struct JsonResourcesList
