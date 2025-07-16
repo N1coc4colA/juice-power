@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iostream>
 
+#include "src/utils.h"
 
 namespace
 {
@@ -59,11 +60,6 @@ void Engine::dump() const
 	}
 }
 
-inline constexpr float cross(const glm::vec2 &a, const glm::vec2 &b) noexcept
-{
-	return a.x * b.y - a.y * b.x;
-}
-
 inline constexpr glm::vec2 rotate(const glm::vec2 &v) noexcept
 {
 	return glm::vec2{-v.y, v.x};
@@ -96,23 +92,23 @@ void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const Coll
 	const auto distVect = b.center() - a.center();
 	const auto perpImpVect = distVect / glm::length(distVect);
 
-	const auto termA = glm::sqrt(cross(comToPointA, perpImpVect)) / a.MoI;
-	const auto termB = glm::sqrt(cross(comToPointB, perpImpVect)) / b.MoI;
+    const auto termA = glm::sqrt(utils::cross(comToPointA, perpImpVect)) / a.MoI;
+    const auto termB = glm::sqrt(utils::cross(comToPointB, perpImpVect)) / b.MoI;
 
-	const float elasticity = std::max(a.elasticity, b.elasticity);
+    const float elasticity = std::max(a.elasticity, b.elasticity);
 
-	const auto impulse = glm::dot(relPoint, perpImpVect) * -(1.f + elasticity) / (1.f / a.mass + 1.f / b.mass + termA + termB);
+    const auto impulse = glm::dot(relPoint, perpImpVect) * -(1.f + elasticity) / (1.f / a.mass + 1.f / b.mass + termA + termB);
 	const auto perpImpVectImp = perpImpVect * impulse;
 
 	if (b.isNotFixed) {
 		b.velocity -= perpImpVectImp / b.mass;
-		b.angularVelocity -= cross(comToPointB, perpImpVectImp) / b.MoI;
-	}
+        b.angularVelocity -= utils::cross(comToPointB, perpImpVectImp) / b.MoI;
+    }
 
 	if (a.isNotFixed) {
 		a.velocity += perpImpVectImp / a.mass;
-		a.angularVelocity += cross(comToPointA, perpImpVectImp) / a.MoI;
-	}
+        a.angularVelocity += utils::cross(comToPointA, perpImpVectImp) / a.MoI;
+    }
 }
 
 void Engine::compute()
@@ -164,9 +160,7 @@ void Engine::compute()
 								// We need to resolve the collision.
 								if (e.collides(e2, info)) {
 									resolveCollision(e, e2, info);
-
-									dump();
-								}
+                                }
 							}
 						}
 					}
@@ -185,6 +179,4 @@ void Engine::compute()
 
 	prevChrono = currentTime;
 }
-
-
 }
