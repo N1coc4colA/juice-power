@@ -31,12 +31,24 @@ void Resources::build(Engine &engine)
 		const auto span = std::span<Vertex>(reinterpret_cast<Vertex *>(vertices.data()), size*4);
 		meshBuffers = engine.uploadMesh(indices, span);
 	}
-
-	engine.mainDeletionQueue.push_function([&engine, this]() {
-		engine.destroyBuffer(meshBuffers.indexBuffer);
-		engine.destroyBuffer(meshBuffers.vertexBuffer);
-	});
 }
 
+void Resources::cleanup(Engine &engine)
+{
+    engine.destroyBuffer(meshBuffers.indexBuffer);
+    engine.destroyBuffer(meshBuffers.vertexBuffer);
 
+    meshBuffers = {};
+
+    for (auto &img : images) {
+        engine.destroyImage(img);
+    }
+
+    images.clear();
+    vertices.clear();
+    types.clear();
+    borders.clear();
+    normals.clear();
+    boundingBoxes.clear();
+}
 }

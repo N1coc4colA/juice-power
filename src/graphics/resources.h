@@ -55,7 +55,8 @@ public:
 	/// @brief Mesh buffers for vertices.
 	GPUMeshBuffers meshBuffers {};
 
-	void build(Engine &engine);
+    void build(Engine &engine);
+    void cleanup(Engine &engine);
 };
 
 

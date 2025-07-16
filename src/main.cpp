@@ -44,7 +44,8 @@ int main(int argc, char **argv)
 		pe.compute();
 	});
 
-	engine.cleanup();
+    scene.res->cleanup(engine);
+    engine.cleanup();
 
 	return 0;
 }
