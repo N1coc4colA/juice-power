@@ -72,13 +72,13 @@ Forces Entity::resultOfForces(const double timeStep) const
 
 void Entity::compute(const double timeDelta)
 {
-	const Forces f = resultOfForces(timeDelta);
-	angularVelocity = static_cast<float>(f.angularVelocity);
+    const Forces f = resultOfForces(timeDelta);
+    angularVelocity = static_cast<float>(f.angularVelocity);
 
-	// F = m*a, which means that a = F/m
-	acceleration = f.forces;// / mass;
-	velocity = nextVelocity(static_cast<float>(timeDelta));
-	position = nextPosition(static_cast<float>(timeDelta));
+    // F = m*a, which means that a = F/m
+    acceleration = f.forces; // / mass;
+    velocity = nextVelocity(static_cast<float>(timeDelta));
+    position = nextPosition(static_cast<float>(timeDelta));
 }
 
 void Entity::cleanup()

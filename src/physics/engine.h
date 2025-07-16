@@ -4,7 +4,6 @@
 
 #include "../world/scene.h"
 
-
 namespace Physics
 {
 

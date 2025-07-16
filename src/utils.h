@@ -17,9 +17,9 @@
 namespace utils
 {
 
-inline constexpr float cross(const glm::vec2 &a, const glm::vec2 &b)
+inline constexpr float cross(const glm::vec2 &a, const glm::vec2 &b) noexcept
 {
-	return (a.x * b.y) - (b.x * a.y);
+    return (a.x * b.y) - (b.x * a.y);
 }
 
 using std::accumulate;
