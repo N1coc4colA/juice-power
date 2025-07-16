@@ -13,7 +13,7 @@ namespace Graphics
 // together in only one ....... header using a macro.
 void *get_mapped_data(VmaAllocation alloc);
 
-
+int getAllocationsCount();
 }
 
 

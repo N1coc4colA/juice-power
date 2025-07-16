@@ -65,5 +65,12 @@ void *get_mapped_data(VmaAllocation alloc)
 	return alloc->GetMappedData();
 }
 
-
+int getAllocationsCount()
+{
+#ifdef VMA_USE_DEBUG_LOG
+    return allocationCounter;
+#else
+    return 0;
+#endif
+}
 }
