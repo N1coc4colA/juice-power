@@ -1,4 +1,28 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.15)
+
+
+## Build options ##
+
+# Set available build types
+set(VALID_BUILD_TYPES Debug Release MinRelSize Optimized)
+set(CMAKE_CONFIGURATION_TYPES "${VALID_BUILD_TYPES}" CACHE STRING "Available build types" FORCE)
+
+# Default to Release if not specified
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+# Add custom build type flags
+set(CMAKE_CXX_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
+set(CMAKE_C_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
+
+
+option(BUILD_STATIC "Build libraries as static" OFF)
+option(ENABLE_PROFILE "Enable profiling with gprof" OFF)
+
+# Custom optimization level override
+set(OPTIMIZATION_LEVEL "" CACHE STRING "Custom optimization level (e.g., -O0, -O1, -O2, -O3, or leave empty for default)")
+set_property(CACHE OPTIMIZATION_LEVEL PROPERTY STRINGS "" -O0 -O1 -O2 -O3)
 
 
 ## General project configuration ##
@@ -13,16 +37,57 @@ juice-power
 		CXX
 )
 
+
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Debug)
 set(FASTGLTF_COMPILE_AS_CPP20 1)
 set(MAGIC_ENUM_INCL_DIR "")
 enable_testing()
 
 
-message(STATUS "[BT] ${PROJECT_NAME}: ${CMAKE_BUILD_TYPE}")
+## Handle build options ##
 
+if(BUILD_STATIC)
+  set(LIB_TYPE STATIC)
+else()
+  set(LIB_TYPE SHARED)
+endif()
+
+
+# Collect base flags
+set(EXTRA_FLAGS "")
+
+# Apply profiling flags
+if(ENABLE_PROFILE)
+  message(STATUS "Profiling enabled (gprof)")
+  list(APPEND EXTRA_FLAGS "-pg")
+
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+endif()
+
+# Apply optimization override if set
+if(OPTIMIZATION_LEVEL)
+  message(STATUS "Using custom optimization level: ${OPTIMIZATION_LEVEL}")
+
+  # Strip existing optimization flags and set ours
+  string(REGEX REPLACE "-O[0-3s]" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPTIMIZATION_LEVEL}")
+  string(REGEX REPLACE "-O[0-3s]" "" CMAKE_${lang}_FLAGS "${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPTIMIZATION_LEVEL}")
+endif()
+
+# Apply extra flags to all configurations
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS}")
+
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Build Static: ${BUILD_STATIC}")
+message(STATUS "Profiling: ${ENABLE_PROFILE}")
+message(STATUS "Optimization Level: ${OPTIMIZATION_LEVEL}")
+message(STATUS "Flags for C: ${CMAKE_C_FLAGS}")
+message(STATUS "Flags for CXX: ${CMAKE_CXX_FLAGS}")
+
+## Finding sources & progs ##
 
 # We need GLSLC to compile our shaders.
 find_program(GLSLC_EXECUTABLE glslc PATHS) # ... PATHS <some_path_to_my_glslc>)
@@ -59,6 +124,23 @@ juice-power
 	${C_SOURCES}
 )
 
+# Shader compilation steps
+foreach(shader_source ${SHADER_SOURCES})
+	get_filename_component(file_c ${shader_source} NAME)
+	get_filename_component(file_no_ext ${shader_source} NAME_WE)
+	get_filename_component(file_dir ${shader_source} DIRECTORY)
+	add_custom_command(
+		OUTPUT ${file_dir}/${file_c}.spv
+		COMMAND ${GLSLC_EXECUTABLE} ${shader_source} -o ${file_dir}/${file_c}.spv
+		DEPENDS ${shader_source}
+		COMMENT "Compiling shader ${shader_source}"
+		VERBATIM
+	)
+	list(APPEND SHADER_FILES ${file_dir}/${file_c}.spv)
+endforeach()
+
+
+## Find deps ##
 
 if (NOT DEFINED OpenBLAS_CUSTOM)
 	find_package(OpenBLAS)
@@ -102,24 +184,6 @@ else()
 	endif()
 endif()
 
-# Shader compilation steps
-foreach(shader_source ${SHADER_SOURCES})
-	get_filename_component(file_c ${shader_source} NAME)
-	get_filename_component(file_no_ext ${shader_source} NAME_WE)
-	get_filename_component(file_dir ${shader_source} DIRECTORY)
-	add_custom_command(
-		OUTPUT ${file_dir}/${file_c}.spv
-		COMMAND ${GLSLC_EXECUTABLE} ${shader_source} -o ${file_dir}/${file_c}.spv
-		DEPENDS ${shader_source}
-		COMMENT "Compiling shader ${shader_source}"
-		VERBATIM
-	)
-	list(APPEND SHADER_FILES ${file_dir}/${file_c}.spv)
-endforeach()
-
-
-## Find deps ##
-
 add_subdirectory("submodules/vk-bootstrap")
 add_subdirectory("submodules/glaze")
 add_subdirectory("submodules") # For ImGui
@@ -161,6 +225,9 @@ target_include_directories(juice-power PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/subm
 # Compile our shaders when the main exec is.
 add_dependencies(juice-power shaders)
 
+
+## Linking ##
+
 target_include_directories(
 juice-power
 	PRIVATE
@@ -190,6 +257,7 @@ juice-power
 		${Boost_LIBRARIES}
 		potrace
 )
+
 
 ## Testing part ##
 
