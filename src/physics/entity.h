@@ -8,6 +8,7 @@
 #include <span>
 #include <vector>
 
+#include "src/utils.h"
 
 namespace Physics
 {
@@ -130,54 +131,55 @@ public:
 
 	// Used for integration of forces. Here it's not King Kunta but King Kutta !!
 	void KingKutta(const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
-	Forces resultOfForces(const double timeStep) const;
-	void compute(const double timeDelta);
+    Forces resultOfForces(const double timeStep) const;
+    void compute(const double timeDelta);
 
-	inline constexpr glm::vec2 center() const noexcept
-	{
-		return position + (boundingBox.max - boundingBox.min) / 2.f;
-	}
+    inline constexpr glm::vec2 center() const noexcept
+    {
+        return position + (boundingBox.max - boundingBox.min) / 2.f;
+    }
 
-	constexpr Projection getMinMax(const std::span<const glm::vec2> &borders, const glm::vec2 &axis) const noexcept
-	{
-		float minProj = glm::dot(position + borders[0], axis);
-		float maxProj = minProj;
-		size_t minProjIndex = 0;
-		size_t maxProjIndex = 0;
+    constexpr Projection getMinMax(const std::span<const glm::vec2> &borders,
+                                   const glm::vec2 &axis) const noexcept
+    {
+        float minProj = glm::dot(position + borders[0], axis);
+        float maxProj = minProj;
+        size_t minProjIndex = 0;
+        size_t maxProjIndex = 0;
 
-		const auto size = borders.size();
-		for (size_t i = 1; i < size; i++) {
-			const float proj = glm::dot(position + borders[i], axis);
-			if (minProj > proj) {
-				minProj = proj;
-				minProjIndex = i;
-			}
-			if (maxProj < proj) {
-				maxProj = proj;
+        const auto size = borders.size();
+        for (size_t i = 1; i < size; i++) {
+            const float proj = glm::dot(position + borders[i], axis);
+            if (minProj > proj) {
+                minProj = proj;
+                minProjIndex = i;
+            }
+            if (maxProj < proj) {
+                maxProj = proj;
 				maxProjIndex = i;
-			}
-		}
+            }
+        }
 
-		return Projection {
-			.minProj = minProj,
-			.maxProj = maxProj,
-			.minIndex = minProjIndex,
-			.maxIndex = maxProjIndex,
-		};
-	}
+        return Projection{
+            .minProj = minProj,
+            .maxProj = maxProj,
+            .minIndex = minProjIndex,
+            .maxIndex = maxProjIndex,
+        };
+    }
 
-	constexpr bool collides(const Entity &other, CollisionInfo &info) const noexcept
-	{
-		// t: this, o: other, b: borders, n: normals
-		const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());
-		const auto tn = std::span<const glm::vec2>(normals.data(), normals.size());
-		const auto ob = std::span<const glm::vec2>(other.borders.data(), other.borders.size());
-		const auto on = std::span<const glm::vec2>(other.normals.data(), other.normals.size());
+    constexpr bool collides(const Entity &other, CollisionInfo &info) const noexcept
+    {
+        // t: this, o: other, b: borders, n: normals
+        const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());
+        const auto tn = std::span<const glm::vec2>(normals.data(), normals.size());
+        const auto ob = std::span<const glm::vec2>(other.borders.data(), other.borders.size());
+        const auto on = std::span<const glm::vec2>(other.normals.data(), other.normals.size());
 
-		float minOverlap = std::numeric_limits<float>::max();
-		glm::vec2 smallestAxis {};
+        float minOverlap = std::numeric_limits<float>::max();
+        glm::vec2 smallestAxis{};
 
-		{
+        {
 			for (const auto &normal : tn) {
 				const auto firstIntersect = getMinMax(tb, normal);
 				const auto secondIntersect = other.getMinMax(ob, normal);
@@ -223,10 +225,10 @@ public:
 		info.depth = minOverlap;
 
 		return true;
-	}
+    }
 
-	/// @brief Performs cleanups for post-position update.
-	void cleanup();
+    /// @brief Performs cleanups for post-position update.
+    void cleanup();
 };
 
 
