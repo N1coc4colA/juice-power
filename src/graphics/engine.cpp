@@ -30,15 +30,14 @@
 #include "pipelinebuilder.h"
 #include "vma.h"
 
-
-#define LOGFN() {std::cout << __func__ << '\n';}
-
+#define LOGFN() \
+    { \
+        std::cout << __func__ << '\n'; \
+    }
 
 constexpr bool bUseValidationLayers = true;
 
-
-namespace Graphics
-{
+namespace Graphics {
 
 Engine *loadedEngine = nullptr;
 
@@ -150,6 +149,24 @@ void Engine::initSDL()
 	}
 }
 
+void enumerateDevices(VkInstance inst)
+{
+    uint32_t gpuCount;
+    VK_CHECK(vkEnumeratePhysicalDevices(inst, &gpuCount, nullptr));
+
+    std::vector<VkPhysicalDevice> gpus(gpuCount);
+    VK_CHECK(vkEnumeratePhysicalDevices(inst, &gpuCount, gpus.data()));
+
+    VkPhysicalDeviceProperties props{};
+    for (const auto &gpu : gpus) {
+        vkGetPhysicalDeviceProperties(gpu, &props);
+
+        std::cout << "Available GPU: " << props.deviceName << '(' << props.deviceID << ':'
+                  << props.deviceType << ':' << props.apiVersion << ':' << props.driverVersion
+                  << ")\n";
+    }
+}
+
 void Engine::initVulkan()
 {
 	LOGFN();
@@ -188,40 +205,50 @@ void Engine::initVulkan()
 
 	//use vkbootstrap to select a GPU.
 	//We want a GPU that can write to the SDL surface and supports Vulkan 1.3
-	const vkb::PhysicalDevice physicalDevice = vkb::PhysicalDeviceSelector(vkb_inst)
-		.set_minimum_version(1, 3)  // We run on Vulkan 1.3+
-		.set_required_features_13(features13)
-		.set_surface(surface)
-		.select()
-		.value();
+    const vkb::PhysicalDevice physicalDevice = vkb::PhysicalDeviceSelector(vkb_inst)
+                                                   .set_minimum_version(1,
+                                                                        3) // We run on Vulkan 1.3+
+                                                   .set_required_features_13(features13)
+                                                   .set_surface(surface)
+                                                   .select()
+                                                   .value();
 
-	VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures {
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-		.bufferDeviceAddress = VK_TRUE,
-	};
+    VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        .bufferDeviceAddress = VK_TRUE,
+    };
 
-	//create the final Vulkan device
-	const vkb::Device vkbDevice = vkb::DeviceBuilder(physicalDevice)
-		.add_pNext(&bufferDeviceAddressFeatures)
-		.build()
-		.value();
+    enumerateDevices(instance);
 
-	// Get the VkDevice handle used in the rest of a Vulkan application
-	device = vkbDevice.device;
-	chosenGPU = physicalDevice.physical_device;
+    //create the final Vulkan device
+    const vkb::Device vkbDevice
+        = vkb::DeviceBuilder(physicalDevice).add_pNext(&bufferDeviceAddressFeatures).build().value();
 
-	graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
-	graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+    // Get the VkDevice handle used in the rest of a Vulkan application
+    device = vkbDevice.device;
+    chosenGPU = physicalDevice.physical_device;
 
-	if (surface == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkSurfaceCreation2);
-	}
-	if (device == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkDeviceCreation);
-	}
-	if (graphicsQueue == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkQueueCreation);
-	}
+    {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(chosenGPU, &props);
+
+        std::cout << "Chosen GPU: " << props.deviceName << '(' << props.deviceID << ':'
+                  << props.deviceType << ':' << props.apiVersion << ':' << props.driverVersion
+                  << ")\n";
+    }
+
+    graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
+    graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+    if (surface == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkSurfaceCreation2);
+    }
+    if (device == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkDeviceCreation);
+    }
+    if (graphicsQueue == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkQueueCreation);
+    }
 }
 
 void Engine::initVMA()
@@ -229,22 +256,20 @@ void Engine::initVMA()
 	LOGFN();
 
 	// initialize the memory allocator
-	const VmaAllocatorCreateInfo allocatorInfo {
-		.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
-		.physicalDevice = chosenGPU,
-		.device = device,
-		.instance = instance,
-		.vulkanApiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0),
-	};
+    const VmaAllocatorCreateInfo allocatorInfo{
+        .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+        .physicalDevice = chosenGPU,
+        .device = device,
+        .instance = instance,
+        .vulkanApiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0),
+    };
 
-	VK_CHECK(vmaCreateAllocator(&allocatorInfo, &allocator));
-	if (allocator == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VMAInitialisation);
-	}
+    VK_CHECK(vmaCreateAllocator(&allocatorInfo, &allocator));
+    if (allocator == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VMAInitialisation);
+    }
 
-	mainDeletionQueue.push_function([this]() {
-		vmaDestroyAllocator(allocator);
-	});
+    mainDeletionQueue.push_function([this]() { vmaDestroyAllocator(allocator); });
 }
 
 void Engine::initSwapchain()
@@ -295,36 +320,45 @@ void Engine::initSwapchain()
 	}
 
 	//add to deletion queues
-	mainDeletionQueue.push_function([this]() {
-		vkDestroyImageView(device, drawImage.imageView, nullptr);
-		vmaDestroyImage(allocator, drawImage.image, drawImage.allocation);
-	});
+    mainDeletionQueue.push_function([this]() {
+        vkDestroyImageView(device, drawImage.imageView, nullptr);
+        vmaDestroyImage(allocator, drawImage.image, drawImage.allocation);
+    });
 
-	// Depth IMG
-	depthImage.imageFormat = VK_FORMAT_D32_SFLOAT;
-	depthImage.imageExtent = drawImageExtent;
-	constexpr VkImageUsageFlags depthImageUsages = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    // Depth IMG
+    depthImage.imageFormat = VK_FORMAT_D32_SFLOAT;
+    depthImage.imageExtent = drawImageExtent;
+    constexpr VkImageUsageFlags depthImageUsages = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-	const VkImageCreateInfo dimg_info = vkinit::image_create_info(depthImage.imageFormat, depthImageUsages, drawImageExtent);
+    const VkImageCreateInfo dimg_info = vkinit::image_create_info(depthImage.imageFormat,
+                                                                  depthImageUsages,
+                                                                  drawImageExtent);
 
-	//allocate and create the image
-	VK_CHECK(vmaCreateImage(allocator, &dimg_info, &rimg_allocinfo, &depthImage.image, &depthImage.allocation, nullptr));
-	if (depthImage.image == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VMAImageCreation, "Depth");
-	}
+    //allocate and create the image
+    VK_CHECK(vmaCreateImage(allocator,
+                            &dimg_info,
+                            &rimg_allocinfo,
+                            &depthImage.image,
+                            &depthImage.allocation,
+                            nullptr));
+    if (depthImage.image == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VMAImageCreation, "Depth");
+    }
 
-	//build a image-view for the draw image to use for rendering
-	const VkImageViewCreateInfo dview_info = vkinit::imageview_create_info(depthImage.imageFormat, depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+    //build a image-view for the draw image to use for rendering
+    const VkImageViewCreateInfo dview_info = vkinit::imageview_create_info(depthImage.imageFormat,
+                                                                           depthImage.image,
+                                                                           VK_IMAGE_ASPECT_DEPTH_BIT);
 
-	VK_CHECK(vkCreateImageView(device, &dview_info, nullptr, &depthImage.imageView));
-	if (depthImage.imageView == VK_NULL_HANDLE) {
+    VK_CHECK(vkCreateImageView(device, &dview_info, nullptr, &depthImage.imageView));
+    if (depthImage.imageView == VK_NULL_HANDLE) {
 		throw Failure(FailureType::VMAImageViewCreation, "Depth");
 	}
 
-	mainDeletionQueue.push_function([this]() {
-		vkDestroyImageView(device, depthImage.imageView, nullptr);
-		vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
-	});
+    mainDeletionQueue.push_function([this]() {
+        vkDestroyImageView(device, depthImage.imageView, nullptr);
+        vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
+    });
 }
 
 void Engine::initCommands()
@@ -363,9 +397,8 @@ void Engine::initCommands()
 		throw Failure(FailureType::VkCommandBufferCreation, "Immediate");
 	}
 
-	mainDeletionQueue.push_function([this]() {
-		vkDestroyCommandPool(device, immCommandPool, nullptr);
-	});
+    mainDeletionQueue.push_function(
+        [this]() { vkDestroyCommandPool(device, immCommandPool, nullptr); });
 }
 
 void Engine::initSyncStructures()
@@ -400,9 +433,7 @@ void Engine::initSyncStructures()
 		throw Failure(FailureType::VkFenceCreation, "Immediate");
 	}
 
-	mainDeletionQueue.push_function([this]() {
-		vkDestroyFence(device, immFence, nullptr);
-	});
+    mainDeletionQueue.push_function([this]() { vkDestroyFence(device, immFence, nullptr); });
 }
 
 void Engine::initDescriptors()
@@ -449,37 +480,38 @@ void Engine::initDescriptors()
 		frames[i].frameDescriptors = DescriptorAllocatorGrowable();
 		frames[i].frameDescriptors.init(device, 1000, frame_sizes);
 
-		mainDeletionQueue.push_function([this, i]() {
-			frames[i].frameDescriptors.destroyPools(device);
-		});
-	}
+        mainDeletionQueue.push_function(
+            [this, i]() { frames[i].frameDescriptors.destroyPools(device); });
+    }
 
-	{
-		DescriptorLayoutBuilder builder {};
-		builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-		gpuSceneDataDescriptorLayout = builder.build(device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-		if (gpuSceneDataDescriptorLayout == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkDescriptorLayoutCreation, "GPU");
-		}
-	}
+    {
+        DescriptorLayoutBuilder builder{};
+        builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        gpuSceneDataDescriptorLayout = builder.build(device,
+                                                     VK_SHADER_STAGE_VERTEX_BIT
+                                                         | VK_SHADER_STAGE_FRAGMENT_BIT);
+        if (gpuSceneDataDescriptorLayout == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkDescriptorLayoutCreation, "GPU");
+        }
+    }
 
-	{
-		DescriptorLayoutBuilder builder {};
-		builder.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-		singleImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
-		if (singleImageDescriptorLayout == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkDescriptorLayoutCreation, "Single");
-		}
-	}
+    {
+        DescriptorLayoutBuilder builder{};
+        builder.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        singleImageDescriptorLayout = builder.build(device, VK_SHADER_STAGE_FRAGMENT_BIT);
+        if (singleImageDescriptorLayout == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkDescriptorLayoutCreation, "Single");
+        }
+    }
 
-	//make sure both the descriptor allocator and the new layout get cleaned up properly
-	mainDeletionQueue.push_function([this]() {
-		globalDescriptorAllocator.destroyPools(device);
+    //make sure both the descriptor allocator and the new layout get cleaned up properly
+    mainDeletionQueue.push_function([this]() {
+        globalDescriptorAllocator.destroyPools(device);
 
-		vkDestroyDescriptorSetLayout(device, drawImageDescriptorLayout, nullptr);
-		vkDestroyDescriptorSetLayout(device, gpuSceneDataDescriptorLayout, nullptr);
-		vkDestroyDescriptorSetLayout(device, singleImageDescriptorLayout, nullptr);
-	});
+        vkDestroyDescriptorSetLayout(device, drawImageDescriptorLayout, nullptr);
+        vkDestroyDescriptorSetLayout(device, gpuSceneDataDescriptorLayout, nullptr);
+        vkDestroyDescriptorSetLayout(device, singleImageDescriptorLayout, nullptr);
+    });
 }
 
 void Engine::initPipelines()
@@ -554,10 +586,10 @@ void Engine::initMeshPipeline()
 	vkDestroyShaderModule(device, triangleFragShader, nullptr);
 	vkDestroyShaderModule(device, triangleVertexShader, nullptr);
 
-	mainDeletionQueue.push_function([&]() {
-		vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
-		vkDestroyPipeline(device, meshPipeline, nullptr);
-	});
+    mainDeletionQueue.push_function([&]() {
+        vkDestroyPipelineLayout(device, meshPipelineLayout, nullptr);
+        vkDestroyPipeline(device, meshPipeline, nullptr);
+    });
 }
 
 void Engine::initBackgroundPipelines()
@@ -612,10 +644,10 @@ void Engine::initBackgroundPipelines()
 
 	vkDestroyShaderModule(device, computeDrawShader, nullptr);
 
-	mainDeletionQueue.push_function([this]() {
-		vkDestroyPipelineLayout(device, gradientPipelineLayout, nullptr);
-		vkDestroyPipeline(device, gradientPipeline, nullptr);
-	});
+    mainDeletionQueue.push_function([this]() {
+        vkDestroyPipelineLayout(device, gradientPipelineLayout, nullptr);
+        vkDestroyPipeline(device, gradientPipeline, nullptr);
+    });
 }
 
 void Engine::initImgui()
@@ -698,10 +730,10 @@ void Engine::initImgui()
 	}
 
 	// add the destroy the imgui created structures
-	mainDeletionQueue.push_function([this, imguiPool]() {
-		ImGui_ImplVulkan_Shutdown();
-		vkDestroyDescriptorPool(device, imguiPool, nullptr);
-	});
+    mainDeletionQueue.push_function([this, imguiPool]() {
+        ImGui_ImplVulkan_Shutdown();
+        vkDestroyDescriptorPool(device, imguiPool, nullptr);
+    });
 }
 
 void Engine::immediate_submit(const std::function<void(VkCommandBuffer cmd)> &function)
@@ -756,8 +788,8 @@ void Engine::cleanup()
 			frames[i].deletionQueue.flush();
 		}
 
-		//flush the global deletion queue
-		mainDeletionQueue.flush();
+        //flush the global deletion queue
+        mainDeletionQueue.flush();
 
 #ifdef VMA_USE_DEBUG_LOG
 		// Right here because all VMA (de)allocs must all have been performed
@@ -765,24 +797,24 @@ void Engine::cleanup()
 		assert(allocationCounter == 0 && "Memory leak detected!");
 #endif
 
-		//destroy swapchain-associated resources
-		destroySwapchain();
+        //destroy swapchain-associated resources
+        destroySwapchain();
 
-		vkDestroyDevice(device, nullptr);
-		vkDestroySurfaceKHR(instance, surface, nullptr);
-		vkb::destroy_debug_utils_messenger(instance, debugMessenger);
-		vkDestroyInstance(instance, nullptr);
-		SDL_DestroyWindow(window);
+        vkDestroyDevice(device, nullptr);
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+        vkb::destroy_debug_utils_messenger(instance, debugMessenger);
+        vkDestroyInstance(instance, nullptr);
+        SDL_DestroyWindow(window);
 
-		device = VK_NULL_HANDLE;
-		instance = VK_NULL_HANDLE;
-		surface = VK_NULL_HANDLE;
-		debugMessenger = VK_NULL_HANDLE;
-		window = nullptr;
-	}
+        device = VK_NULL_HANDLE;
+        instance = VK_NULL_HANDLE;
+        surface = VK_NULL_HANDLE;
+        debugMessenger = VK_NULL_HANDLE;
+        window = nullptr;
+    }
 
-	// clear Engine pointer
-	loadedEngine = nullptr;
+    // clear Engine pointer
+    loadedEngine = nullptr;
 }
 
 void Engine::run(const std::function<void()> &prepare, const std::function<void()> &update)
@@ -1218,13 +1250,13 @@ void Engine::initDefaultData()
 		throw Failure(FailureType::VkSamplerCreation, "Linear");
 	}
 
-	mainDeletionQueue.push_function([this]() {
-		vkDestroySampler(device, defaultSamplerNearest, nullptr);
-		vkDestroySampler(device, defaultSamplerLinear, nullptr);
+    mainDeletionQueue.push_function([this]() {
+        vkDestroySampler(device, defaultSamplerNearest, nullptr);
+        vkDestroySampler(device, defaultSamplerLinear, nullptr);
 
-		destroyImage(whiteImage);
-		destroyImage(errorCheckerboardImage);
-	});
+        destroyImage(whiteImage);
+        destroyImage(errorCheckerboardImage);
+    });
 }
 
 void Engine::createSwapchain(const uint32_t w, const uint32_t h)
@@ -1433,10 +1465,10 @@ void Engine::generateMeshes()
 
 	meshBuffers = uploadMesh(indices, vertices);
 
-	mainDeletionQueue.push_function([&]() {
-		destroyBuffer(meshBuffers.indexBuffer);
-		destroyBuffer(meshBuffers.vertexBuffer);
-	});
+    mainDeletionQueue.push_function([&]() {
+        destroyBuffer(meshBuffers.indexBuffer);
+        destroyBuffer(meshBuffers.vertexBuffer);
+    });
 }
 
 
@@ -1445,4 +1477,4 @@ void Engine::setScene(World::Scene &scene)
 	m_scene = &scene;
 }
 
-}
+} // namespace Graphics
