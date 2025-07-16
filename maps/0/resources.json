@@ -1,15 +1,15 @@
 [
     {
         "name": "tri",
-        "w": 1.0,
-        "h": 1.0,
+        "w": 4.0,
+        "h": 4.0,
         "source": "tritest.jpg",
         "type": 0
     },
     {
         "name": "col",
-        "w": 1.0,
-        "h": 1.0,
+        "w": 4.0,
+        "h": 4.0,
         "source": "colored.png",
         "type": 0
     }

@@ -2,11 +2,25 @@
     {
         "type": 0,
         "position": [0.0, 0.0, 0.0],
-        "ignores": true
+        "isNotFixed": false
+    },
+    {
+        "type": 0,
+        "position": [4.0, 0.0, 0.0],
+        "isNotFixed": false
+    },
+    {
+        "type": 0,
+        "position": [8.0, 0.0, 0.0],
+        "isNotFixed": false
     },
     {
         "type": 1,
-        "position": [1.0, 1.0, 0.0],
-        "ignores": true
+        "position": [1.0, 8.0, 0.0]
+    },
+    {
+        "type": 0,
+        "position": [0.0, 16.0, 0.0],
+        "isNotFixed": false
     }
 ]
