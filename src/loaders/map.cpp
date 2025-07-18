@@ -289,11 +289,12 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		const auto count = map.chunks[i].size();
 
 		// We fill it in later to avoid constructing and then change the data.
-		s.descriptions.reserve(count);
-		s.positions.reserve(count);
-	}
+        s.descriptions.reserve(count);
+        s.positions.reserve(count);
+        s.animFrames.resize(count);
+    }
 
-	for (size_t i = 0; i < csize; i++) {
+    for (size_t i = 0; i < csize; i++) {
 		const auto count = map.chunks[i].size();
 
 		m_scene.chunks[i].entities.resize(count);

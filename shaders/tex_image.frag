@@ -10,5 +10,5 @@ layout(set =0, binding = 0) uniform sampler2D displayTexture;
 
 void main()
 {
-	outFragColor = texture(displayTexture,inUV);
+	outFragColor = texture(displayTexture, inUV);
 }

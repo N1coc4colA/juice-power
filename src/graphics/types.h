@@ -84,8 +84,9 @@ struct GPUMeshBuffers
 /// @brief Push constants for indirect mesh drawing
 struct GPUDrawPushConstants
 {
-	glm::mat4 worldMatrix {};
-	VkDeviceAddress vertexBuffer = 0;
+    glm::vec4 animData{}; // x: current frame, y: columns, z: rows
+    glm::mat4 worldMatrix {};
+    VkDeviceAddress vertexBuffer = 0;
 };
 
 struct GPUSceneData
