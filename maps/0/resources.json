@@ -12,5 +12,12 @@
         "h": 4.0,
         "source": "colored.png",
         "type": 0
+    },
+    {
+        "name": "col",
+        "w": 4.0,
+        "h": 4.0,
+        "source": "green_flow.jpg",
+        "type": 0
     }
 ]
