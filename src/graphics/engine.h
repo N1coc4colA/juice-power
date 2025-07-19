@@ -87,6 +87,8 @@ protected:
 	void destroySwapchain();
 	void resizeSwapchain();
 
+    void updateAnimations(World::Scene &scene);
+
 private:
 	inline FrameData &getCurrentFrame()
 	{
@@ -234,8 +236,11 @@ private:
 	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
 	World::Scene *m_scene = nullptr;
 
-	friend class ::Loaders::Map;
-	friend class Resources;
+    /* Animation */
+    double deltaMS = 0.0;
+
+    friend class ::Loaders::Map;
+    friend class Resources;
 };
 
 

@@ -265,15 +265,21 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
 		stbi_image_free(imgData);
 
-		// We succeed, let's add it.
-		mapped.insert({res.name, i});
-		i++;
-	}
+        m_scene.res->animColumns.push_back(res.gridSize[0]);
+        m_scene.res->animRows.push_back(res.gridSize[1]);
+        m_scene.res->animInterval.push_back(res.interval);
+        m_scene.res->animFrames.push_back(res.frames ? res.frames
+                                                     : res.gridSize[0] * res.gridSize[1]);
 
-	m_scene.chunks.resize(map.chunks.size());
-	const auto csize = map.chunks.size();
+        // We succeed, let's add it.
+        mapped.insert({res.name, i});
+        i++;
+    }
 
-	// Setup transform matrices
+    m_scene.chunks.resize(map.chunks.size());
+    const auto csize = map.chunks.size();
+
+    // Setup transform matrices
 	for (size_t i = 0; i < csize; i++) {
 		auto &s = m_scene.chunks[i];
 		const auto &c = map.chunks[i];

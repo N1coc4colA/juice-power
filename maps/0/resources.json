@@ -18,6 +18,7 @@
         "w": 4.0,
         "h": 4.0,
         "source": "green_flow.jpg",
-        "type": 0
+        "type": 0,
+        "gridSize": [2, 2]
     }
 ]

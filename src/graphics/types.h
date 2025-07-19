@@ -84,8 +84,14 @@ struct GPUMeshBuffers
 /// @brief Push constants for indirect mesh drawing
 struct GPUDrawPushConstants
 {
-    glm::vec4 animData{}; // x: current frame, y: columns, z: rows
-    glm::mat4 worldMatrix {};
+    float animationTime{};
+    float frameInterval = 0.01;
+
+    glm::uint16_t gridColumns = 1;
+    glm::uint16_t gridRows = 1;
+    glm::uint16_t framesCount = 0;
+
+    glm::mat4 worldMatrix{};
     VkDeviceAddress vertexBuffer = 0;
 };
 

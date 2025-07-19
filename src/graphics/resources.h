@@ -52,8 +52,17 @@ public:
 	 */
 	std::vector<std::tuple<glm::vec2, glm::vec2>> boundingBoxes{};
 
-	/// @brief Mesh buffers for vertices.
-	GPUMeshBuffers meshBuffers {};
+    /// @brief Spritesheet columns
+    std::vector<float> animColumns{};
+    /// @brief Spritesheet rows
+    std::vector<float> animRows{};
+    /// @brief Duration of an animation frame, interval between 2 frames.
+    std::vector<float> animInterval{};
+    /// @brief Number of frames for the animation.
+    std::vector<glm::uint16_t> animFrames{};
+
+    /// @brief Mesh buffers for vertices.
+    GPUMeshBuffers meshBuffers{};
 
     void build(Engine &engine);
     void cleanup(Engine &engine);

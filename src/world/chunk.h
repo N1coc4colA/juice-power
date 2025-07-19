@@ -33,6 +33,9 @@ public:
 	std::vector<glm::mat4> transforms {};
 
 	std::vector<Physics::Entity> entities {};
+
+    /// @brief Current animation frame
+    std::vector<float> animFrames;
 };
 
 

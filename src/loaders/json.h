@@ -40,6 +40,15 @@ struct JsonResourceElement
 
 	/// @brief Elesticity, bounciness of the resource.
 	float elasticity = 1.f;
+
+    /// @brief Animation's spritesheet grid size, ROW*COLUMNS
+    std::array<float, 2> gridSize = {1.f, 1.f};
+
+    /// @brief Animation frames count.
+    uint16_t frames = 0;
+
+    /// @brief Animation frame duration, interval between 2 frames.
+    float interval = 0.1f;
 };
 
 struct JsonResourcesList

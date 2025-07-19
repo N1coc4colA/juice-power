@@ -35,12 +35,16 @@
         std::cout << __func__ << '\n'; \
     }
 
+namespace {
+
 constexpr bool bUseValidationLayers = true;
+
+} // namespace
 
 namespace Graphics {
 
 Engine *loadedEngine = nullptr;
-
+static auto prevChrono = std::chrono::system_clock::now();
 
 constexpr glm::mat4 createOrthographicProjection(const float left, const float right, const float bottom, const float top)
 {
@@ -169,42 +173,50 @@ void enumerateDevices(VkInstance inst)
 
 void Engine::initVulkan()
 {
-	LOGFN();
+    LOGFN();
 
-	//make the Vulkan instance, with basic debug features
-	const auto instRet = vkb::InstanceBuilder()
-		.set_app_name("Example Vulkan Application")
-		.request_validation_layers(bUseValidationLayers)
-		.require_api_version(1, 3, 0) // We use Vulkan API 1.3, nothing from earlier versions.
-		.use_default_debug_messenger()
-		.build();
+    //make the Vulkan instance, with basic debug features
+    const auto instRet
+        = vkb::InstanceBuilder()
+              .set_app_name("Example Vulkan Application")
+              .request_validation_layers(bUseValidationLayers)
+              .require_api_version(1,
+                                   3,
+                                   0) // We use Vulkan API 1.3, nothing from earlier versions.
+              .enable_layer("VK_LAYER_KHRONOS_validation")
+              .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT)
+              .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
+              .use_default_debug_messenger()
+              .set_debug_messenger_severity(VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+              .set_debug_messenger_type(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+              .build();
 
-	const vkb::Instance vkb_inst = instRet.value();
+    const vkb::Instance vkb_inst = instRet.value();
 
-	//store the instance
-	instance = vkb_inst.instance;
-	if (instance == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkInstanceCreation);
-	}
-	//store the debug messenger
-	debugMessenger = vkb_inst.debug_messenger;
-	if (debugMessenger == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkDebugMessengerCreation);
-	}
+    //store the instance
+    instance = vkb_inst.instance;
+    if (instance == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkInstanceCreation);
+    }
+    //store the debug messenger
+    debugMessenger = vkb_inst.debug_messenger;
+    if (debugMessenger == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkDebugMessengerCreation);
+    }
 
-	const bool surfaceCreated = SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
-	if (!surfaceCreated) {
-		throw Failure(FailureType::VkSurfaceCreation1);
-	}
+    const bool surfaceCreated = SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface);
+    if (!surfaceCreated) {
+        throw Failure(FailureType::VkSurfaceCreation1);
+    }
 
-	constexpr VkPhysicalDeviceVulkan13Features features13 {
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-		.synchronization2 = true,
-		.dynamicRendering = true,
-	};
+    constexpr VkPhysicalDeviceVulkan13Features features13{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .synchronization2 = true,
+        .dynamicRendering = true,
+    };
 
-	//use vkbootstrap to select a GPU.
-	//We want a GPU that can write to the SDL surface and supports Vulkan 1.3
+    //use vkbootstrap to select a GPU.
+    //We want a GPU that can write to the SDL surface and supports Vulkan 1.3
     const vkb::PhysicalDevice physicalDevice = vkb::PhysicalDeviceSelector(vkb_inst)
                                                    .set_minimum_version(1,
                                                                         3) // We run on Vulkan 1.3+
@@ -821,58 +833,57 @@ void Engine::run(const std::function<void()> &prepare, const std::function<void(
 {
 	LOGFN();
 
-	SDL_Event e;
-	bool bQuit = false;
+    prevChrono = std::chrono::system_clock::now();
+    SDL_Event e;
+    bool bQuit = false;
 
-	prepare();
+    prepare();
 
-	// main loop
-	while (!bQuit) {
-		//begin clock
-		//const auto start = std::chrono::system_clock::now();
+    // main loop
+    while (!bQuit) {
+        const auto currentTime = std::chrono::system_clock::now();
+        const auto delta = currentTime - prevChrono;
+        deltaMS = static_cast<double>(
+                      std::chrono::duration_cast<std::chrono::milliseconds>(delta).count())
+                  / 1000.0;
 
-		//everything else
+        //convert to microseconds (integer), and then come back to miliseconds
+        const auto frametime = std::chrono::duration_cast<std::chrono::microseconds>(delta).count()
+                               / 1000.f;
 
-		//get clock again, compare with start clock
-		//const auto end = std::chrono::system_clock::now();
+        // Handle events on queue
+        while (SDL_PollEvent(&e) != 0) {
+            // close the window when user alt-f4s or clicks the X button
+            if (e.type == SDL_EVENT_QUIT) {
+                bQuit = true;
+            }
 
-		//convert to microseconds (integer), and then come back to miliseconds
-		//const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-		//stats.frametime = elapsed.count() / 1000.f;
+            if (e.type == SDL_EVENT_WINDOW_MINIMIZED) {
+                stopRendering = true;
+            }
+            if (e.type == SDL_EVENT_WINDOW_RESTORED) {
+                stopRendering = false;
+            }
 
-		// Handle events on queue
-		while (SDL_PollEvent(&e) != 0) {
-			// close the window when user alt-f4s or clicks the X button
-			if (e.type == SDL_EVENT_QUIT) {
-				bQuit = true;
-			}
+            ImGui_ImplSDL3_ProcessEvent(&e);
+        }
 
-			if (e.type == SDL_EVENT_WINDOW_MINIMIZED) {
-				stopRendering = true;
-			}
-			if (e.type == SDL_EVENT_WINDOW_RESTORED) {
-				stopRendering = false;
-			}
+        //do not draw if we are minimized
+        if (stopRendering) {
+            //throttle the speed to avoid the endless spinning
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
 
-			ImGui_ImplSDL3_ProcessEvent(&e);
-		}
+        // imgui new frame
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        ImGui::NewFrame();
 
-		//do not draw if we are minimized
-		if (stopRendering) {
-			//throttle the speed to avoid the endless spinning
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			continue;
-		}
+        if (ImGui::Begin("background")) {
+            ImGui::SliderFloat("Render Scale", &renderScale, 0.3f, 1.f);
 
-		// imgui new frame
-		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplSDL3_NewFrame();
-		ImGui::NewFrame();
-
-		if (ImGui::Begin("background")) {
-			ImGui::SliderFloat("Render Scale", &renderScale, 0.3f, 1.f);
-
-			/*ComputeEffect &selected = backgroundEffects[currentBackgroundEffect];
+            /*ComputeEffect &selected = backgroundEffects[currentBackgroundEffect];
 
 			ImGui::Text("Selected effect: %s", selected.name);
 
@@ -884,67 +895,85 @@ void Engine::run(const std::function<void()> &prepare, const std::function<void(
 			ImGui::InputFloat4("data4", reinterpret_cast<float *>(&selected.data.data4));*/
 
 			ImGui::End();
-		}
+        }
 
-		/*ImGui::Begin("Stats");
+        ImGui::Begin("Stats");
 
-		ImGui::Text("frametime %f ms", stats.frametime);
-		ImGui::Text("draw time %f ms", stats.mesh_draw_time);
+        ImGui::Text("frametime %f ms", frametime);
+        /*ImGui::Text("draw time %f ms", stats.mesh_draw_time);
 		ImGui::Text("update time %f ms", stats.scene_update_time);
 		ImGui::Text("triangles %i", stats.triangle_count);
-		ImGui::Text("draws %i", stats.drawcall_count);
+		ImGui::Text("draws %i", stats.drawcall_count);*/
 
-		ImGui::End();*/
+        ImGui::End();
 
-		ImGui::Render();
+        ImGui::Render();
+        update();
+        //update_scene();
 
-		update();
-		//update_scene();
+        updateAnimations(*m_scene);
+        draw();
 
-		draw();
+        if (resizeRequested) {
+            resizeSwapchain();
+        }
 
-		if (resizeRequested) {
-			resizeSwapchain();
-		}
-	}
+        prevChrono = currentTime;
+    }
+}
+
+void Engine::updateAnimations(World::Scene &scene)
+{
+    for (auto &chunk : scene.view) {
+        for (size_t i = 0; i < chunk.animFrames.size(); i++) {
+            chunk.animFrames[i] += deltaMS;
+        }
+    }
 }
 
 void Engine::draw()
 {
-	auto &currFrame = getCurrentFrame();
+    auto &currFrame = getCurrentFrame();
 
-	assert(currFrame.renderFence != VK_NULL_HANDLE);
-	// wait until the gpu has finished rendering the last frame. Timeout of 1
-	// second
-	VK_CHECK(vkWaitForFences(device, 1, &currFrame.renderFence, true, 1000000000));
-	currFrame.deletionQueue.flush();
-	currFrame.frameDescriptors.clearPools(device);
+    assert(currFrame.renderFence != VK_NULL_HANDLE);
+    // wait until the gpu has finished rendering the last frame. Timeout of 1
+    // second
+    VK_CHECK(vkWaitForFences(device, 1, &currFrame.renderFence, true, 1000000000));
+    currFrame.deletionQueue.flush();
+    currFrame.frameDescriptors.clearPools(device);
 
-	assert(device != VK_NULL_HANDLE);
-	assert(swapchain != VK_NULL_HANDLE);
-	assert(currFrame.swapchainSemaphore != VK_NULL_HANDLE);
-	//request image from the swapchain
+    assert(device != VK_NULL_HANDLE);
+    assert(swapchain != VK_NULL_HANDLE);
+    assert(currFrame.swapchainSemaphore != VK_NULL_HANDLE);
+    //request image from the swapchain
 
-	uint32_t swapchainImageIndex = -1;
-	const VkResult acquireResult = vkAcquireNextImageKHR(device, swapchain, 1000000000, currFrame.swapchainSemaphore, nullptr, &swapchainImageIndex);
-	if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
-		resizeRequested = true;
-		return;
-	}
-	// [NOTE] Maybe also check if it has been VK_SUBOPTIMAL_KHR for too long.
+    uint32_t swapchainImageIndex = -1;
+    const VkResult acquireResult = vkAcquireNextImageKHR(device,
+                                                         swapchain,
+                                                         1000000000,
+                                                         currFrame.swapchainSemaphore,
+                                                         nullptr,
+                                                         &swapchainImageIndex);
+    if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        resizeRequested = true;
+        return;
+    }
+    // [NOTE] Maybe also check if it has been VK_SUBOPTIMAL_KHR for too long.
 
-	VK_CHECK(vkResetFences(device, 1, &currFrame.renderFence));
+    VK_CHECK(vkResetFences(device, 1, &currFrame.renderFence));
 
-	//naming it cmd for shorter writing
-	VkCommandBuffer cmd = currFrame.mainCommandBuffer;
-	assert(cmd != VK_NULL_HANDLE);
+    //naming it cmd for shorter writing
+    VkCommandBuffer cmd = currFrame.mainCommandBuffer;
+    assert(cmd != VK_NULL_HANDLE);
 
-	// now that we are sure that the commands finished executing, we can safely
-	// reset the command buffer to begin recording again.
-	VK_CHECK(vkResetCommandBuffer(cmd, 0));
+    // now that we are sure that the commands finished executing, we can safely
+    // reset the command buffer to begin recording again.
+    VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
-	drawExtent.height = static_cast<uint32_t>(static_cast<float>(std::min(swapchainExtent.height, drawImage.imageExtent.height)) * renderScale);
-	drawExtent.width = static_cast<uint32_t>(static_cast<float>(std::min(swapchainExtent.width, drawImage.imageExtent.width)) * renderScale);
+    drawExtent.height = static_cast<uint32_t>(
+        static_cast<float>(std::min(swapchainExtent.height, drawImage.imageExtent.height))
+        * renderScale);
+    drawExtent.width = static_cast<uint32_t>(static_cast<float>(std::min(swapchainExtent.width, drawImage.imageExtent.width)) * renderScale);
 
 	//begin the command buffer recording. We will use this command buffer exactly once, so we want to let vulkan know that
 	const VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -1016,7 +1045,7 @@ void Engine::draw()
 	// [NOTE] Maybe also check if it has been VK_SUBOPTIMAL_KHR for too long.
 
 	//increase the number of frames drawn
-	frameNumber++;
+    frameNumber++;
 }
 
 void Engine::drawBackground(VkCommandBuffer cmd)
@@ -1099,52 +1128,98 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 
 		for (const auto &chunk : m_scene->view) {
 			const size_t size = chunk.descriptions.size();
-			for (size_t i = 0; i < size; i++) {
-				push_constants.worldMatrix = glm::translate(worldMatrix, chunk.positions[i]) * chunk.transforms[i];
+            for (size_t i = 0; i < size; i++) {
+                const auto descId = chunk.descriptions[i];
+                push_constants.frameInterval = m_scene->res->animInterval[descId];
+                push_constants.framesCount = m_scene->res->animFrames[descId];
+                push_constants.gridColumns = m_scene->res->animColumns[descId];
+                push_constants.gridRows = m_scene->res->animRows[descId];
 
-				//bind the texture
-				VkDescriptorSet imageSet = getCurrentFrame().frameDescriptors.allocate(device, singleImageDescriptorLayout);
-				{
-					DescriptorWriter writer;
+                push_constants.animationTime = chunk.animFrames[i]; // current frame
+                push_constants.worldMatrix = glm::translate(worldMatrix, chunk.positions[i])
+                                             * chunk.transforms[i];
 
-					writer.writeImage(0, m_scene->res->images[chunk.descriptions[i]].imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-					writer.updateSet(device, imageSet);
-				}
-				assert(imageSet != VK_NULL_HANDLE);
+                //bind the texture
+                VkDescriptorSet imageSet
+                    = getCurrentFrame().frameDescriptors.allocate(device,
+                                                                  singleImageDescriptorLayout);
+                {
+                    DescriptorWriter writer;
 
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
+                    writer.writeImage(0,
+                                      m_scene->res->images[chunk.descriptions[i]].imageView,
+                                      defaultSamplerNearest,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+                    writer.updateSet(device, imageSet);
+                }
+                assert(imageSet != VK_NULL_HANDLE);
 
-				vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
-				vkCmdBindIndexBuffer(cmd, m_scene->res->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+                vkCmdBindDescriptorSets(cmd,
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        meshPipelineLayout,
+                                        0,
+                                        1,
+                                        &imageSet,
+                                        0,
+                                        nullptr);
 
-				vkCmdDrawIndexed(cmd, 6, 1, chunk.descriptions[i] * 6, 0, 0);
-			}
-		}
-	} else {
-		const GPUDrawPushConstants push_constants {
-			.worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f),
-			.vertexBuffer = meshBuffers.vertexBufferAddress,
-		};
+                vkCmdPushConstants(cmd,
+                                   meshPipelineLayout,
+                                   VK_SHADER_STAGE_VERTEX_BIT,
+                                   0,
+                                   sizeof(GPUDrawPushConstants),
+                                   &push_constants);
+                vkCmdBindIndexBuffer(cmd,
+                                     m_scene->res->meshBuffers.indexBuffer.buffer,
+                                     0,
+                                     VK_INDEX_TYPE_UINT32);
 
-		//bind a texture
-		VkDescriptorSet imageSet = getCurrentFrame().frameDescriptors.allocate(device, singleImageDescriptorLayout);
-		{
-			DescriptorWriter writer;
+                vkCmdDrawIndexed(cmd, 6, 1, chunk.descriptions[i] * 6, 0, 0);
+            }
+        }
+    } else {
+        const GPUDrawPushConstants push_constants{
+            .worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f),
+            .vertexBuffer = meshBuffers.vertexBufferAddress,
+        };
 
-			writer.writeImage(0, errorCheckerboardImage.imageView, defaultSamplerNearest, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-			writer.updateSet(device, imageSet);
-		}
-		assert(imageSet != VK_NULL_HANDLE);
+        //bind a texture
+        VkDescriptorSet imageSet
+            = getCurrentFrame().frameDescriptors.allocate(device, singleImageDescriptorLayout);
+        {
+            DescriptorWriter writer;
 
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
+            writer.writeImage(0,
+                              errorCheckerboardImage.imageView,
+                              defaultSamplerNearest,
+                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            writer.updateSet(device, imageSet);
+        }
+        assert(imageSet != VK_NULL_HANDLE);
 
-		vkCmdPushConstants(cmd, meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
-		vkCmdBindIndexBuffer(cmd, meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                meshPipelineLayout,
+                                0,
+                                1,
+                                &imageSet,
+                                0,
+                                nullptr);
 
-		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
-	}
+        vkCmdPushConstants(cmd,
+                           meshPipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT,
+                           0,
+                           sizeof(GPUDrawPushConstants),
+                           &push_constants);
+        vkCmdBindIndexBuffer(cmd, meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-	vkCmdEndRendering(cmd);
+        vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    }
+
+    vkCmdEndRendering(cmd);
 }
 
 GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices)
