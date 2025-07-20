@@ -43,7 +43,7 @@ constexpr bool bUseValidationLayers = true;
 
 namespace Graphics {
 
-Engine *loadedEngine = nullptr;
+static Engine *loadedEngine = nullptr;
 static auto prevChrono = std::chrono::system_clock::now();
 
 constexpr glm::mat4 createOrthographicProjection(const float left, const float right, const float bottom, const float top)
