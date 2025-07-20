@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 
+#include "enums.h"
 
 namespace Graphics
 {
@@ -18,23 +19,6 @@ class Scene;
 
 namespace Loaders
 {
-
-enum Status : uint8_t
-{
-	Ok = 0,
-	OpenError,
-	NotDir,
-	MissingDirectory,
-	JsonError,
-	MissingJson,
-	MissingMapFile,
-	MissingChunkFile,
-	MissingResourceFile,
-	MissingResource,
-
-	First = Ok,
-	Last = MissingResource,
-};
 
 
 class Map

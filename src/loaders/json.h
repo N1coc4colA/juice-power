@@ -1,7 +1,6 @@
 #ifndef LOADERS_JSON_H
 #define LOADERS_JSON_H
 
-#include <cstdint>
 #include <vector>
 #include <string>
 #include <array>
