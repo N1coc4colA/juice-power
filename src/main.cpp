@@ -3,49 +3,36 @@
 #include <magic_enum.hpp>
 
 #include "defines.h"
-
-#include "graphics/resources.h"
-#include "world/scene.h"
-#include "loaders/map.h"
+#include "orchestrator.h"
 
 #include "graphics/engine.h"
-#include "physics/engine.h"
-
+#include "graphics/resources.h"
+#include "loaders/map.h"
+#include "world/scene.h"
 
 int main(int argc, char **argv)
 {
 	UNUSED(argv);
 	UNUSED(argc);
 
-	//Engine engine {};
-	Physics::Engine pe;
-	Graphics::Engine engine;
-	World::Scene scene;
-	//engine.scene = &s;
-	//res.build(engine);
+    World::Scene scene{};
+    Orchestrator orchestrator{};
 
-	engine.init();
-	//engine.loadScene();
+    {
+        const auto error
+            = orchestrator.loadMap(scene, "/home/nicolas/Documents/projects/juice-power/maps/0");
+        if (error != Loaders::Status::Ok) {
+            std::cout << "Erreur: " << magic_enum::enum_name(error) << '\n';
+            return 0;
+        }
+    }
 
-	Loaders::Map mapLoader("/home/nicolas/Documents/projects/juice-power/maps/0");
-	const auto error = mapLoader.load(engine, scene);
-	if (error != Loaders::Status::Ok) {
-		std::cout << "Erreur: " << magic_enum::enum_name(error) << '\n';
-		return 0;
-	}
+    orchestrator.setScene(scene);
 
-	engine.setScene(scene);
-	pe.setScene(scene);
-	engine.run(
-	[&pe]() {
-		pe.prepare();
-	},
-	[&pe]() {
-		pe.compute();
-	});
+    orchestrator.run();
 
-    scene.res->cleanup(engine);
-    engine.cleanup();
+    scene.res->cleanup(orchestrator.graphicsEngine());
+    orchestrator.cleanup();
 
-	return 0;
+    return 0;
 }

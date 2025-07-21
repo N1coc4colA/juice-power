@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iostream>
 
+#include "src/states.h"
 #include "src/utils.h"
 
 namespace
@@ -29,8 +30,6 @@ void Engine::setScene(World::Scene &scene)
 void Engine::prepare()
 {
 	prevChrono = std::chrono::system_clock::now();
-
-	//dump();
 }
 
 void Engine::dump() const
@@ -169,14 +168,27 @@ void Engine::compute()
 		}
 	}
 
-	for (auto &chunk : m_scene->view) {
-		const auto size = chunk.entities.size();
-		for (size_t i = 0; i < size; i++) {
-			chunk.positions[i].x = chunk.entities[i].position.x;
-			chunk.positions[i].y = chunk.entities[i].position.y;
-		}
-	}
+    prevChrono = currentTime;
+}
 
-	prevChrono = currentTime;
+void Engine::run(std::atomic<uint64_t> *commands)
+{
+    while (!(*commands & CommandStates::Stop)) {
+        compute();
+
+        if ((*commands) & CommandStates::PrepareDrawing) {
+            for (auto &chunk : m_scene->view) {
+                const auto size = chunk.entities.size();
+                for (size_t i = 0; i < size; i++) {
+                    chunk.positions[i].x = chunk.entities[i].position.x;
+                    chunk.positions[i].y = chunk.entities[i].position.y;
+                }
+            }
+
+            // Update states.
+            *commands &= ~CommandStates::PrepareDrawing;
+            *commands |= CommandStates::DrawingPrepared;
+        }
+    }
 }
 }

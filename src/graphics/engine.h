@@ -1,6 +1,7 @@
 #ifndef GRAPHICS_ENGINE_H
 #define GRAPHICS_ENGINE_H
 
+#include <atomic>
 #include <cstring>
 #include <span>
 
@@ -50,9 +51,9 @@ public:
 	/// @brief Inits the engine & related libs
 	void init();
 	/// @brief Runs the main rendering loop
-	void run(const std::function<void()> &prepare, const std::function<void()> &update);
-	/// @brief Stops the engine, cleans the resources & notifies related libs.
-	void cleanup();
+    void run(const std::function<void()> &prepare, std::atomic<uint64_t> *commands);
+    /// @brief Stops the engine, cleans the resources & notifies related libs.
+    void cleanup();
 
 	void setScene(World::Scene &scene);
 

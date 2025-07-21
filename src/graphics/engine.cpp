@@ -20,14 +20,15 @@
 #include <imgui/backends/imgui_impl_sdl3.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 
+#include "../states.h"
+
 #include "../world/scene.h"
 
-#include "failure.h"
-
 #include "defines.h"
+#include "failure.h"
 #include "initializers.h"
-#include "utils.h"
 #include "pipelinebuilder.h"
+#include "utils.h"
 #include "vma.h"
 
 #define LOGFN() \
@@ -829,18 +830,19 @@ void Engine::cleanup()
     loadedEngine = nullptr;
 }
 
-void Engine::run(const std::function<void()> &prepare, const std::function<void()> &update)
+void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *commands)
 {
 	LOGFN();
 
     prevChrono = std::chrono::system_clock::now();
     SDL_Event e;
-    bool bQuit = false;
 
     prepare();
 
     // main loop
-    while (!bQuit) {
+    while (!(*commands & CommandStates::Stop)) {
+        std::cout << "Graphics" << std::endl;
+
         const auto currentTime = std::chrono::system_clock::now();
         const auto delta = currentTime - prevChrono;
         deltaMS = static_cast<double>(
@@ -855,7 +857,7 @@ void Engine::run(const std::function<void()> &prepare, const std::function<void(
         while (SDL_PollEvent(&e) != 0) {
             // close the window when user alt-f4s or clicks the X button
             if (e.type == SDL_EVENT_QUIT) {
-                bQuit = true;
+                *commands |= CommandStates::Stop;
             }
 
             if (e.type == SDL_EVENT_WINDOW_MINIMIZED) {
@@ -898,18 +900,21 @@ void Engine::run(const std::function<void()> &prepare, const std::function<void(
         }
 
         ImGui::Begin("Stats");
-
         ImGui::Text("frametime %f ms", frametime);
-        /*ImGui::Text("draw time %f ms", stats.mesh_draw_time);
-		ImGui::Text("update time %f ms", stats.scene_update_time);
-		ImGui::Text("triangles %i", stats.triangle_count);
-		ImGui::Text("draws %i", stats.drawcall_count);*/
-
         ImGui::End();
 
         ImGui::Render();
-        update();
-        //update_scene();
+
+        // Request the data to be updated before drawing.
+        *commands |= CommandStates::PrepareDrawing;
+        while (!(*commands & CommandStates::DrawingPrepared)) {
+            // Wait for the submitted work request to be performed & finished.
+            // As this loop runs for the rendering, there are no reasons to
+            // redraw what's already on the screen. The only reason would be for
+            // the animations. So far, this runs smoothly enough.
+        }
+        // Reset state.
+        *commands &= ~CommandStates::DrawingPrepared;
 
         updateAnimations(*m_scene);
         draw();
