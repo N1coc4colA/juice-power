@@ -1,10 +1,10 @@
 #ifndef LOADERS_JSON_H
 #define LOADERS_JSON_H
 
-#include <vector>
-#include <string>
 #include <array>
-
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace Loaders
 {

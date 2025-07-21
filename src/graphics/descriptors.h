@@ -180,10 +180,10 @@ private:
 	 */
 	VkDescriptorPool createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios);
 
-	std::vector<PoolSizeRatio> ratios {};
-	std::vector<VkDescriptorPool> fullPools {};
-	std::vector<VkDescriptorPool> readyPools {};
-	uint32_t setsPerPool = -1;
+    std::vector<PoolSizeRatio> m_ratios{};
+    std::vector<VkDescriptorPool> m_fullPools{};
+    std::vector<VkDescriptorPool> m_readyPools{};
+    uint32_t m_setsPerPool = -1;
 };
 
 

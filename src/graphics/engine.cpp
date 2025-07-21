@@ -44,8 +44,8 @@ constexpr bool bUseValidationLayers = true;
 
 namespace Graphics {
 
-static Engine *loadedEngine = nullptr;
-static auto prevChrono = std::chrono::system_clock::now();
+Engine *Engine::loadedEngine = nullptr;
+decltype(std::chrono::system_clock::now()) Engine::prevChrono = std::chrono::system_clock::now();
 
 constexpr glm::mat4 createOrthographicProjection(const float left, const float right, const float bottom, const float top)
 {
@@ -713,7 +713,7 @@ void Engine::initImgui()
 	}
 
 	// this initializes imgui for Vulkan
-	ImGui_ImplVulkan_InitInfo init_info {
+    ImGui_ImplVulkan_InitInfo init_info {
 		.Instance = m_instance,
 		.PhysicalDevice = m_chosenGPU,
 		.Device = m_device,
@@ -728,11 +728,11 @@ void Engine::initImgui()
 		.PipelineRenderingCreateInfo = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 			.colorAttachmentCount = 1,
-			.pColorAttachmentFormats = &swapchainImageFormat,
+			.pColorAttachmentFormats = &m_swapchainImageFormat,
 		},
 	};
 
-	const bool igVkInited = ImGui_ImplVulkan_Init(&init_info);
+    const bool igVkInited = ImGui_ImplVulkan_Init(&init_info);
 	if (!igVkInited) {
 		throw Failure(FailureType::ImguiVkInitialisation);
 	}
@@ -841,8 +841,6 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
 
     // main loop
     while (!(*commands & CommandStates::Stop)) {
-        std::cout << "Graphics" << std::endl;
-
         const auto currentTime = std::chrono::system_clock::now();
         const auto delta = currentTime - prevChrono;
         m_deltaMS = static_cast<double>(

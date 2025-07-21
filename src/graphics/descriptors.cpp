@@ -143,43 +143,43 @@ void DescriptorAllocatorGrowable::init(VkDevice device, const uint32_t maxSets, 
 	assert(device != VK_NULL_HANDLE);
 	assert(maxSets != 0);
 
-	ratios.resize(poolRatios.size());
-	std::copy(poolRatios.cbegin(), poolRatios.cend(), ratios.begin());
+	m_ratios.resize(poolRatios.size());
+	std::copy(poolRatios.cbegin(), poolRatios.cend(), m_ratios.begin());
 
-	setsPerPool = static_cast<uint32_t>(static_cast<float>(maxSets) * 1.5f); //grow it next allocation
+	m_setsPerPool = static_cast<uint32_t>(static_cast<float>(maxSets) * 1.5f); //grow it next allocation
 	VkDescriptorPool newPool = createPool(device, maxSets, poolRatios);
 
-	readyPools.push_back(newPool);
+	m_readyPools.push_back(newPool);
 }
 
 void DescriptorAllocatorGrowable::clearPools(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
-	for (const auto &p : readyPools) {
+	for (const auto &p : m_readyPools) {
 		VK_CHECK(vkResetDescriptorPool(device, p, 0));
 	}
-	for (const auto &p : fullPools) {
+	for (const auto &p : m_fullPools) {
 		VK_CHECK(vkResetDescriptorPool(device, p, 0));
-		readyPools.push_back(p);
+		m_readyPools.push_back(p);
 	}
 
-	fullPools.clear();
+	m_fullPools.clear();
 }
 
 void DescriptorAllocatorGrowable::destroyPools(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
-	for (const auto &p : readyPools) {
+	for (const auto &p : m_readyPools) {
 		vkDestroyDescriptorPool(device, p, nullptr);
 	}
-	for (const auto &p : fullPools) {
+	for (const auto &p : m_fullPools) {
 		vkDestroyDescriptorPool(device, p, nullptr);
 	}
 
-	readyPools.clear();
-	fullPools.clear();
+	m_readyPools.clear();
+	m_fullPools.clear();
 }
 
 VkDescriptorPool DescriptorAllocatorGrowable::getPool(VkDevice device)
@@ -188,17 +188,17 @@ VkDescriptorPool DescriptorAllocatorGrowable::getPool(VkDevice device)
 
 	VkDescriptorPool newPool;
 
-	if (readyPools.empty()) {
+	if (m_readyPools.empty()) {
 		//need to create a new pool
-		newPool = createPool(device, setsPerPool, ratios);
+		newPool = createPool(device, m_setsPerPool, m_ratios);
 
-		setsPerPool = static_cast<uint32_t>(static_cast<float>(setsPerPool) * 1.5f);
-		if (setsPerPool > 4092) {
-			setsPerPool = 4092;
+		m_setsPerPool = static_cast<uint32_t>(static_cast<float>(m_setsPerPool) * 1.5f);
+		if (m_setsPerPool > 4092) {
+			m_setsPerPool = 4092;
 		}
 	} else {
-		newPool = readyPools.back();
-		readyPools.pop_back();
+		newPool = m_readyPools.back();
+		m_readyPools.pop_back();
 	}
 
 	return newPool;
@@ -256,7 +256,7 @@ VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescrip
 	if (result == VK_ERROR_OUT_OF_POOL_MEMORY ||
 		result == VK_ERROR_FRAGMENTED_POOL) {
 
-		fullPools.push_back(poolToUse);
+		m_fullPools.push_back(poolToUse);
 
 		poolToUse = getPool(device);
 		allocInfo.descriptorPool = poolToUse;
@@ -264,7 +264,7 @@ VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescrip
 		VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &ds));
 	}
 
-	readyPools.push_back(poolToUse);
+	m_readyPools.push_back(poolToUse);
 	return ds;
 }
 

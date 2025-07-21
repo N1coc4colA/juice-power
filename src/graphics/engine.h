@@ -2,6 +2,7 @@
 #define GRAPHICS_ENGINE_H
 
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <span>
 
@@ -245,6 +246,9 @@ private:
 
     /* Animation */
     double m_deltaMS = 0.0;
+
+    static Engine *loadedEngine;
+    static decltype(std::chrono::system_clock::now()) prevChrono;
 
     friend class ::Loaders::Map;
     friend class Resources;
