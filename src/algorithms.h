@@ -121,14 +121,14 @@ public:
 	glm::vec2 max {};
 
 private:
-	potrace_param_t *params = nullptr;
+    potrace_param_t *m_params = nullptr;
 
-	/**
+    /**
 	 * @brief Continous data storage.
 	 * This is used to store data for Potrace, and is re-used through the different
 	 * calls to @fn determineImageBorders.
 	 */
-	std::vector<unsigned char> memory {};
+    std::vector<unsigned char> m_memory{};
 };
 
 

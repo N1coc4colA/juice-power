@@ -38,7 +38,7 @@ private:
     Graphics::Engine *m_graphicsEngine = nullptr;
     Physics::Engine *m_physicsEngine = nullptr;
 
-    std::atomic<uint64_t> commands = 0;
+    std::atomic<uint64_t> m_commands = 0;
 };
 
 #endif // ORCHESTRATOR_H

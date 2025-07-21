@@ -41,7 +41,7 @@ public:
 	static void easyPrint(uint maxFrames);
 
 private:
-	std::shared_ptr<BackTraceEntry> bt;
+    std::shared_ptr<BackTraceEntry> m_bt;
 };
 
 

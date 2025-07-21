@@ -20,15 +20,15 @@ namespace algorithms
 {
 
 ImageVectorizer::ImageVectorizer()
-    : params(potrace_param_default())
+    : m_params(potrace_param_default())
 {
-	params->turdsize = 10; // ignore small regions
-	params->alphamax = 1.0; // corner threshold
+	m_params->turdsize = 10; // ignore small regions
+	m_params->alphamax = 1.0; // corner threshold
 }
 
 ImageVectorizer::~ImageVectorizer()
 {
-	potrace_param_free(params);
+	potrace_param_free(m_params);
 }
 
 void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &image, int channelsCount)
@@ -65,13 +65,13 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 	// Words per line.
 	const auto dy = (imgRealWidth + po_wbs_sub) / po_wbs;
 	// Perform resize. Our storage is per-byte.
-	memory.resize(dy * image.height() * po_ws);
+	m_memory.resize(dy * image.height() * po_ws);
 
 	const potrace_bitmap_t bm {
 	    .w = static_cast<int>(image.width()),
 	    .h = static_cast<int>(image.height()),
 	    .dy = static_cast<int>(dy),
-	    .map = reinterpret_cast<potrace_word *>(memory.data()),
+	    .map = reinterpret_cast<potrace_word *>(m_memory.data()),
 	};
 
 	const auto img = image.flattened();
@@ -84,15 +84,15 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
 			// Set to 1 or 0 depending on the transparency.
 			if (val > 0x80) {
-				memory[wi] |= 1 << bi;
+				m_memory[wi] |= 1 << bi;
 			} else {
-				memory[wi] &= ~(1 << bi);
+				m_memory[wi] &= ~(1 << bi);
 			}
 		}
 	}
 
 	// Perform trace
-	potrace_state_t *st = potrace_trace(params, &bm);
+	potrace_state_t *st = potrace_trace(m_params, &bm);
 
 	// If we have no curve, it means that all the image is non-transparent.
 	if (!st->plist) {

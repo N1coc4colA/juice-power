@@ -151,20 +151,20 @@ std::span<BackTraceEntry> backtrace_entries(uint max_frames)
 
 BackTrace::BackTrace(uint maxFrames)
 	: entries(backtrace_entries(maxFrames))
-	, bt(entries.data(), [](BackTraceEntry *d) {delete [] d;})
+	, m_bt(entries.data(), [](BackTraceEntry *d) {delete [] d;})
 {
 	assert(maxFrames != 0);
 }
 
 BackTrace::BackTrace(const BackTrace &other)
 	: entries(other.entries)
-	, bt(other.bt)
+	, m_bt(other.m_bt)
 {
 }
 
 BackTrace::BackTrace(BackTrace &&other) noexcept
 	: entries(other.entries)
-	, bt(std::move(other.bt))
+	, m_bt(std::move(other.m_bt))
 {
 }
 
@@ -186,7 +186,7 @@ BackTrace &BackTrace::operator =(const BackTrace &other)
 	}
 
 	entries = other.entries;
-	bt = other.bt;
+	m_bt = other.m_bt;
 
 	return *this;
 }
@@ -198,7 +198,7 @@ BackTrace &BackTrace::operator =(BackTrace &&other) noexcept
 	}
 
 	entries = other.entries;
-	bt = std::move(other.bt);
+	m_bt = std::move(other.m_bt);
 
 	return *this;
 }

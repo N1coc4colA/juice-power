@@ -29,10 +29,10 @@ void Orchestrator::init()
 
 void Orchestrator::run()
 {
-    commands = 0;
+    m_commands = 0;
 
-    std::jthread m_physicsThread([this]() { m_physicsEngine->run(&commands); });
-    m_graphicsEngine->run([this]() { m_physicsEngine->prepare(); }, &commands);
+    std::jthread m_physicsThread([this]() { m_physicsEngine->run(&m_commands); });
+    m_graphicsEngine->run([this]() { m_physicsEngine->prepare(); }, &m_commands);
 }
 
 void Orchestrator::cleanup()

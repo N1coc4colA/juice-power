@@ -91,12 +91,9 @@ protected:
     void updateAnimations(World::Scene &scene);
 
 private:
-	inline FrameData &getCurrentFrame()
-	{
-		return frames[frameNumber % FRAME_OVERLAP];
-	};
+    inline FrameData &getCurrentFrame() { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
 
-	/**
+    /**
 	 * @brief Creates an empty GPU image
 	 * @param size Image dimensions in pixels (width, height, depth)
 	 * @param format Vulkan format
@@ -107,9 +104,12 @@ private:
 	 * @note Always allocates as GPU-only device-local memory
 	 * @note Automatically handles depth format aspect flags
 	 */
-	AllocatedImage createImage(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+    AllocatedImage createImage(const VkExtent3D &size,
+                               const VkFormat format,
+                               const VkImageUsageFlags usage,
+                               const bool mipmapped = false);
 
-	/**
+    /**
 	 * @brief Creates and initializes a GPU image with pixel data
 	 * @param data Pointer to raw pixel data (must match format/size)
 	 * @param size Image dimensions in pixels
@@ -124,17 +124,21 @@ private:
 	 *	   - Layout transitions
 	 *	   - Mipmap generation (if enabled)
 	 */
-	AllocatedImage createImage(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false);
+    AllocatedImage createImage(const void *data,
+                               const VkExtent3D &size,
+                               const VkFormat format,
+                               const VkImageUsageFlags usage,
+                               const bool mipmapped = false);
 
-	/**
+    /**
 	 * @brief Destroys image resources
 	 * @param img Image to destroy (must not be in use by GPU)
 	 *
 	 * @note Automatically destroys both image and image view
 	 */
-	void destroyImage(const AllocatedImage &img);
+    void destroyImage(const AllocatedImage &img);
 
-	/**
+    /**
 	 * @brief Creates a GPU buffer
 	 * @param allocSize Size in bytes (must be > 0)
 	 * @param usage Combination of VkBufferUsageFlagBits
@@ -143,102 +147,104 @@ private:
 	 *
 	 * @note Creates with VMA_ALLOCATION_CREATE_MAPPED_BIT by default
 	 */
-	AllocatedBuffer createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage);
+    AllocatedBuffer createBuffer(const size_t allocSize,
+                                 const VkBufferUsageFlags usage,
+                                 const VmaMemoryUsage memoryUsage);
 
-	/**
+    /**
 	 * @brief Destroys buffer resources
 	 * @param buffer Buffer to destroy (must not be in use by GPU)
 	 *
 	 * @warning Must ensure GPU work is complete before calling
 	 */
-	void destroyBuffer(const AllocatedBuffer &buffer);
+    void destroyBuffer(const AllocatedBuffer &buffer);
 
-	/// @brief Generates ASAP exec of a drawing function, synced with GPU.
+    /// @brief Generates ASAP exec of a drawing function, synced with GPU.
 	void immediate_submit(const std::function<void(VkCommandBuffer cmd)> &function);
 
 	/* General */
 
-	bool isInitialized = false;
-	int frameNumber = 0;
-	bool stopRendering = false;
-	bool resizeRequested = false;
-	float renderScale = 1.f;
+    bool m_isInitialized = false;
+    int m_frameNumber = 0;
+    bool m_stopRendering = false;
+    bool m_resizeRequested = false;
+    float m_renderScale = 1.f;
 
-	DeletionQueue mainDeletionQueue {};
+    DeletionQueue m_mainDeletionQueue{};
 
-	/* Windowing */
+    /* Windowing */
 
-	VkExtent2D windowExtent = {1700, 900};
-	struct SDL_Window *window = nullptr;
+    VkExtent2D m_windowExtent = {1700, 900};
+    struct SDL_Window *m_window = nullptr;
 
-	/* Vulkan */
+    /* Vulkan */
 
-	VkInstance instance = VK_NULL_HANDLE;
-	VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-	VkSurfaceKHR surface = VK_NULL_HANDLE;
-	VkDevice device = VK_NULL_HANDLE;
-	VkPhysicalDevice chosenGPU = VK_NULL_HANDLE;
-	VkQueue graphicsQueue = VK_NULL_HANDLE;
-	uint32_t graphicsQueueFamily = 0;
-	FrameData frames[FRAME_OVERLAP] {};
-	VmaAllocator allocator = VK_NULL_HANDLE;
+    VkInstance m_instance = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
+    VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+    VkDevice m_device = VK_NULL_HANDLE;
+    VkPhysicalDevice m_chosenGPU = VK_NULL_HANDLE;
+    VkQueue m_graphicsQueue = VK_NULL_HANDLE;
+    uint32_t m_graphicsQueueFamily = 0;
+    FrameData m_frames[FRAME_OVERLAP]{};
+    VmaAllocator m_allocator = VK_NULL_HANDLE;
 
-	/* Swapchain */
+    /* Swapchain */
 
-	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-	VkFormat swapchainImageFormat = VK_FORMAT_MAX_ENUM;
-	std::vector<VkImage> swapchainImages {};
-	std::vector<VkImageView> swapchainImageViews {};
-	VkExtent2D swapchainExtent = {0, 0};
+    VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
+    VkFormat m_swapchainImageFormat = VK_FORMAT_MAX_ENUM;
+    std::vector<VkImage> m_swapchainImages{};
+    std::vector<VkImageView> m_swapchainImageViews{};
+    VkExtent2D m_swapchainExtent = {0, 0};
 
-	/* Drawing */
+    /* Drawing */
 
-	AllocatedImage drawImage {};
-	AllocatedImage depthImage {};
-	VkExtent2D drawExtent = {0, 0};
+    AllocatedImage m_drawImage{};
+    AllocatedImage m_depthImage{};
+    VkExtent2D m_drawExtent = {0, 0};
 
-	DescriptorAllocatorGrowable globalDescriptorAllocator {};
+    DescriptorAllocatorGrowable m_globalDescriptorAllocator{};
 
-	VkDescriptorSet drawImageDescriptors = VK_NULL_HANDLE;
-	VkDescriptorSetLayout drawImageDescriptorLayout = VK_NULL_HANDLE;
+    VkDescriptorSet m_drawImageDescriptors = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_drawImageDescriptorLayout = VK_NULL_HANDLE;
 
-	/* Imaging */
+    /* Imaging */
 
-	// Geometry
-	VkPipelineLayout meshPipelineLayout = VK_NULL_HANDLE;
-	VkPipeline meshPipeline = VK_NULL_HANDLE;
-	GPUMeshBuffers meshBuffers {};
+    // Geometry
+    VkPipelineLayout m_meshPipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_meshPipeline = VK_NULL_HANDLE;
+    GPUMeshBuffers m_meshBuffers{};
 
-	void generateMeshes();
+    void generateMeshes();
 
-	// Bg
-	VkPipeline gradientPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout gradientPipelineLayout = VK_NULL_HANDLE;
+    // Bg
+    VkPipeline m_gradientPipeline = VK_NULL_HANDLE;
+    VkPipelineLayout m_gradientPipelineLayout = VK_NULL_HANDLE;
 
-	// Other
-	VkSampler defaultSamplerLinear = VK_NULL_HANDLE;
-	VkSampler defaultSamplerNearest = VK_NULL_HANDLE;
-	VkDescriptorSetLayout singleImageDescriptorLayout = VK_NULL_HANDLE;
+    // Other
+    VkSampler m_defaultSamplerLinear = VK_NULL_HANDLE;
+    VkSampler m_defaultSamplerNearest = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_singleImageDescriptorLayout = VK_NULL_HANDLE;
 
-	/* Direct rendering */
+    /* Direct rendering */
 
-	VkFence immFence = VK_NULL_HANDLE;
-	VkCommandBuffer immCommandBuffer = VK_NULL_HANDLE;
-	VkCommandPool immCommandPool = VK_NULL_HANDLE;
+    VkFence m_immFence = VK_NULL_HANDLE;
+    VkCommandBuffer m_immCommandBuffer = VK_NULL_HANDLE;
+    VkCommandPool m_immCommandPool = VK_NULL_HANDLE;
 
-	/* Images */
+    /* Images */
 
-	AllocatedImage whiteImage {};
-	AllocatedImage errorCheckerboardImage {};
+    AllocatedImage m_whiteImage{};
+    AllocatedImage m_errorCheckerboardImage{};
 
-	/* Scene */
+    /* Scene */
 
-	GPUSceneData sceneData {};
-	VkDescriptorSetLayout gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
-	World::Scene *m_scene = nullptr;
+    GPUSceneData m_sceneData{};
+    VkDescriptorSetLayout m_gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
+    World::Scene *m_scene = nullptr;
 
     /* Animation */
-    double deltaMS = 0.0;
+    double m_deltaMS = 0.0;
 
     friend class ::Loaders::Map;
     friend class Resources;
