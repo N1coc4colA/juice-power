@@ -39,6 +39,8 @@ private:
     Physics::Engine *m_physicsEngine = nullptr;
 
     std::atomic<uint64_t> m_commands = 0;
+
+    static Orchestrator *m_instance;
 };
 
 #endif // ORCHESTRATOR_H

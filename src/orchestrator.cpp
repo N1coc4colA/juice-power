@@ -4,22 +4,22 @@
 #include "loaders/map.h"
 #include "physics/engine.h"
 
-static Orchestrator *orchestratorInstance = nullptr;
+Orchestrator *Orchestrator::m_instance = nullptr;
 
 Orchestrator::Orchestrator()
     : m_graphicsEngine(new Graphics::Engine())
     , m_physicsEngine(new Physics::Engine())
 {
-    assert(orchestratorInstance == nullptr);
+    assert(m_instance == nullptr);
 
-    orchestratorInstance = this;
+    m_instance = this;
 
     init();
 }
 
 Orchestrator &Orchestrator::get()
 {
-    return *orchestratorInstance;
+    return *m_instance;
 }
 
 void Orchestrator::init()
