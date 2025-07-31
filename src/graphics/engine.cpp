@@ -905,7 +905,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
 
         // Request the data to be updated before drawing.
         *commands |= CommandStates::PrepareDrawing;
-        while (!(*commands & CommandStates::DrawingPrepared)) {
+        while (!(*commands & (CommandStates::DrawingPrepared | CommandStates::Stop))) {
             // Wait for the submitted work request to be performed & finished.
             // As this loop runs for the rendering, there are no reasons to
             // redraw what's already on the screen. The only reason would be for
