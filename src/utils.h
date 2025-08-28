@@ -4,15 +4,11 @@
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 
-#include <format>
 #include <functional>
 #include <iterator>
 #include <numeric>
 #include <ranges>
 #include <type_traits>
-
-#include "defines.h"
-
 
 namespace utils
 {

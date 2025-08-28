@@ -152,21 +152,63 @@ void Engine::compute()
 
 						// If both elements are not the same, we can check for collision.
 						const auto m = std::min(&e, &e2);
-						if (&e != &e2 && (!m_scene->collisions.contains(m) || !m_scene->collisions[m].contains(std::max(&e, &e2)))) {
-							[[likely]];
+                        if (&e != &e2) {
+                            [[likely]];
 
-							if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
-								// We need to resolve the collision.
-								if (e.collides(e2, info)) {
-									resolveCollision(e, e2, info);
+                            if (!m_scene->collisions.contains(m) || !m_scene->collisions[m].contains(std::max(&e, &e2))) {
+                                if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
+                                    // We need to resolve the collision.
+                                    if (e.collides(e2, info)) {
+                                        resolveCollision(e, e2, info);
+                                    }
                                 }
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+                            }
+                        }
+                    }
+
+                    for (auto &e2 : m_scene->movings.entities) {
+                        CollisionInfo info{};
+
+                        // If both elements are not the same, we can check for collision.
+                        const auto m = std::min(&e, &e2);
+                        if (&e != &e2) {
+                            [[likely]];
+
+                            if (!m_scene->collisions.contains(m) || !m_scene->collisions[m].contains(std::max(&e, &e2))) {
+                                if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
+                                    // We need to resolve the collision.
+                                    if (e.collides(e2, info)) {
+                                        resolveCollision(e, e2, info);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (auto &e : m_scene->movings.entities) {
+            for (auto &e2 : m_scene->movings.entities) {
+                CollisionInfo info{};
+
+                // If both elements are not the same, we can check for collision.
+                const auto m = std::min(&e, &e2);
+                if (&e != &e2) {
+                    [[likely]];
+
+                    if (!m_scene->collisions.contains(m) || !m_scene->collisions[m].contains(std::max(&e, &e2))) {
+                        if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
+                            // We need to resolve the collision.
+                            if (e.collides(e2, info)) {
+                                resolveCollision(e, e2, info);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     prevChrono = currentTime;
 }
@@ -179,10 +221,14 @@ void Engine::run(std::atomic<uint64_t> *commands)
         if ((*commands) & CommandStates::PrepareDrawing) {
             for (auto &chunk : m_scene->view) {
                 const auto size = chunk.entities.size();
-                for (size_t i = 0; i < size; i++) {
-                    chunk.positions[i].x = chunk.entities[i].position.x;
-                    chunk.positions[i].y = chunk.entities[i].position.y;
+                for (size_t i = 0; i < size; ++i) {
+                    chunk.positions[i] = glm::vec3(chunk.entities[i].position, 0.f);
                 }
+            }
+
+            const auto size = m_scene->movings.entities.size();
+            for (size_t i = 0; i < size; ++i) {
+                m_scene->movings.positions[i] = glm::vec3(m_scene->movings.entities[i].position, 0.f);
             }
 
             // Update states.

@@ -2,6 +2,7 @@
 
 #include <boost/numeric/odeint.hpp>
 
+#include "../defines.h"
 #include "../utils.h"
 
 
@@ -44,13 +45,11 @@ inline constexpr glm::vec2 glm_vec2_addition(const glm::vec2 &a, const glm::vec2
 Forces Entity::resultOfForces(const double timeStep) const
 {
 	// [vx, vy, theta]
-	state_type y {
-        static_cast<double>(velocity.x + temporaryVelocities.x),
-	    static_cast<double>(velocity.y + temporaryVelocities.y),
-	    static_cast<double>(angularVelocity + temporaryAngularVelocities)
-	};
+    state_type y{static_cast<double>(velocity.x + temporaryVelocities.x),
+                 static_cast<double>(velocity.y + temporaryVelocities.y),
+                 static_cast<double>(angularVelocity + temporaryAngularVelocities)};
 
-	// Use runge_kutta4 stepper with constant time step, we may have to use a variable one in the future.
+    // Use runge_kutta4 stepper with constant time step, we may have to use a variable one in the future.
 	boost::numeric::odeint::integrate_const(
 		boost::numeric::odeint::runge_kutta4<state_type>(),
 		// The system function

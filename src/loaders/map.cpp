@@ -34,6 +34,69 @@ Map::Map(const std::string &path)
 {
 }
 
+inline void copyValues(const std::vector<JsonChunkElement> &c, World::Chunk &s, JsonMap &map, World::Scene &m_scene)
+{
+    const auto esize = s.entities.size();
+    for (size_t j = 0; j < esize; j++) {
+        const auto &e = c[j];
+
+        s.entities[j].position = glm::vec2{e.position[0], e.position[1]};
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        const auto &e = c[j];
+
+        s.entities[j].velocity = glm::vec2{e.velocity[0], e.velocity[1]};
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        const auto &e = c[j];
+
+        s.entities[j].acceleration = glm::vec2{e.acceleration[0], e.acceleration[1]};
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].angularVelocity = c[j].angularVelocity;
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].canCollide = c[j].canCollide;
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].isNotFixed = c[j].isNotFixed;
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].MoI = c[j].MoI;
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].mass = map.resources[s.descriptions[j]].mass;
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].elasticity = map.resources[s.descriptions[j]].elasticity;
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].borders = m_scene.res->borders[s.descriptions[j]];
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        s.entities[j].normals = m_scene.res->normals[s.descriptions[j]];
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        const auto &bb = m_scene.res->boundingBoxes[s.descriptions[j]];
+
+        s.entities[j].boundingBox = Physics::AABB{
+            .min = std::get<0>(bb),
+            .max = std::get<1>(bb),
+        };
+    }
+}
+
 Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 {
 	if (!fs::exists(m_path)) {
@@ -135,261 +198,240 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		std::vector<std::vector<JsonChunkElement>> chunks {};
 
 		// Check that all files exist
-		for (size_t i = 0; i < size; i++) {
-			if (!fs::exists(m_path + '/' + std::to_string(i) + ".json")) {
-				return Status::MissingJson;
-			}
-		}
+        for (size_t i = 0; i < size; ++i) {
+            if (!fs::exists(m_path + '/' + std::to_string(i) + ".json")) {
+                return Status::MissingJson;
+            }
+        }
 
-		chunks.reserve(size);
+        chunks.reserve(size);
 
-		// Try to open & load all chunk files.
-		for (size_t i = 0; i < size; i++) {
-			const std::string chunkName = m_path + '/' + std::to_string(i) + ".json";
-			std::ifstream f {};
-			f.open(chunkName, std::ifstream::in);
-			if (!f.is_open()) {
-				return Status::OpenError;
-			}
+        // Try to open & load all chunk files.
+        for (size_t i = 0; i < size; ++i) {
+            const std::string chunkName = m_path + '/' + std::to_string(i) + ".json";
+            std::ifstream f{};
+            f.open(chunkName, std::ifstream::in);
+            if (!f.is_open()) {
+                return Status::OpenError;
+            }
 
-			const auto size = fs::file_size(chunkName);
-			std::string chunkContent(size, '\0');
-			f.read(chunkContent.data(), static_cast<std::streamsize>(size));
+            const auto size = fs::file_size(chunkName);
+            std::string chunkContent(size, '\0');
+            f.read(chunkContent.data(), static_cast<std::streamsize>(size));
 
-			const auto chunkJson = glz::read_json<std::vector<JsonChunkElement>>(chunkContent);
-			if (!chunkJson.has_value()) {
-				std::cout << __LINE__;
-				std::cout << "Failed to open file " << chunkName
-						  << ':' << chunkJson.error().location
-						  << ':' << magic_enum::enum_name(chunkJson.error().ec)
-						  << ':' << chunkJson.error().includer_error
-						  << '\n';
-				return Status::JsonError;
-			}
+            const auto chunkJson = glz::read_json<std::vector<JsonChunkElement>>(chunkContent);
+            if (!chunkJson.has_value()) {
+                std::cout << __LINE__;
+                std::cout << "Failed to open file " << chunkName << ':' << chunkJson.error().location << ':'
+                          << magic_enum::enum_name(chunkJson.error().ec) << ':' << chunkJson.error().includer_error << '\n';
+                return Status::JsonError;
+            }
 
-			chunks.push_back(chunkJson.value());
-		}
+            chunks.push_back(chunkJson.value());
+        }
 
-		// Now that we properly loaded it all, we just have to replace it.
-		map.chunks = chunks;
-	}
+        {
+            const std::string chunkName = m_path + "/movings.json";
+            std::ifstream f{};
+            f.open(chunkName, std::ifstream::in);
+            if (!f.is_open()) {
+                return Status::OpenError;
+            }
 
-	// Now that any external resource have been check or loaded, we can generate the object.
-	// First load the resources.
+            const auto size = fs::file_size(chunkName);
+            std::string chunkContent(size, '\0');
+            f.read(chunkContent.data(), static_cast<std::streamsize>(size));
 
-	m_scene.res = new Graphics::Resources {};
+            const auto chunkJson = glz::read_json<std::vector<JsonChunkElement>>(chunkContent);
+            if (!chunkJson.has_value()) {
+                std::cout << __LINE__;
+                std::cout << "Failed to open file " << chunkName << ':' << chunkJson.error().location << ':'
+                          << magic_enum::enum_name(chunkJson.error().ec) << ':' << chunkJson.error().includer_error << '\n';
+                return Status::JsonError;
+            }
 
-	std::map<std::string, int> mapped; // Maps name to resource ID.
-	const auto resSize = map.resources.size();
-	m_scene.res->images.reserve(resSize);
-	m_scene.res->types.reserve(resSize);
-	m_scene.res->borders.reserve(resSize);
-	m_scene.res->normals.reserve(resSize);
+            map.movings = chunkJson.value();
+        }
 
-	//const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
+        // Now that we properly loaded it all, we just have to replace it.
+        map.chunks = chunks;
+    }
 
-	algo::ImageVectorizer vectorizer {};
+    // Now that any external resource have been check or loaded, we can generate the object.
+    // First load the resources.
 
-	size_t i = 0;
-	for (const auto &res : map.resources) {
-		// Trya load it.
+    m_scene.res = new Graphics::Resources{};
 
-		int width = 0,
-			height = 0,
-			channels = 0;
+    std::map<std::string, int> mapped; // Maps name to resource ID.
+    const auto resSize = map.resources.size();
+    m_scene.res->images.reserve(resSize);
+    m_scene.res->types.reserve(resSize);
+    m_scene.res->borders.reserve(resSize);
+    m_scene.res->normals.reserve(resSize);
 
-		// This gives an 8-bit per channel.
-		stbi_uc *imgData = stbi_load((m_assets + res.source).c_str(), &width, &height, &channels, 4); // Force 4 channels (RGBA)
+    //const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
 
-		if (!imgData) {
-			return Status::OpenError;
-		}
+    algo::ImageVectorizer vectorizer{};
 
-		const auto &h = res.h;
-		const auto &w = res.w;
-		const Graphics::Resources::Vertices vertices { .data = {
-			{
-				.position = {0.f, 0.f, 0.f},
-				.uv_x = 0.f,
-				.normal = {0.f, 0.f, 1.f},
-				.uv_y = 0.f,
-				.color = glm::vec4(0.f, 1.f, 0.f, 1.f),
-			},
-			{
-				.position = {0.f, h, 0.f},
-				.uv_x = 0.f,
-				.normal = {0.f, 0.f, 1.f},
-				.uv_y = 1.f,
-				.color = glm::vec4(1.f, 0.f, 0.f, 1.f),
-			},
-			{
-				.position = {w, 0.f, 0.f},
-				.uv_x = 1.f,
-				.normal = {0.f, 0.f, 1.f},
-				.uv_y = 0.f,
-				.color = glm::vec4(0.f, 0.f, 1.f, 1.f),
-			},
-			{
-				.position = {w, h, 0.f},
-				.uv_x = 1.f,
-				.normal = {0.f, 0.f, 1.f},
-				.uv_y = 1.f,
-				.color = glm::vec4(1.f, 1.f, 0.f, 1.f),
-			},
-		}};
+    {
+        size_t i = 0;
+        for (const auto &res : map.resources) {
+            // Trya load it.
 
-		// Because each pixel is the @var channels values, mult width by @var channels.
-		vectorizer.determineImageBorders(algo::MatrixView(imgData, static_cast<size_t>(width*channels), static_cast<size_t>(height)), channels);
+            int width = 0, height = 0, channels = 0;
 
-		for (auto &p : vectorizer.points) {
-			p.x *= w;
-		}
-		for (auto &p : vectorizer.points) {
-			p.y *= h;
-		}
+            // This gives an 8-bit per channel.
+            stbi_uc *imgData = stbi_load((m_assets + res.source).c_str(), &width, &height, &channels, 4); // Force 4 channels (RGBA)
 
-		m_scene.res->boundingBoxes.push_back(std::tuple{vectorizer.min, vectorizer.max});
+            if (!imgData) {
+                return Status::OpenError;
+            }
 
-		m_scene.res->types.push_back(res.type);
-		m_scene.res->vertices.push_back(vertices);
-		m_scene.res->borders.push_back(vectorizer.points);
-		m_scene.res->normals.push_back(vectorizer.normals);
+            const auto &h = res.h;
+            const auto &w = res.w;
+            const Graphics::Resources::Vertices vertices{.data = {
+                                                             {
+                                                                 .position = {0.f, 0.f, 0.f},
+                                                                 .uv_x = 0.f,
+                                                                 .normal = {0.f, 0.f, 1.f},
+                                                                 .uv_y = 0.f,
+                                                                 .color = glm::vec4(0.f, 1.f, 0.f, 1.f),
+                                                             },
+                                                             {
+                                                                 .position = {0.f, h, 0.f},
+                                                                 .uv_x = 0.f,
+                                                                 .normal = {0.f, 0.f, 1.f},
+                                                                 .uv_y = 1.f,
+                                                                 .color = glm::vec4(1.f, 0.f, 0.f, 1.f),
+                                                             },
+                                                             {
+                                                                 .position = {w, 0.f, 0.f},
+                                                                 .uv_x = 1.f,
+                                                                 .normal = {0.f, 0.f, 1.f},
+                                                                 .uv_y = 0.f,
+                                                                 .color = glm::vec4(0.f, 0.f, 1.f, 1.f),
+                                                             },
+                                                             {
+                                                                 .position = {w, h, 0.f},
+                                                                 .uv_x = 1.f,
+                                                                 .normal = {0.f, 0.f, 1.f},
+                                                                 .uv_y = 1.f,
+                                                                 .color = glm::vec4(1.f, 1.f, 0.f, 1.f),
+                                                             },
+                                                         }};
 
-		// Now make the Vk Image.
-		m_scene.res->images.push_back(engine.createImage(
-			imgData,
-			VkExtent3D {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
-			VK_FORMAT_R8G8B8A8_UNORM,
-			VK_IMAGE_USAGE_SAMPLED_BIT)
-		);
+            // Because each pixel is the @var channels values, mult width by @var channels.
+            vectorizer.determineImageBorders(algo::MatrixView(imgData, static_cast<size_t>(width * channels), static_cast<size_t>(height)), channels);
 
-		stbi_image_free(imgData);
+            for (auto &p : vectorizer.points) {
+                p.x *= w;
+            }
+            for (auto &p : vectorizer.points) {
+                p.y *= h;
+            }
 
-        m_scene.res->animColumns.push_back(res.gridSize[0]);
-        m_scene.res->animRows.push_back(res.gridSize[1]);
-        m_scene.res->animInterval.push_back(res.interval);
-        m_scene.res->animFrames.push_back(res.frames ? res.frames
-                                                     : res.gridSize[0] * res.gridSize[1]);
+            m_scene.res->boundingBoxes.push_back(std::tuple{vectorizer.min, vectorizer.max});
 
-        // We succeed, let's add it.
-        mapped.insert({res.name, i});
-        i++;
+            m_scene.res->types.push_back(res.type);
+            m_scene.res->vertices.push_back(vertices);
+            m_scene.res->borders.push_back(vectorizer.points);
+            m_scene.res->normals.push_back(vectorizer.normals);
+
+            // Now make the Vk Image.
+            m_scene.res->images.push_back(engine.createImage(imgData,
+                                                             VkExtent3D{static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1},
+                                                             VK_FORMAT_R8G8B8A8_UNORM,
+                                                             VK_IMAGE_USAGE_SAMPLED_BIT));
+
+            stbi_image_free(imgData);
+
+            m_scene.res->animColumns.push_back(res.gridSize[0]);
+            m_scene.res->animRows.push_back(res.gridSize[1]);
+            m_scene.res->animInterval.push_back(res.interval);
+            m_scene.res->animFrames.push_back(res.frames ? res.frames : res.gridSize[0] * res.gridSize[1]);
+
+            // We succeed, let's add it.
+            mapped.insert({res.name, i});
+            ++i;
+        }
     }
 
     m_scene.chunks.resize(map.chunks.size());
     const auto csize = map.chunks.size();
 
     // Setup transform matrices
-	for (size_t i = 0; i < csize; i++) {
-		auto &s = m_scene.chunks[i];
-		const auto &c = map.chunks[i];
-		const auto count = c.size();
+    m_scene.movings.transforms = std::vector(map.movings.size(), glm::mat4{1.f});
+    for (size_t i = 0; i < csize; ++i) {
+        auto &s = m_scene.chunks[i];
+        const auto count = map.chunks[i].size();
 
-		// At first, all objects have their usual transform matrix.
-		s.transforms = std::vector(count, glm::mat4{1.f});
-	}
+        // At first, all objects have their usual transform matrix.
+        s.transforms = std::vector(count, glm::mat4{1.f});
+    }
 
-	// Reserve space for our vectors.
-	for (size_t i = 0; i < csize; i++) {
-		auto &s = m_scene.chunks[i];
-		const auto count = map.chunks[i].size();
+    // Reserve space for our vectors.
+    {
+        const auto count = map.movings.size();
 
-		// We fill it in later to avoid constructing and then change the data.
+        m_scene.movings.descriptions.reserve(count);
+        m_scene.movings.positions.reserve(count);
+        m_scene.movings.animFrames.resize(count);
+    }
+    for (size_t i = 0; i < csize; ++i) {
+        auto &s = m_scene.chunks[i];
+        const auto count = map.chunks[i].size();
+
+        // We fill it in later to avoid constructing and then change the data.
         s.descriptions.reserve(count);
         s.positions.reserve(count);
         s.animFrames.resize(count);
     }
 
-    for (size_t i = 0; i < csize; i++) {
-		const auto count = map.chunks[i].size();
+    {
+        const auto count = map.movings.size();
+        m_scene.movings.entities.resize(count);
+    }
+    for (size_t i = 0; i < csize; ++i) {
+        const auto count = map.chunks[i].size();
 
-		m_scene.chunks[i].entities.resize(count);
-	}
+        m_scene.chunks[i].entities.resize(count);
+    }
 
-	// Fill in basic data
-	for (size_t i = 0; i < csize; i++) {
-		const auto &c = map.chunks[i];
-		auto &s = m_scene.chunks[i];
+    // Fill in basic data
+    {
+        const auto &c = map.movings;
+        auto &s = m_scene.movings;
 
-		for (const auto &e : c) {
-			s.descriptions.push_back(e.type);
-		}
-		for (const auto &e : c) {
-			s.positions.push_back(glm::vec3{e.position[0], e.position[1], e.position[2]});
-		}
-	}
+        for (const auto &e : c) {
+            s.descriptions.push_back(e.type);
+        }
+        for (const auto &e : c) {
+            s.positions.push_back(glm::vec3{e.position[0], e.position[1], e.position[2]});
+        }
+    }
+    for (size_t i = 0; i < csize; ++i) {
+        const auto &c = map.chunks[i];
+        auto &s = m_scene.chunks[i];
 
-	// Update entities' information.
-	for (size_t i = 0; i < csize; i++) {
-		const auto &c = map.chunks[i];
-		auto &s = m_scene.chunks[i];
+        for (const auto &e : c) {
+            s.descriptions.push_back(e.type);
+        }
+        for (const auto &e : c) {
+            s.positions.push_back(glm::vec3{e.position[0], e.position[1], e.position[2]});
+        }
+    }
 
-		const auto esize = s.entities.size();
-		for (size_t j = 0; j < esize; j++) {
-			const auto &e = c[j];
+    // Update entities' information.
+    copyValues(map.movings, m_scene.movings, map, m_scene);
+    for (size_t i = 0; i < csize; ++i) {
+        copyValues(map.chunks[i], m_scene.chunks[i], map, m_scene);
+    }
 
-			s.entities[j].position = glm::vec2{e.position[0], e.position[1]};
-		}
+    m_scene.res->build(engine);
 
-		for (size_t j = 0; j < esize; j++) {
-			const auto &e = c[j];
+    m_scene.view = m_scene.chunks | std::ranges::views::drop(0) | std::ranges::views::take(std::min(size_t(2), csize));
 
-			s.entities[j].velocity = glm::vec2{e.velocity[0], e.velocity[1]};
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			const auto &e = c[j];
-
-			s.entities[j].acceleration = glm::vec2{e.acceleration[0], e.acceleration[1]};
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].angularVelocity = c[j].angularVelocity;
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].canCollide = c[j].canCollide;
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].isNotFixed = c[j].isNotFixed;
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].MoI = c[j].MoI;
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].mass = map.resources[s.descriptions[j]].mass;
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].elasticity = map.resources[s.descriptions[j]].elasticity;
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].borders = m_scene.res->borders[s.descriptions[j]];
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			s.entities[j].normals = m_scene.res->normals[s.descriptions[j]];
-		}
-
-		for (size_t j = 0; j < esize; j++) {
-			const auto &bb = m_scene.res->boundingBoxes[s.descriptions[j]];
-
-			s.entities[j].boundingBox = Physics::AABB {
-				.min = std::get<0>(bb),
-				.max = std::get<1>(bb),
-			};
-		}
-	}
-
-	m_scene.res->build(engine);
-
-	m_scene.view = m_scene.chunks | std::ranges::views::drop(0) | std::ranges::views::take(std::min(size_t(2), csize));
-
-	return Status::Ok;
+    return Status::Ok;
 }
 
 

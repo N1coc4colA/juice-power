@@ -16,9 +16,9 @@
 
 #include <fmt/printf.h>
 
-#include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_sdl3.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
+#include <imgui/imgui.h>
 
 #include "../states.h"
 
@@ -382,30 +382,30 @@ void Engine::initCommands()
 	//we also want the pool to allow for resetting of individual command buffers
 	const VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-	for (uint i = 0; i < FRAME_OVERLAP; i++) {
-		VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_frames[i].commandPool));
-		if (m_frames[i].commandPool == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkCommandPoolCreation, "Frame");
-		}
+    for (uint i = 0; i < FRAME_OVERLAP; ++i) {
+        VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_frames[i].commandPool));
+        if (m_frames[i].commandPool == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkCommandPoolCreation, "Frame");
+        }
 
-		// allocate the default command buffer that we will use for rendering
-		const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(m_frames[i].commandPool, 1);
+        // allocate the default command buffer that we will use for rendering
+        const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(m_frames[i].commandPool, 1);
 
-		VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_frames[i].mainCommandBuffer));
+        VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_frames[i].mainCommandBuffer));
 		if (m_frames[i].mainCommandBuffer == VK_NULL_HANDLE) {
 			throw Failure(FailureType::VkCommandBufferCreation, "Frame");
 		}
-	}
+    }
 
-	VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_immCommandPool));
-	if (m_immCommandPool == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkCommandPoolCreation, "Immediate");
-	}
+    VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_immCommandPool));
+    if (m_immCommandPool == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkCommandPoolCreation, "Immediate");
+    }
 
-	// allocate the command buffer for immediate submits
-	const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(m_immCommandPool, 1);
+    // allocate the command buffer for immediate submits
+    const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(m_immCommandPool, 1);
 
-	VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_immCommandBuffer));
+    VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_immCommandBuffer));
 	if (m_immCommandBuffer == VK_NULL_HANDLE) {
 		throw Failure(FailureType::VkCommandBufferCreation, "Immediate");
 	}
@@ -425,26 +425,26 @@ void Engine::initSyncStructures()
 	const VkFenceCreateInfo fenceCreateInfo = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 	const VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
 
-	for (uint i = 0; i < FRAME_OVERLAP; i++) {
-		VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_frames[i].renderFence));
-		if (m_frames[i].renderFence == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkFenceCreation, "Frame");
-		}
+    for (uint i = 0; i < FRAME_OVERLAP; ++i) {
+        VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_frames[i].renderFence));
+        if (m_frames[i].renderFence == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkFenceCreation, "Frame");
+        }
 
-		VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frames[i].swapchainSemaphore));
-		if (m_frames[i].swapchainSemaphore == VK_NULL_HANDLE) {
+        VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frames[i].swapchainSemaphore));
+        if (m_frames[i].swapchainSemaphore == VK_NULL_HANDLE) {
 			throw Failure(FailureType::VkSwapchainCreation, "Frame");
 		}
 		VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frames[i].renderSemaphore));
 		if (m_frames[i].renderSemaphore == VK_NULL_HANDLE) {
 			throw Failure(FailureType::VkSemaphoreCreation, "Frame");
 		}
-	}
+    }
 
-	VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_immFence));
-	if (m_immFence == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkFenceCreation, "Immediate");
-	}
+    VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_immFence));
+    if (m_immFence == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkFenceCreation, "Immediate");
+    }
 
     m_mainDeletionQueue.push_function([this]() { vkDestroyFence(m_device, m_immFence, nullptr); });
 }
@@ -481,16 +481,16 @@ void Engine::initDescriptors()
 		throw Failure(FailureType::VkDescriptorUpdate, "Draw");
 	}
 
-	for (uint i = 0; i < FRAME_OVERLAP; i++) {
-		// create a descriptor pool
-		constexpr DescriptorAllocatorGrowable::PoolSizeRatio frame_sizes[] = {
-			{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
-		};
+    for (uint i = 0; i < FRAME_OVERLAP; ++i) {
+        // create a descriptor pool
+        constexpr DescriptorAllocatorGrowable::PoolSizeRatio frame_sizes[] = {
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
+        };
 
-		m_frames[i].frameDescriptors = DescriptorAllocatorGrowable();
+        m_frames[i].frameDescriptors = DescriptorAllocatorGrowable();
 		m_frames[i].frameDescriptors.init(m_device, 1000, frame_sizes);
 
         m_mainDeletionQueue.push_function(
@@ -789,17 +789,17 @@ void Engine::cleanup()
 
 		// we can destroy the command pools.
 		// It may crash the app otherwise.
-		for (uint i = 0; i < FRAME_OVERLAP; i++) {
-			vkDestroyCommandPool(m_device, m_frames[i].commandPool, nullptr);
-		}
-		for (uint i = 0; i < FRAME_OVERLAP; i++) {
-			//destroy sync objects
-			vkDestroyFence(m_device, m_frames[i].renderFence, nullptr);
+        for (uint i = 0; i < FRAME_OVERLAP; ++i) {
+            vkDestroyCommandPool(m_device, m_frames[i].commandPool, nullptr);
+        }
+        for (uint i = 0; i < FRAME_OVERLAP; ++i) {
+            //destroy sync objects
+            vkDestroyFence(m_device, m_frames[i].renderFence, nullptr);
 			vkDestroySemaphore(m_device, m_frames[i].renderSemaphore, nullptr);
 			vkDestroySemaphore(m_device, m_frames[i].swapchainSemaphore, nullptr);
 
 			m_frames[i].deletionQueue.flush();
-		}
+        }
 
         //flush the global deletion queue
         m_mainDeletionQueue.flush();
@@ -835,7 +835,6 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
 	LOGFN();
 
     prevChrono = std::chrono::system_clock::now();
-    SDL_Event e;
 
     prepare();
 
@@ -851,25 +850,8 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
         const auto frametime = std::chrono::duration_cast<std::chrono::microseconds>(delta).count()
                                / 1000.f;
 
-        // Handle events on queue
-        while (SDL_PollEvent(&e) != 0) {
-            // close the window when user alt-f4s or clicks the X button
-            if (e.type == SDL_EVENT_QUIT) {
-                *commands |= CommandStates::Stop;
-            }
-
-            if (e.type == SDL_EVENT_WINDOW_MINIMIZED) {
-                m_stopRendering = true;
-            }
-            if (e.type == SDL_EVENT_WINDOW_RESTORED) {
-                m_stopRendering = false;
-            }
-
-            ImGui_ImplSDL3_ProcessEvent(&e);
-        }
-
         //do not draw if we are minimized
-        if (m_stopRendering) {
+        if (*commands & CommandStates::PauseRendering) {
             //throttle the speed to avoid the endless spinning
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
@@ -928,7 +910,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
 void Engine::updateAnimations(World::Scene &scene)
 {
     for (auto &chunk : scene.view) {
-        for (size_t i = 0; i < chunk.animFrames.size(); i++) {
+        for (size_t i = 0; i < chunk.animFrames.size(); ++i) {
             chunk.animFrames[i] += m_deltaMS;
         }
     }
@@ -1131,7 +1113,7 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 
 		for (const auto &chunk : m_scene->view) {
 			const size_t size = chunk.descriptions.size();
-            for (size_t i = 0; i < size; i++) {
+            for (size_t i = 0; i < size; ++i) {
                 const auto descId = chunk.descriptions[i];
                 push_constants.frameInterval = m_scene->res->animInterval[descId];
                 push_constants.framesCount = m_scene->res->animFrames[descId];
@@ -1303,12 +1285,12 @@ void Engine::initDefaultData()
 	//checkerboard image
 	const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
 	std::array<uint32_t, static_cast<size_t>(16*16)> pixels; //for 16x16 checkerboard texture
-	for (int x = 0; x < 16; x++) {
-		for (int y = 0; y < 16; y++) {
-			pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
-		}
-	}
-	m_errorCheckerboardImage = createImage(pixels.data(), VkExtent3D{16, 16, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+    for (int x = 0; x < 16; ++x) {
+        for (int y = 0; y < 16; ++y) {
+            pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+        }
+    }
+    m_errorCheckerboardImage = createImage(pixels.data(), VkExtent3D{16, 16, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	VkSamplerCreateInfo sampl = {
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,

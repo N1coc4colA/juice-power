@@ -6,6 +6,7 @@
 
 #include <glm/vec2.hpp>
 
+#include <cstddef>
 
 typedef struct potrace_param_s potrace_param_t;
 

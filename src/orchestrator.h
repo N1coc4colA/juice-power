@@ -9,6 +9,10 @@ namespace Graphics {
 class Engine;
 }
 
+namespace Input {
+class Engine;
+}
+
 namespace Physics {
 class Engine;
 }
@@ -33,10 +37,12 @@ public:
 
     inline Graphics::Engine &graphicsEngine() { return *m_graphicsEngine; }
     inline Physics::Engine &physicsEngine() { return *m_physicsEngine; }
+    inline Input::Engine &inputEngine() { return *m_inputEngine; }
 
 private:
     Graphics::Engine *m_graphicsEngine = nullptr;
     Physics::Engine *m_physicsEngine = nullptr;
+    Input::Engine *m_inputEngine = nullptr;
 
     std::atomic<uint64_t> m_commands = 0;
 

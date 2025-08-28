@@ -29,12 +29,25 @@ public:
 	{
 	}
 
-	Graphics::Resources *res = nullptr;
-	std::vector<Chunk> chunks {};
+    /**
+     * @brief Resources associated to this scene.
+     */
+    Graphics::Resources *res = nullptr;
+    /**
+     * @brief Chunks composing the scene.
+     */
+    std::vector<Chunk> chunks{};
 
-	std::map<const Physics::Entity *, std::set<Physics::Entity *>> collisions;
+    /**
+     * @brief Chunk contained in the whole scene.
+     * This chunk is used to contain all elements that moves freely through
+     * the different classic chunks of the scene. A good example would be the player itself.
+     */
+    Chunk movings{};
 
-	std::ranges::take_view<std::ranges::drop_view<std::ranges::ref_view<std::vector<Chunk>>>> view;
+    std::map<const Physics::Entity *, std::set<Physics::Entity *>> collisions;
+
+    std::ranges::take_view<std::ranges::drop_view<std::ranges::ref_view<std::vector<Chunk>>>> view;
 };
 
 

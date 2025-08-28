@@ -167,7 +167,6 @@ private:
 
     bool m_isInitialized = false;
     int m_frameNumber = 0;
-    bool m_stopRendering = false;
     bool m_resizeRequested = false;
     float m_renderScale = 1.f;
 

@@ -1,14 +1,27 @@
 #include "orchestrator.h"
 
+#include <SDL3/SDL.h>
+
 #include "graphics/engine.h"
+#include "input/engine.h"
 #include "loaders/map.h"
 #include "physics/engine.h"
 
 Orchestrator *Orchestrator::m_instance = nullptr;
 
+using ET = Input::EventType;
+
 Orchestrator::Orchestrator()
     : m_graphicsEngine(new Graphics::Engine())
     , m_physicsEngine(new Physics::Engine())
+    , m_inputEngine(new Input::Engine({
+          {SDLK_Z, ET::Up},
+          {SDLK_S, ET::Down},
+          {SDLK_Q, ET::Left},
+          {SDLK_D, ET::Right},
+          {SDLK_SPACE, ET::Jump},
+          {SDLK_E, ET::Attack},
+      }))
 {
     assert(m_instance == nullptr);
 
@@ -32,6 +45,7 @@ void Orchestrator::run()
     m_commands = 0;
 
     std::jthread m_physicsThread([this]() { m_physicsEngine->run(&m_commands); });
+    std::jthread m_inputThread([this]() { m_inputEngine->run(&m_commands); });
     m_graphicsEngine->run([this]() { m_physicsEngine->prepare(); }, &m_commands);
 }
 

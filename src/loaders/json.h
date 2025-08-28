@@ -119,6 +119,10 @@ struct JsonMap
 	 * Stores chunks' info before loading all related data.
 	 */
 	std::vector<std::vector<JsonChunkElement>> chunks {};
+    /**
+     * @brief movable
+     */
+    std::vector<JsonChunkElement> movings{};
 };
 
 
