@@ -1,16 +1,16 @@
 [
     {
-        "type": 0,
+        "type": 2,
         "position": [0.0, 0.0, 0.0],
         "isNotFixed": false
     },
     {
-        "type": 0,
+        "type": 2,
         "position": [4.0, 0.0, 0.0],
         "isNotFixed": false
     },
     {
-        "type": 0,
+        "type": 2,
         "position": [8.0, 0.0, 0.0],
         "isNotFixed": false
     },
