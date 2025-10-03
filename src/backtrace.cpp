@@ -3,7 +3,6 @@
 #include <execinfo.h>
 #include <cxxabi.h>
 #include <cassert>
-#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <fmt/printf.h>
