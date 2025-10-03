@@ -1,7 +1,8 @@
 #ifndef ORCHESTRATOR_H
 #define ORCHESTRATOR_H
 
-#include <thread>
+#include <atomic>
+#include <string>
 
 #include "loaders/enums.h"
 
@@ -25,6 +26,8 @@ class Orchestrator
 {
 public:
     explicit Orchestrator();
+    Orchestrator(const Orchestrator &) = delete;
+    Orchestrator &operator=(const Orchestrator &) = delete;
 
     static Orchestrator &get();
 

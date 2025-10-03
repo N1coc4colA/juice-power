@@ -5,6 +5,10 @@
 
 #include "../world/scene.h"
 
+namespace Input {
+struct InnerState;
+}
+
 namespace Physics
 {
 
@@ -14,17 +18,23 @@ public:
 	Engine();
 
 	void setScene(World::Scene &scene);
-	void prepare();
+    void setInputState(Input::InnerState &state);
+    void prepare();
     void compute();
-    void run(std::atomic<uint64_t> *commands);
+    void run(std::atomic<uint64_t> &commands);
 
 protected:
 	void resolveCollision(Physics::Entity &a, Physics::Entity &b, const CollisionInfo &info);
+    void resolveAllCollisions();
+    void resolveCollisions(std::vector<Physics::Entity> &en1, Physics::Entity &e);
 
 private:
-	World::Scene *m_scene = nullptr;
+    World::Scene *m_scene = nullptr;
+    Input::InnerState *m_inputState = nullptr;
 
-	void dump() const;
+    void dump() const;
+
+    void updateMainPosition();
 };
 
 

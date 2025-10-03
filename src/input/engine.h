@@ -16,7 +16,7 @@ class Engine
 public:
     explicit Engine(const std::unordered_map<uint32_t, EventType> &corresps);
 
-    void run(std::atomic<uint64_t> *commands);
+    void run(std::atomic<uint64_t> &commands);
 
     inline State &state() { return m_state; }
     inline const State &state() const { return m_state; }

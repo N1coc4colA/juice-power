@@ -26,6 +26,7 @@ class Map;
 namespace World
 {
 class Scene;
+class Chunk;
 }
 
 
@@ -52,7 +53,7 @@ public:
 	/// @brief Inits the engine & related libs
 	void init();
 	/// @brief Runs the main rendering loop
-    void run(const std::function<void()> &prepare, std::atomic<uint64_t> *commands);
+    void run(const std::function<void()> &prepare, std::atomic<uint64_t> &commands);
     /// @brief Stops the engine, cleans the resources & notifies related libs.
     void cleanup();
 
@@ -64,7 +65,12 @@ public:
 	 * @param vertices Vertex data span (must match Vertex struct layout)
 	 * @return GPUMeshBuffers containing uploaded GPU resources
 	 */
-	GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
+    GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
+
+    GPULineBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const LineVertex> &vertices);
+
+    inline World::Scene *scene() { return m_scene; }
+    inline const World::Scene *scene() const { return m_scene; }
 
 protected:
 	void initSDL();
@@ -82,17 +88,22 @@ protected:
 
 	void draw();
 	void drawBackground(VkCommandBuffer cmd);
-	void drawImgui(VkCommandBuffer cmd, VkImageView targetImageView);
-	void drawGeometry(VkCommandBuffer cmd);
+    void drawImgui(VkCommandBuffer cmd, VkImageView targetImageView);
+    void drawGeometry(VkCommandBuffer cmd);
+    // For debugging purposes.
+    void drawPhysics(VkCommandBuffer cmd);
+    void drawPoints(VkCommandBuffer cmd);
+    //void drawChunkGeometry(const World::Chunk &chunk, GPUDrawPushConstants &push_constants, VkCommandBuffer cmd);
 
-	void createSwapchain(const uint32_t w, const uint32_t h);
-	void destroySwapchain();
-	void resizeSwapchain();
+    void createSwapchain(const uint32_t w, const uint32_t h);
+    void destroySwapchain();
+    void resizeSwapchain();
 
     void updateAnimations(World::Scene &scene);
 
 private:
     inline FrameData &getCurrentFrame() { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    inline const FrameData &getCurrentFrame() const { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
 
     /**
 	 * @brief Creates an empty GPU image
@@ -213,9 +224,16 @@ private:
     // Geometry
     VkPipelineLayout m_meshPipelineLayout = VK_NULL_HANDLE;
     VkPipeline m_meshPipeline = VK_NULL_HANDLE;
-    GPUMeshBuffers m_meshBuffers{};
 
-    void generateMeshes();
+    // Lines, for debugging purposes.
+    VkPipelineLayout m_linePipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_linePipeline = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_lineDescriptorLayout = VK_NULL_HANDLE;
+
+    // Points, for debugging purposes
+    VkPipelineLayout m_pointPipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_pointPipeline = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_pointDescriptorLayout = VK_NULL_HANDLE;
 
     // Bg
     VkPipeline m_gradientPipeline = VK_NULL_HANDLE;
@@ -231,6 +249,8 @@ private:
     VkFence m_immFence = VK_NULL_HANDLE;
     VkCommandBuffer m_immCommandBuffer = VK_NULL_HANDLE;
     VkCommandPool m_immCommandPool = VK_NULL_HANDLE;
+
+    glm::mat4 worldMatrix;
 
     /* Images */
 
@@ -251,6 +271,7 @@ private:
 
     friend class ::Loaders::Map;
     friend class Resources;
+    friend class DrawingFuncs;
 };
 
 

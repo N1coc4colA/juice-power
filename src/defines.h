@@ -60,8 +60,24 @@ public:
         return m_value;
     }
 
+    T &get()
+    {
+        std::lock_guard lg(m_mtx);
+        return m_value;
+    }
+
+    const T &get() const
+    {
+        std::lock_guard lg(m_mtx);
+        return m_value;
+    }
+
+    T &unsafeGet() { return m_value; }
+
+    const T &unsafeGet() const { return m_value; }
+
 private:
-    std::reference_wrapper<std::mutex> m_mtx;
+    mutable std::reference_wrapper<std::mutex> m_mtx;
     T m_value;
 };
 

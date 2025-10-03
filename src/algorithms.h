@@ -105,9 +105,9 @@ public:
 	 * Data layout is RBGA, each channel with 8 bits, in pixel order, row-major order.
 	 * This means that if your image is WxH, the input image must be (W*4)xH
 	 */
-	void determineImageBorders(const MatrixView<unsigned char> &image, int channelsCount);
+    void determineImageBorders(const MatrixView<unsigned char> &image, const int channelsCount);
 
-	/**
+    /**
 	 *  @brief Resulting delimitation of the previous @fn determineImageBorders call.
 	 *  Vector for the points delimiting the object.
 	 *  Every point's location is normalized in the image's range.

@@ -39,15 +39,16 @@ public:
 	 * physics engine.
 	 */
 	std::vector<std::vector<glm::vec2>> borders {};
+    std::vector<uint32_t> borderOffsets{};
 
-	/**
+    /**
 	 * @brief Normals of the borders each resource.
 	 * This is determined when loading the resource, and then used by the
 	 * physics engine.
 	 */
-	std::vector<std::vector<glm::vec2>> normals {};
+    std::vector<std::vector<glm::vec2>> normals{};
 
-	/**
+    /**
 	 * @brief Bounding box of the resource.
 	 */
 	std::vector<std::tuple<glm::vec2, glm::vec2>> boundingBoxes{};
@@ -63,6 +64,11 @@ public:
 
     /// @brief Mesh buffers for vertices.
     GPUMeshBuffers meshBuffers{};
+
+    /// @brief to draw lines.
+    GPULineBuffers linesBuffer{};
+
+    GPUPointBuffers pointsBuffer{};
 
     void build(Engine &engine);
     void cleanup(Engine &engine);

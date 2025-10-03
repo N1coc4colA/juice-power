@@ -49,18 +49,18 @@ decltype(std::chrono::system_clock::now()) Engine::prevChrono = std::chrono::sys
 
 constexpr glm::mat4 createOrthographicProjection(const float left, const float right, const float bottom, const float top)
 {
-	const float h = (top - bottom);
-	const float w = (right - left);
+    const float h = top - bottom;
+    const float w = right - left;
 
-	glm::mat4 projection = glm::mat4(1.f);
-	projection[0][0] = 2.f / w;
-	projection[1][1] = 2.f / h;
-	projection[2][2] = 1.f;  // Z for layer ordering
+    glm::mat4 projection = glm::mat4(1.f);
+    projection[0][0] = 2.f / w;
+    projection[1][1] = -2.f / h;
+    projection[2][2] = 1.f; // Z for layer ordering
 
-	projection[3][0] = -(right + left) / (right - left);
-	projection[3][1] = -(top + bottom) / (top - bottom);
+    projection[3][0] = (right + left) / w;
+    projection[3][1] = (top + bottom) / h;
 
-	return projection;
+    return projection;
 }
 
 Engine &Engine::get()
@@ -138,20 +138,13 @@ void Engine::initSDL()
 		throw Failure(FailureType::SDLInitialisation);
 	}
 
-	constexpr SDL_WindowFlags window_flags = 0
-		| SDL_WINDOW_VULKAN
-		| SDL_WINDOW_RESIZABLE;
+    constexpr SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
 
-	m_window = SDL_CreateWindow(
-		"Vulkan Engine",
-		static_cast<int>(m_windowExtent.width),
-		static_cast<int>(m_windowExtent.height),
-		window_flags
-	);
+    m_window = SDL_CreateWindow("Vulkan Engine", static_cast<int>(m_windowExtent.width), static_cast<int>(m_windowExtent.height), window_flags);
 
-	if (m_window == nullptr) {
-		throw Failure(FailureType::SDLWindowCreation);
-	}
+    if (m_window == nullptr) {
+        throw Failure(FailureType::SDLWindowCreation);
+    }
 }
 
 void enumerateDevices(VkInstance inst)
@@ -304,35 +297,32 @@ void Engine::initSwapchain()
 	m_drawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
 	m_drawImage.imageExtent = drawImageExtent;
 
-	constexpr VkImageUsageFlags drawImageUsages = 0
-		| VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-		| VK_IMAGE_USAGE_TRANSFER_DST_BIT
-		| VK_IMAGE_USAGE_STORAGE_BIT
-		| VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    constexpr VkImageUsageFlags drawImageUsages = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+                                                  | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	const VkImageCreateInfo rimg_info = vkinit::image_create_info(m_drawImage.imageFormat, drawImageUsages, drawImageExtent);
+    const VkImageCreateInfo rimg_info = vkinit::image_create_info(m_drawImage.imageFormat, drawImageUsages, drawImageExtent);
 
-	//for the draw image, we want to allocate it from gpu local memory
-	const VmaAllocationCreateInfo rimg_allocinfo {
-		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
-		.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-	};
+    //for the draw image, we want to allocate it from gpu local memory
+    const VmaAllocationCreateInfo rimg_allocinfo{
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+    };
 
-	//allocate and create the image
-	VK_CHECK(vmaCreateImage(m_allocator, &rimg_info, &rimg_allocinfo, &m_drawImage.image, &m_drawImage.allocation, nullptr));
-	if (m_drawImage.image == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VMAImageCreation, "Drawing");
-	}
+    //allocate and create the image
+    VK_CHECK(vmaCreateImage(m_allocator, &rimg_info, &rimg_allocinfo, &m_drawImage.image, &m_drawImage.allocation, nullptr));
+    if (m_drawImage.image == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VMAImageCreation, "Drawing");
+    }
 
-	//build a image-view for the draw image to use for rendering
-	const VkImageViewCreateInfo rview_info = vkinit::imageview_create_info(m_drawImage.imageFormat, m_drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
+    //build a image-view for the draw image to use for rendering
+    const VkImageViewCreateInfo rview_info = vkinit::imageview_create_info(m_drawImage.imageFormat, m_drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
 
-	VK_CHECK(vkCreateImageView(m_device, &rview_info, nullptr, &m_drawImage.imageView));
-	if (m_drawImage.imageView == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VMAImageViewCreation, "Drawing");
-	}
+    VK_CHECK(vkCreateImageView(m_device, &rview_info, nullptr, &m_drawImage.imageView));
+    if (m_drawImage.imageView == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VMAImageViewCreation, "Drawing");
+    }
 
-	//add to deletion queues
+    //add to deletion queues
     m_mainDeletionQueue.push_function([this]() {
         vkDestroyImageView(m_device, m_drawImage.imageView, nullptr);
         vmaDestroyImage(m_allocator, m_drawImage.image, m_drawImage.allocation);
@@ -517,6 +507,16 @@ void Engine::initDescriptors()
         }
     }
 
+    {
+        DescriptorLayoutBuilder builder{};
+        builder.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+        m_lineDescriptorLayout = builder.build(m_device, VK_SHADER_STAGE_VERTEX_BIT);
+        if (m_lineDescriptorLayout == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkDescriptorLayoutCreation, "Line");
+        }
+    }
+
     //make sure both the descriptor allocator and the new layout get cleaned up properly
     m_mainDeletionQueue.push_function([this]() {
         m_globalDescriptorAllocator.destroyPools(m_device);
@@ -524,6 +524,8 @@ void Engine::initDescriptors()
         vkDestroyDescriptorSetLayout(m_device, m_drawImageDescriptorLayout, nullptr);
         vkDestroyDescriptorSetLayout(m_device, m_gpuSceneDataDescriptorLayout, nullptr);
         vkDestroyDescriptorSetLayout(m_device, m_singleImageDescriptorLayout, nullptr);
+        vkDestroyDescriptorSetLayout(m_device, m_lineDescriptorLayout, nullptr);
+        vkDestroyDescriptorSetLayout(m_device, m_pointDescriptorLayout, nullptr);
     });
 }
 
@@ -549,59 +551,218 @@ void Engine::initMeshPipeline()
 		throw Failure(FailureType::VertexShader, "Triangle");
 	}
 
-	const VkPushConstantRange bufferRange {
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		.offset = 0,
-		.size = sizeof(GPUDrawPushConstants),
-	};
+    VkShaderModule lineFragShader = VK_NULL_HANDLE;
+    if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/line.frag.spv", m_device, lineFragShader)) {
+        throw Failure(FailureType::FragmentShader, "Line");
+    }
 
-	VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
-	pipeline_layout_info.pPushConstantRanges = &bufferRange;
-	pipeline_layout_info.pushConstantRangeCount = 1;
-	pipeline_layout_info.pSetLayouts = &m_singleImageDescriptorLayout;
-	pipeline_layout_info.setLayoutCount = 1;
+    VkShaderModule lineVertexShader = VK_NULL_HANDLE;
+    if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/line.vert.spv", m_device, lineVertexShader)) {
+        throw Failure(FailureType::VertexShader, "Line");
+    }
 
-	VK_CHECK(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_meshPipelineLayout));
-	if (m_meshPipelineLayout == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkPipelineLayoutCreation);
-	}
+    VkShaderModule pointFragShader = VK_NULL_HANDLE;
+    if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/point.frag.spv", m_device, pointFragShader)) {
+        throw Failure(FailureType::FragmentShader, "Point");
+    }
 
-	PipelineBuilder pipelineBuilder {};
-	//use the triangle layout we created
-	pipelineBuilder.pipelineLayout = m_meshPipelineLayout;
-	//connecting the vertex and pixel shaders to the pipeline
-	pipelineBuilder.setShaders(triangleVertexShader, triangleFragShader);
-	//it will draw triangles
-	pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	//filled triangles
-	pipelineBuilder.setPolygonMode(VK_POLYGON_MODE_FILL);
-	//no backface culling
-	pipelineBuilder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-	//pipelineBuilder.setCullMode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-	//no multisampling
-	pipelineBuilder.setMultisamplingNone();
-	//no blending
-	//pipelineBuilder.disable_blending();
-	pipelineBuilder.enableBlendingAdditive();
-	//pipelineBuilder.disable_depthtest();
-	pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
-	//connect the image format we will draw into, from draw image
-	pipelineBuilder.setColorAttachmentFormat(m_drawImage.imageFormat);
-	pipelineBuilder.setDepthFormat(m_depthImage.imageFormat);
+    VkShaderModule pointVertexShader = VK_NULL_HANDLE;
+    if (!vkutil::load_shader_module(COMPILED_SHADERS_DIR "/point.vert.spv", m_device, pointVertexShader)) {
+        throw Failure(FailureType::VertexShader, "Point");
+    }
 
-	//finally build the pipeline
-	m_meshPipeline = pipelineBuilder.buildPipeline(m_device);
-	if (m_meshPipeline == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkPipelineCreation);
-	}
+    /* Default mesh pipeline */ {
+        constexpr VkPushConstantRange bufferRange{
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(GPUDrawPushConstants),
+        };
 
-	//clean structures
-	vkDestroyShaderModule(m_device, triangleFragShader, nullptr);
-	vkDestroyShaderModule(m_device, triangleVertexShader, nullptr);
+        VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
+        pipeline_layout_info.pPushConstantRanges = &bufferRange;
+        pipeline_layout_info.pushConstantRangeCount = 1;
+        pipeline_layout_info.pSetLayouts = &m_singleImageDescriptorLayout;
+        pipeline_layout_info.setLayoutCount = 1;
+
+        VK_CHECK(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_meshPipelineLayout));
+        if (m_meshPipelineLayout == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkPipelineLayoutCreation);
+        }
+
+        PipelineBuilder pipelineBuilder{};
+        //use the triangle layout we created
+        pipelineBuilder.pipelineLayout = m_meshPipelineLayout;
+        //connecting the vertex and pixel shaders to the pipeline
+        pipelineBuilder.setShaders(triangleVertexShader, triangleFragShader);
+        //it will draw triangles
+        pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        //filled triangles
+        pipelineBuilder.setPolygonMode(VK_POLYGON_MODE_FILL);
+        //no backface culling
+        pipelineBuilder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        //pipelineBuilder.setCullMode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        //no multisampling
+        pipelineBuilder.setMultisamplingNone();
+        //no blending
+        //pipelineBuilder.disableBlending();
+        pipelineBuilder.enableBlendingAlphaBlend();
+        //pipelineBuilder.disableDepthtest();
+        pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        //connect the image format we will draw into, from draw image
+        pipelineBuilder.setColorAttachmentFormat(m_drawImage.imageFormat);
+        pipelineBuilder.setDepthFormat(m_depthImage.imageFormat);
+
+        //finally build the pipeline
+        m_meshPipeline = pipelineBuilder.buildPipeline(m_device);
+        if (m_meshPipeline == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkPipelineCreation);
+        }
+    }
+
+    /* Line pipeline for debugging */ {
+        constexpr VkPushConstantRange bufferRange{
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(GPUDrawLinePushConstants),
+        };
+
+        VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
+        pipeline_layout_info.pPushConstantRanges = &bufferRange;
+        pipeline_layout_info.pushConstantRangeCount = 1;
+        pipeline_layout_info.pSetLayouts = nullptr;
+        pipeline_layout_info.setLayoutCount = 0;
+
+        VK_CHECK(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_linePipelineLayout));
+        if (m_linePipelineLayout == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkPipelineLayoutCreation);
+        }
+
+        constexpr VkVertexInputBindingDescription binding{
+            .binding = 0,
+            .stride = sizeof(glm::vec2),
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        };
+
+        constexpr VkVertexInputAttributeDescription attribute{
+            .location = 0,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT, // vec2
+            .offset = 0,
+        };
+
+        PipelineBuilder pipelineBuilder{};
+
+        pipelineBuilder.vertexInputInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = &binding,
+            .vertexAttributeDescriptionCount = 1,
+            .pVertexAttributeDescriptions = &attribute,
+        };
+
+        //use the line layout we created
+        pipelineBuilder.pipelineLayout = m_linePipelineLayout;
+        //connecting the vertex and pixel shaders to the pipeline
+        pipelineBuilder.setShaders(lineVertexShader, lineFragShader);
+        //it will draw triangles
+        pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP);
+        //filled triangles
+        pipelineBuilder.setPolygonMode(VK_POLYGON_MODE_FILL);
+        //no backface culling
+        pipelineBuilder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        //pipelineBuilder.setCullMode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        //no multisampling
+        pipelineBuilder.setMultisamplingNone();
+        //no blending
+        pipelineBuilder.disableBlending();
+        //pipelineBuilder.enableBlendingAlphaBlend();
+        //pipelineBuilder.disable_depthtest();
+        pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        //connect the image format we will draw into, from draw image
+        pipelineBuilder.setColorAttachmentFormat(m_drawImage.imageFormat);
+        pipelineBuilder.setDepthFormat(m_depthImage.imageFormat);
+
+        //finally build the pipeline
+        m_linePipeline = pipelineBuilder.buildPipeline(m_device);
+        if (m_linePipeline == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkPipelineCreation);
+        }
+    }
+
+    /* Points pipeline for debugging */ {
+        constexpr VkPushConstantRange bufferRange{
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            .offset = 0,
+            .size = sizeof(GPUDrawPointPushConstants),
+        };
+
+        VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
+        pipeline_layout_info.pPushConstantRanges = &bufferRange;
+        pipeline_layout_info.pushConstantRangeCount = 1;
+        pipeline_layout_info.pSetLayouts = nullptr;
+        pipeline_layout_info.setLayoutCount = 0;
+
+        VK_CHECK(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_pointPipelineLayout));
+        if (m_pointPipelineLayout == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkPipelineLayoutCreation);
+        }
+
+        PipelineBuilder pipelineBuilder{};
+
+        pipelineBuilder.vertexInputInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 0,
+            .pVertexBindingDescriptions = nullptr,
+            .vertexAttributeDescriptionCount = 0,
+            .pVertexAttributeDescriptions = nullptr,
+        };
+
+        //use the line layout we created
+        pipelineBuilder.pipelineLayout = m_pointPipelineLayout;
+        //connecting the vertex and pixel shaders to the pipeline
+        pipelineBuilder.setShaders(pointVertexShader, pointFragShader);
+        //it will draw triangles
+        pipelineBuilder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+        //filled triangles
+        pipelineBuilder.setPolygonMode(VK_POLYGON_MODE_FILL);
+        //no backface culling
+        pipelineBuilder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        //pipelineBuilder.setCullMode(VK_CULL_MODE_FRONT_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        //no multisampling
+        pipelineBuilder.setMultisamplingNone();
+        //no blending
+        //pipelineBuilder.disableBlending();
+        pipelineBuilder.enableBlendingAlphaBlend();
+        //pipelineBuilder.disable_depthtest();
+        pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        //connect the image format we will draw into, from draw image
+        pipelineBuilder.setColorAttachmentFormat(m_drawImage.imageFormat);
+        pipelineBuilder.setDepthFormat(m_depthImage.imageFormat);
+
+        //finally build the pipeline
+        m_pointPipeline = pipelineBuilder.buildPipeline(m_device);
+        if (m_pointPipeline == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkPipelineCreation);
+        }
+    }
+
+    //clean structures
+    vkDestroyShaderModule(m_device, triangleFragShader, nullptr);
+    vkDestroyShaderModule(m_device, triangleVertexShader, nullptr);
+    vkDestroyShaderModule(m_device, lineFragShader, nullptr);
+    vkDestroyShaderModule(m_device, lineVertexShader, nullptr);
+    vkDestroyShaderModule(m_device, pointFragShader, nullptr);
+    vkDestroyShaderModule(m_device, pointVertexShader, nullptr);
 
     m_mainDeletionQueue.push_function([&]() {
         vkDestroyPipelineLayout(m_device, m_meshPipelineLayout, nullptr);
         vkDestroyPipeline(m_device, m_meshPipeline, nullptr);
+
+        vkDestroyPipelineLayout(m_device, m_linePipelineLayout, nullptr);
+        vkDestroyPipeline(m_device, m_linePipeline, nullptr);
+
+        vkDestroyPipelineLayout(m_device, m_pointPipelineLayout, nullptr);
+        vkDestroyPipeline(m_device, m_pointPipeline, nullptr);
     });
 }
 
@@ -830,7 +991,7 @@ void Engine::cleanup()
     loadedEngine = nullptr;
 }
 
-void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *commands)
+void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &commands)
 {
 	LOGFN();
 
@@ -839,7 +1000,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
     prepare();
 
     // main loop
-    while (!(*commands & CommandStates::Stop)) {
+    while (!(commands & CommandStates::Stop)) {
         const auto currentTime = std::chrono::system_clock::now();
         const auto delta = currentTime - prevChrono;
         m_deltaMS = static_cast<double>(
@@ -851,7 +1012,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
                                / 1000.f;
 
         //do not draw if we are minimized
-        if (*commands & CommandStates::PauseRendering) {
+        if (commands & CommandStates::PauseRendering) {
             //throttle the speed to avoid the endless spinning
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
@@ -886,15 +1047,15 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> *co
         ImGui::Render();
 
         // Request the data to be updated before drawing.
-        *commands |= CommandStates::PrepareDrawing;
-        while (!(*commands & (CommandStates::DrawingPrepared | CommandStates::Stop))) {
+        commands |= CommandStates::PrepareDrawing;
+        while (!(commands & (CommandStates::DrawingPrepared | CommandStates::Stop))) {
             // Wait for the submitted work request to be performed & finished.
             // As this loop runs for the rendering, there are no reasons to
             // redraw what's already on the screen. The only reason would be for
             // the animations. So far, this runs smoothly enough.
         }
         // Reset state.
-        *commands &= ~CommandStates::DrawingPrepared;
+        commands &= ~CommandStates::DrawingPrepared;
 
         updateAnimations(*m_scene);
         draw();
@@ -918,6 +1079,10 @@ void Engine::updateAnimations(World::Scene &scene)
 
 void Engine::draw()
 {
+    // Naive impl for now
+    const auto pos = m_scene->movings.positions[0];
+    worldMatrix = createOrthographicProjection(pos.x - 80.f, pos.x + 80.f, pos.y - 50.f, pos.y + 50.f);
+
     auto &currFrame = getCurrentFrame();
 
     assert(currFrame.renderFence != VK_NULL_HANDLE);
@@ -976,60 +1141,63 @@ void Engine::draw()
 	vkutil::transition_image(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	vkutil::transition_image(cmd, m_depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-	drawGeometry(cmd); // [RESTORE]
+    drawGeometry(cmd);
+    drawPhysics(cmd);
+    drawPoints(cmd);
 
-	//transtion the draw image and the swapchain image into their correct transfer layouts
-	vkutil::transition_image(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	vkutil::transition_image(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    //transtion the draw image and the swapchain image into their correct transfer layouts
+    vkutil::transition_image(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    vkutil::transition_image(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-	// execute a copy from the draw image into the swapchain
-	vkutil::copy_image_to_image(cmd, m_drawImage.image, m_swapchainImages[swapchainImageIndex], m_drawExtent, m_swapchainExtent);
+    // execute a copy from the draw image into the swapchain
+    vkutil::copy_image_to_image(cmd, m_drawImage.image, m_swapchainImages[swapchainImageIndex], m_drawExtent, m_swapchainExtent);
 
-	//draw imgui into the swapchain image
-	drawImgui(cmd,  m_swapchainImageViews[swapchainImageIndex]);
+    //draw imgui into the swapchain image
+    drawImgui(cmd, m_swapchainImageViews[swapchainImageIndex]);
 
-	// set swapchain image layout to Present so we can show it on the screen
-	vkutil::transition_image(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    // set swapchain image layout to Present so we can show it on the screen
+    vkutil::transition_image(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-	//finalize the command buffer (we can no longer add commands, but it can now be executed)
-	VK_CHECK(vkEndCommandBuffer(cmd));
+    //finalize the command buffer (we can no longer add commands, but it can now be executed)
+    VK_CHECK(vkEndCommandBuffer(cmd));
 
-	//prepare the submission to the queue.
-	//we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
-	//we will signal the _renderSemaphore, to signal that rendering has finished
+    //prepare the submission to the queue.
+    //we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
+    //we will signal the _renderSemaphore, to signal that rendering has finished
 
-	const VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
+    const VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
 
-	const VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, currFrame.swapchainSemaphore);
-	const VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame.renderSemaphore);
+    const VkSemaphoreSubmitInfo waitInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
+                                                                         currFrame.swapchainSemaphore);
+    const VkSemaphoreSubmitInfo signalInfo = vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame.renderSemaphore);
 
-	const VkSubmitInfo2 submit = vkinit::submit_info(cmdinfo, &signalInfo, &waitInfo);
+    const VkSubmitInfo2 submit = vkinit::submit_info(cmdinfo, &signalInfo, &waitInfo);
 
-	//submit command buffer to the queue and execute it.
-	// _renderFence will now block until the graphic commands finish execution
-	VK_CHECK(vkQueueSubmit2(m_graphicsQueue, 1, &submit, currFrame.renderFence));
+    //submit command buffer to the queue and execute it.
+    // _renderFence will now block until the graphic commands finish execution
+    VK_CHECK(vkQueueSubmit2(m_graphicsQueue, 1, &submit, currFrame.renderFence));
 
-	//prepare present
-	// this will put the image we just rendered to into the visible window.
-	// we want to wait on the _renderSemaphore for that,
-	// as its necessary that drawing commands have finished before the image is displayed to the user
-	const VkPresentInfoKHR presentInfo {
-		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-		.pNext = nullptr,
-		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = &currFrame.renderSemaphore,
-		.swapchainCount = 1,
-		.pSwapchains = &m_swapchain,
-		.pImageIndices = &swapchainImageIndex,
-	};
+    //prepare present
+    // this will put the image we just rendered to into the visible window.
+    // we want to wait on the _renderSemaphore for that,
+    // as its necessary that drawing commands have finished before the image is displayed to the user
+    const VkPresentInfoKHR presentInfo{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &currFrame.renderSemaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &m_swapchain,
+        .pImageIndices = &swapchainImageIndex,
+    };
 
-	const VkResult presentResult = vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
-	if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
-		m_resizeRequested = true;
-	}
-	// [NOTE] Maybe also check if it has been VK_SUBOPTIMAL_KHR for too long.
+    const VkResult presentResult = vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        m_resizeRequested = true;
+    }
+    // [NOTE] Maybe also check if it has been VK_SUBOPTIMAL_KHR for too long.
 
-	//increase the number of frames drawn
+    //increase the number of frames drawn
     m_frameNumber++;
 }
 
@@ -1065,27 +1233,115 @@ void Engine::drawImgui(VkCommandBuffer cmd, VkImageView targetImageView)
 // Store the application start time (global or in your initialization code)
 const auto startTime = std::chrono::high_resolution_clock::now();
 
+class DrawingFuncs
+{
+public:
+    static inline void drawChunkGeometry(Engine &engine, const World::Chunk &chunk, GPUDrawPushConstants &push_constants, VkCommandBuffer cmd)
+        __attribute__((always_inline))
+    {
+        const size_t size = chunk.descriptions.size();
+
+        for (size_t i = 0; i < size; ++i) {
+            const auto descId = chunk.descriptions[i];
+            push_constants.frameInterval = engine.m_scene->res->animInterval[descId];
+            push_constants.framesCount = engine.m_scene->res->animFrames[descId];
+            push_constants.gridColumns = engine.m_scene->res->animColumns[descId];
+            push_constants.gridRows = engine.m_scene->res->animRows[descId];
+
+            push_constants.animationTime = chunk.animFrames[i]; // current frame
+            push_constants.worldMatrix = glm::translate(engine.worldMatrix, chunk.positions[i]) * chunk.transforms[i];
+
+            //bind the texture
+            VkDescriptorSet imageSet = engine.getCurrentFrame().frameDescriptors.allocate(engine.m_device, engine.m_singleImageDescriptorLayout);
+            {
+                DescriptorWriter writer{};
+
+                writer.writeImage(0,
+                                  engine.m_scene->res->images[chunk.descriptions[i]].imageView,
+                                  engine.m_defaultSamplerNearest,
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+                writer.updateSet(engine.m_device, imageSet);
+            }
+            assert(imageSet != VK_NULL_HANDLE);
+
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, engine.m_meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
+
+            vkCmdPushConstants(cmd, engine.m_meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
+            vkCmdBindIndexBuffer(cmd, engine.m_scene->res->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+            vkCmdDrawIndexed(cmd, 6, 1, chunk.descriptions[i] * 6, 0, 0);
+        }
+    }
+
+    static inline void drawChunkPhysics(Engine &engine, const World::Chunk &chunk, GPUDrawLinePushConstants &push_constants, VkCommandBuffer cmd)
+        __attribute__((always_inline))
+    {
+        const size_t size = chunk.descriptions.size();
+
+        for (size_t i = 0; i < size; ++i) {
+            const auto descId = chunk.descriptions[i];
+            push_constants.worldMatrix = glm::translate(engine.worldMatrix, chunk.positions[i]) * chunk.transforms[i];
+            push_constants.color = chunk.entities[i].has_collision ? glm::vec3{1.0f, 0.f, 0.f} : glm::vec3{0.0f, 1.0f, 0.0f};
+
+            vkCmdPushConstants(cmd, engine.m_linePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawLinePushConstants), &push_constants);
+            vkCmdBindIndexBuffer(cmd, engine.m_scene->res->linesBuffer.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+            vkCmdDrawIndexed(cmd,
+                             static_cast<uint32_t>(engine.m_scene->res->borders[descId].size()),
+                             1,
+                             engine.m_scene->res->borderOffsets[descId],
+                             0,
+                             0);
+        }
+    }
+
+    static inline void drawChunkPoints(Engine &engine, const World::Chunk &chunk, GPUDrawPointPushConstants &push_constants, VkCommandBuffer cmd)
+        __attribute__((always_inline))
+    {
+        const size_t size = chunk.descriptions.size();
+
+        for (size_t i = 0; i < size; ++i) {
+            glm::vec4 worldPos = engine.worldMatrix * glm::vec4(chunk.positions[i].x, chunk.positions[i].y, 0.0f, 1.0f);
+            worldPos /= worldPos.w;
+
+            push_constants.pos = glm::vec2(worldPos.x, worldPos.y);
+            push_constants.color = chunk.entities[i].has_collision ? glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) : glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+
+            vkCmdPushConstants(cmd, engine.m_pointPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPointPushConstants), &push_constants);
+
+            vkCmdDraw(cmd, 1, 1, 0, 0);
+        }
+    }
+};
+
 void Engine::drawGeometry(VkCommandBuffer cmd)
 {
 	assert(cmd != VK_NULL_HANDLE);
 
-	//begin a render pass  connected to our draw image
-	const VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	const VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    if (!m_scene) {
+        return;
+    }
 
-	const VkRenderingInfo renderInfo = vkinit::rendering_info(m_windowExtent, &colorAttachment, &depthAttachment);
+    //begin a render pass  connected to our draw image
+    const VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(m_drawImage.imageView,
+                                                                              nullptr,
+                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-	//set dynamic viewport and scissor
-	const VkViewport viewport {
-		.x = 0,
-		.y = 0,
-		.width = static_cast<float>(m_drawExtent.width),
-		.height = static_cast<float>(m_drawExtent.height),
-		.minDepth = 0.f,
-		.maxDepth = 1.f,
-	};
+    const VkRenderingInfo renderInfo = vkinit::rendering_info(m_windowExtent, &colorAttachment, &depthAttachment);
 
-	const VkRect2D scissor {
+    //set dynamic viewport and scissor
+    const VkViewport viewport{
+        .x = 0,
+        .y = 0,
+        .width = static_cast<float>(m_drawExtent.width),
+        .height = static_cast<float>(m_drawExtent.height),
+        .minDepth = 0.f,
+        .maxDepth = 1.f,
+    };
+
+    const VkRect2D scissor {
 		.offset = {
 			.x = 0,
 			.y = 0,
@@ -1096,219 +1352,282 @@ void Engine::drawGeometry(VkCommandBuffer cmd)
 		},
 	};
 
-	vkCmdBeginRendering(cmd, &renderInfo);
+    vkCmdBeginRendering(cmd, &renderInfo);
 
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_meshPipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_meshPipeline);
 
-	vkCmdSetViewport(cmd, 0, 1, &viewport);
-	vkCmdSetScissor(cmd, 0, 1, &scissor);
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-	// Naive impl for now.
-	if (m_scene) {
-		const auto worldMatrix = createOrthographicProjection(-80.f, 80.f, 50.f, -50.f);
+    GPUDrawPushConstants push_constants{
+        .vertexBuffer = m_scene->res->meshBuffers.vertexBufferAddress,
+    };
 
-		GPUDrawPushConstants push_constants {
-			.vertexBuffer = m_scene->res->meshBuffers.vertexBufferAddress,
-		};
-
-		for (const auto &chunk : m_scene->view) {
-			const size_t size = chunk.descriptions.size();
-            for (size_t i = 0; i < size; ++i) {
-                const auto descId = chunk.descriptions[i];
-                push_constants.frameInterval = m_scene->res->animInterval[descId];
-                push_constants.framesCount = m_scene->res->animFrames[descId];
-                push_constants.gridColumns = m_scene->res->animColumns[descId];
-                push_constants.gridRows = m_scene->res->animRows[descId];
-
-                push_constants.animationTime = chunk.animFrames[i]; // current frame
-                push_constants.worldMatrix = glm::translate(worldMatrix, chunk.positions[i])
-                                             * chunk.transforms[i];
-
-                //bind the texture
-                VkDescriptorSet imageSet
-                    = getCurrentFrame().frameDescriptors.allocate(m_device,
-                                                                  m_singleImageDescriptorLayout);
-                {
-                    DescriptorWriter writer;
-
-                    writer.writeImage(0,
-                                      m_scene->res->images[chunk.descriptions[i]].imageView,
-                                      m_defaultSamplerNearest,
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-                    writer.updateSet(m_device, imageSet);
-                }
-                assert(imageSet != VK_NULL_HANDLE);
-
-                vkCmdBindDescriptorSets(cmd,
-                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        m_meshPipelineLayout,
-                                        0,
-                                        1,
-                                        &imageSet,
-                                        0,
-                                        nullptr);
-
-                vkCmdPushConstants(cmd,
-                                   m_meshPipelineLayout,
-                                   VK_SHADER_STAGE_VERTEX_BIT,
-                                   0,
-                                   sizeof(GPUDrawPushConstants),
-                                   &push_constants);
-                vkCmdBindIndexBuffer(cmd,
-                                     m_scene->res->meshBuffers.indexBuffer.buffer,
-                                     0,
-                                     VK_INDEX_TYPE_UINT32);
-
-                vkCmdDrawIndexed(cmd, 6, 1, chunk.descriptions[i] * 6, 0, 0);
-            }
-        }
-    } else {
-        const GPUDrawPushConstants push_constants{
-            .worldMatrix = createOrthographicProjection(-80.f, 80.f, -50.f, 50.f),
-            .vertexBuffer = m_meshBuffers.vertexBufferAddress,
-        };
-
-        //bind a texture
-        VkDescriptorSet imageSet
-            = getCurrentFrame().frameDescriptors.allocate(m_device, m_singleImageDescriptorLayout);
-        {
-            DescriptorWriter writer;
-
-            writer.writeImage(0,
-                              m_errorCheckerboardImage.imageView,
-                              m_defaultSamplerNearest,
-                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            writer.updateSet(m_device, imageSet);
-        }
-        assert(imageSet != VK_NULL_HANDLE);
-
-        vkCmdBindDescriptorSets(cmd,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                m_meshPipelineLayout,
-                                0,
-                                1,
-                                &imageSet,
-                                0,
-                                nullptr);
-
-        vkCmdPushConstants(cmd,
-                           m_meshPipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT,
-                           0,
-                           sizeof(GPUDrawPushConstants),
-                           &push_constants);
-        vkCmdBindIndexBuffer(cmd, m_meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-        vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    for (const auto &chunk : m_scene->view) {
+        DrawingFuncs::drawChunkGeometry(*this, chunk, push_constants, cmd);
     }
+    DrawingFuncs::drawChunkGeometry(*this, m_scene->movings, push_constants, cmd);
+
+    vkCmdEndRendering(cmd);
+}
+
+void Engine::drawPhysics(VkCommandBuffer cmd)
+{
+    assert(cmd != VK_NULL_HANDLE);
+
+    if (!m_scene) {
+        return;
+    }
+
+    //begin a render pass  connected to our draw image
+    const VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(m_drawImage.imageView,
+                                                                              nullptr,
+                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+    const VkRenderingInfo renderInfo = vkinit::rendering_info(m_windowExtent, &colorAttachment, &depthAttachment);
+
+    //set dynamic viewport and scissor
+    const VkViewport viewport{
+        .x = 0,
+        .y = 0,
+        .width = static_cast<float>(m_drawExtent.width),
+        .height = static_cast<float>(m_drawExtent.height),
+        .minDepth = 0.f,
+        .maxDepth = 1.f,
+    };
+
+    const VkRect2D scissor {
+        .offset = {
+            .x = 0,
+            .y = 0,
+        },
+        .extent = {
+            .width = m_drawExtent.width,
+            .height = m_drawExtent.height,
+        },
+    };
+
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_linePipeline);
+
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    GPUDrawLinePushConstants push_constants{
+        .vertexBuffer = m_scene->res->linesBuffer.vertexBufferAddress,
+    };
+
+    for (const auto &chunk : m_scene->view) {
+        DrawingFuncs::drawChunkPhysics(*this, chunk, push_constants, cmd);
+    }
+    DrawingFuncs::drawChunkPhysics(*this, m_scene->movings, push_constants, cmd);
+
+    vkCmdEndRendering(cmd);
+}
+
+void Engine::drawPoints(VkCommandBuffer cmd)
+{
+    assert(cmd != VK_NULL_HANDLE);
+
+    if (!m_scene) {
+        return;
+    }
+
+    //begin a render pass  connected to our draw image
+    const VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(m_drawImage.imageView,
+                                                                              nullptr,
+                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+    const VkRenderingInfo renderInfo = vkinit::rendering_info(m_windowExtent, &colorAttachment, &depthAttachment);
+
+    //set dynamic viewport and scissor
+    const VkViewport viewport{
+        .x = 0,
+        .y = 0,
+        .width = static_cast<float>(m_drawExtent.width),
+        .height = static_cast<float>(m_drawExtent.height),
+        .minDepth = 0.f,
+        .maxDepth = 1.f,
+    };
+
+    const VkRect2D scissor {
+        .offset = {
+            .x = 0,
+            .y = 0,
+        },
+        .extent = {
+            .width = m_drawExtent.width,
+            .height = m_drawExtent.height,
+        },
+    };
+
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pointPipeline);
+
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    GPUDrawPointPushConstants push_constants{};
+
+    for (const auto &chunk : m_scene->view) {
+        DrawingFuncs::drawChunkPoints(*this, chunk, push_constants, cmd);
+    }
+    DrawingFuncs::drawChunkPoints(*this, m_scene->movings, push_constants, cmd);
 
     vkCmdEndRendering(cmd);
 }
 
 GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices)
 {
-	LOGFN();
+    LOGFN();
 
-	const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
-	const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+    const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
+    const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
 
-	GPUMeshBuffers newSurface = {
-		//create index buffer
-		.indexBuffer = createBuffer(
-			indexBufferSize,
-			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY
-		),
-		//create vertex buffer
-		.vertexBuffer = createBuffer(
-			vertexBufferSize,
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY
-		),
-	};
+    GPUMeshBuffers newSurface = {
+        //create index buffer
+        .indexBuffer = createBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY),
+        //create vertex buffer
+        .vertexBuffer = createBuffer(vertexBufferSize,
+                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                     VMA_MEMORY_USAGE_GPU_ONLY),
+    };
 
-	//find the adress of the vertex buffer
-	const VkBufferDeviceAddressInfo deviceAdressInfo {
-		.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-		.buffer = newSurface.vertexBuffer.buffer
-	};
-	newSurface.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &deviceAdressInfo);
+    //find the adress of the vertex buffer
+    const VkBufferDeviceAddressInfo deviceAdressInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = newSurface.vertexBuffer.buffer};
+    newSurface.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &deviceAdressInfo);
 
-	const AllocatedBuffer staging = createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    const AllocatedBuffer staging = createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-	void *data = get_mapped_data(staging.allocation);
-	if (data == nullptr) {
-		throw Failure(FailureType::MappedAccess);
-	}
+    void *data = get_mapped_data(staging.allocation);
+    if (data == nullptr) {
+        throw Failure(FailureType::MappedAccess);
+    }
 
-	// copy vertex buffer
-	std::memcpy(data, vertices.data(), vertexBufferSize);
-	// copy index buffer
-	std::memcpy(reinterpret_cast<char *>(data) + vertexBufferSize, indices.data(), indexBufferSize);
+    // copy vertex buffer
+    std::memcpy(data, vertices.data(), vertexBufferSize);
+    // copy index buffer
+    std::memcpy(reinterpret_cast<char *>(data) + vertexBufferSize, indices.data(), indexBufferSize);
 
-	immediate_submit([&](VkCommandBuffer cmd) {
-		const VkBufferCopy vertexCopy {
-			.srcOffset = 0,
-			.dstOffset = 0,
-			.size = vertexBufferSize,
-		};
+    immediate_submit([&](VkCommandBuffer cmd) {
+        const VkBufferCopy vertexCopy{
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size = vertexBufferSize,
+        };
 
-		vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1, &vertexCopy);
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1, &vertexCopy);
 
-		const VkBufferCopy indexCopy {
-			.srcOffset = vertexBufferSize,
-			.dstOffset = 0,
-			.size = indexBufferSize,
-		};
+        const VkBufferCopy indexCopy{
+            .srcOffset = vertexBufferSize,
+            .dstOffset = 0,
+            .size = indexBufferSize,
+        };
 
-		vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1, &indexCopy);
-	});
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1, &indexCopy);
+    });
 
-	destroyBuffer(staging);
+    destroyBuffer(staging);
 
-	return newSurface;
+    return newSurface;
+}
+
+GPULineBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::span<const LineVertex> &vertices)
+{
+    LOGFN();
+
+    const size_t vertexBufferSize = vertices.size() * sizeof(LineVertex);
+
+    const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+
+    GPULineBuffers newSurface = {
+        //create index buffer
+        .indexBuffer = createBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY),
+        //create vertex buffer
+        .vertexBuffer = createBuffer(vertexBufferSize,
+                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                     VMA_MEMORY_USAGE_GPU_ONLY),
+    };
+
+    //find the adress of the vertex buffer
+    const VkBufferDeviceAddressInfo deviceAdressInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .buffer = newSurface.vertexBuffer.buffer};
+    newSurface.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &deviceAdressInfo);
+
+    const AllocatedBuffer staging = createBuffer(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void *data = get_mapped_data(staging.allocation);
+    if (data == nullptr) {
+        throw Failure(FailureType::MappedAccess);
+    }
+
+    // copy vertex buffer
+    std::memcpy(data, vertices.data(), vertexBufferSize);
+    // copy index buffer
+    std::memcpy(reinterpret_cast<char *>(data) + vertexBufferSize, indices.data(), indexBufferSize);
+
+    immediate_submit([&](VkCommandBuffer cmd) {
+        const VkBufferCopy vertexCopy{
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size = vertexBufferSize,
+        };
+
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1, &vertexCopy);
+
+        const VkBufferCopy indexCopy{
+            .srcOffset = vertexBufferSize,
+            .dstOffset = 0,
+            .size = indexBufferSize,
+        };
+
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1, &indexCopy);
+    });
+
+    destroyBuffer(staging);
+
+    return newSurface;
 }
 
 void Engine::initDefaultData()
 {
-	LOGFN();
+    LOGFN();
 
-	generateMeshes();
+    //3 default textures, white, grey, black. 1 pixel each
+    const uint32_t white = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
+    const uint32_t black = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
+    m_whiteImage = createImage(reinterpret_cast<const void *>(&white), VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	//3 default textures, white, grey, black. 1 pixel each
-	const uint32_t white = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
-	const uint32_t black = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
-	m_whiteImage = createImage(reinterpret_cast<const void *>(&white), VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
-
-	//checkerboard image
-	const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
-	std::array<uint32_t, static_cast<size_t>(16*16)> pixels; //for 16x16 checkerboard texture
+    //checkerboard image
+    const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
+    std::array<uint32_t, static_cast<size_t>(16 * 16)> pixels; //for 16x16 checkerboard texture
     for (int x = 0; x < 16; ++x) {
         for (int y = 0; y < 16; ++y) {
-            pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+            pixels[y * 16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
         }
     }
     m_errorCheckerboardImage = createImage(pixels.data(), VkExtent3D{16, 16, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	VkSamplerCreateInfo sampl = {
-		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-		.magFilter = VK_FILTER_NEAREST,
-		.minFilter = VK_FILTER_NEAREST,
-	};
+    VkSamplerCreateInfo sampl = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = VK_FILTER_NEAREST,
+        .minFilter = VK_FILTER_NEAREST,
+    };
 
-	VK_CHECK(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerNearest));
-	if (m_defaultSamplerNearest == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkSamplerCreation, "Nearest");
-	}
+    VK_CHECK(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerNearest));
+    if (m_defaultSamplerNearest == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkSamplerCreation, "Nearest");
+    }
 
-	sampl.magFilter = VK_FILTER_LINEAR;
-	sampl.minFilter = VK_FILTER_LINEAR;
-	VK_CHECK(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerLinear));
-	if (m_defaultSamplerLinear == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkSamplerCreation, "Linear");
-	}
+    sampl.magFilter = VK_FILTER_LINEAR;
+    sampl.minFilter = VK_FILTER_LINEAR;
+    VK_CHECK(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerLinear));
+    if (m_defaultSamplerLinear == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkSamplerCreation, "Linear");
+    }
 
     m_mainDeletionQueue.push_function([this]() {
         vkDestroySampler(m_device, m_defaultSamplerNearest, nullptr);
@@ -1321,139 +1640,134 @@ void Engine::initDefaultData()
 
 void Engine::createSwapchain(const uint32_t w, const uint32_t h)
 {
-	LOGFN();
+    LOGFN();
 
-	vkb::SwapchainBuilder swapchainBuilder {
-		m_chosenGPU,
-		m_device,
-		m_surface,
-	};
+    vkb::SwapchainBuilder swapchainBuilder{
+        m_chosenGPU,
+        m_device,
+        m_surface,
+    };
 
-	m_swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    m_swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
-	vkb::Swapchain vkbSwapchain = swapchainBuilder
-		.use_default_format_selection()
-		.set_desired_format(VkSurfaceFormatKHR {
-			.format = m_swapchainImageFormat,
-			.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-		})
-		//use vsync present mode
-		.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-		.set_desired_extent(w, h)
-		.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-		.build()
-		.value();
+    vkb::Swapchain vkbSwapchain = swapchainBuilder.use_default_format_selection()
+                                      .set_desired_format(
+                                          VkSurfaceFormatKHR{.format = m_swapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
+                                      //use vsync present mode
+                                      .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+                                      .set_desired_extent(w, h)
+                                      .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                                      .build()
+                                      .value();
 
-	//store swapchain and its related images
-	m_swapchain = vkbSwapchain.swapchain;
-	m_swapchainImages = vkbSwapchain.get_images().value();
-	m_swapchainImageViews = vkbSwapchain.get_image_views().value();
-	m_swapchainExtent = vkbSwapchain.extent;
+    //store swapchain and its related images
+    m_swapchain = vkbSwapchain.swapchain;
+    m_swapchainImages = vkbSwapchain.get_images().value();
+    m_swapchainImageViews = vkbSwapchain.get_image_views().value();
+    m_swapchainExtent = vkbSwapchain.extent;
 
-	if (m_swapchain == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkSwapchainCreation);
-	}
-	if (m_swapchainImages.size() <= 1) {
-		throw Failure(FailureType::VkSwapchainImagesCreation);
-	}
+    if (m_swapchain == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkSwapchainCreation);
+    }
+    if (m_swapchainImages.size() <= 1) {
+        throw Failure(FailureType::VkSwapchainImagesCreation);
+    }
 }
 
 void Engine::destroySwapchain()
 {
-	LOGFN();
+    LOGFN();
 
-	vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+    vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
 
-	// destroy swapchain resources
-	for (auto &iv : m_swapchainImageViews) {
-		vkDestroyImageView(m_device, iv, nullptr);
-	}
+    // destroy swapchain resources
+    for (auto &iv : m_swapchainImageViews) {
+        vkDestroyImageView(m_device, iv, nullptr);
+    }
 }
 
 void Engine::resizeSwapchain()
 {
-	LOGFN();
+    LOGFN();
 
-	VK_CHECK(vkDeviceWaitIdle(m_device));
+    VK_CHECK(vkDeviceWaitIdle(m_device));
 
-	destroySwapchain();
+    destroySwapchain();
 
-	int w = -1, h = -1;
-	SDL_GetWindowSize(m_window, &w, &h);
-	m_windowExtent.width = w;
-	m_windowExtent.height = h;
+    int w = -1, h = -1;
+    SDL_GetWindowSize(m_window, &w, &h);
+    m_windowExtent.width = w;
+    m_windowExtent.height = h;
 
-	createSwapchain(m_windowExtent.width, m_windowExtent.height);
+    createSwapchain(m_windowExtent.width, m_windowExtent.height);
 
-	m_resizeRequested = false;
+    m_resizeRequested = false;
 }
 
 AllocatedImage Engine::createImage(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped)
 {
-	LOGFN();
+    LOGFN();
 
-	assert(format != VK_FORMAT_MAX_ENUM);
-	assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
+    assert(format != VK_FORMAT_MAX_ENUM);
+    assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
 
-	AllocatedImage newImage {
-		.imageExtent = size,
-		.imageFormat = format,
-	};
+    AllocatedImage newImage{
+        .imageExtent = size,
+        .imageFormat = format,
+    };
 
-	VkImageCreateInfo img_info = vkinit::image_create_info(format, usage, size);
-	if (mipmapped) {
-		img_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(size.width, size.height)))) + 1;
-	}
+    VkImageCreateInfo img_info = vkinit::image_create_info(format, usage, size);
+    if (mipmapped) {
+        img_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(size.width, size.height)))) + 1;
+    }
 
-	// always allocate images on dedicated GPU memory
-	const VmaAllocationCreateInfo allocinfo = {
-		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
-		.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-	};
+    // always allocate images on dedicated GPU memory
+    const VmaAllocationCreateInfo allocinfo = {
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        .requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+    };
 
-	// allocate and create the image
-	VK_CHECK(vmaCreateImage(m_allocator, &img_info, &allocinfo, &newImage.image, &newImage.allocation, nullptr));
-	if (newImage.image == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VMAImageCreation);
-	}
+    // allocate and create the image
+    VK_CHECK(vmaCreateImage(m_allocator, &img_info, &allocinfo, &newImage.image, &newImage.allocation, nullptr));
+    if (newImage.image == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VMAImageCreation);
+    }
 
-	// if the format is a depth format, we will need to have it use the correct
-	// aspect flag
-	const VkImageAspectFlags aspectFlag = format != VK_FORMAT_D32_SFLOAT
-		? VK_IMAGE_ASPECT_COLOR_BIT
-		: VK_IMAGE_ASPECT_DEPTH_BIT;
+    // if the format is a depth format, we will need to have it use the correct
+    // aspect flag
+    const VkImageAspectFlags aspectFlag = format != VK_FORMAT_D32_SFLOAT ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
 
-	// build a image-view for the image
-	VkImageViewCreateInfo view_info = vkinit::imageview_create_info(format, newImage.image, aspectFlag);
-	view_info.subresourceRange.levelCount = img_info.mipLevels;
+    // build a image-view for the image
+    VkImageViewCreateInfo view_info = vkinit::imageview_create_info(format, newImage.image, aspectFlag);
+    view_info.subresourceRange.levelCount = img_info.mipLevels;
 
-	VK_CHECK(vkCreateImageView(m_device, &view_info, nullptr, &newImage.imageView));
-	if (newImage.imageView == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VMAImageViewCreation);
-	}
+    VK_CHECK(vkCreateImageView(m_device, &view_info, nullptr, &newImage.imageView));
+    if (newImage.imageView == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VMAImageViewCreation);
+    }
 
-	return newImage;
+    return newImage;
 }
 
 AllocatedImage Engine::createImage(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped)
 {
-	LOGFN();
+    LOGFN();
 
-	assert(data != nullptr);
-	assert(format != VK_FORMAT_MAX_ENUM);
-	assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
+    assert(data != nullptr);
+    assert(format != VK_FORMAT_MAX_ENUM);
+    assert(usage != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
 
-	const size_t data_size = static_cast<size_t>(size.depth) * static_cast<size_t>(size.width) * static_cast<size_t>(size.height) * 4;
-	AllocatedBuffer uploadbuffer = createBuffer(data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    const size_t data_size = static_cast<size_t>(size.depth) * static_cast<size_t>(size.width) * static_cast<size_t>(size.height) * 4;
+    AllocatedBuffer uploadbuffer = createBuffer(data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-	std::memcpy(uploadbuffer.info.pMappedData, data, data_size);
+    std::memcpy(uploadbuffer.info.pMappedData, data, data_size);
 
-	AllocatedImage new_image = createImage(size, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
+    AllocatedImage new_image = createImage(size, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
 
-	immediate_submit([&](VkCommandBuffer cmd) {
-		vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    immediate_submit([&](VkCommandBuffer cmd) {
+        vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		const VkBufferImageCopy copyRegion = {
+        const VkBufferImageCopy copyRegion = {
 			.bufferOffset = 0,
 			.bufferRowLength = 0,
 			.bufferImageHeight = 0,
@@ -1466,75 +1780,32 @@ AllocatedImage Engine::createImage(const void *data, const VkExtent3D &size, con
 			.imageExtent = size,
 		};
 
-		// copy the buffer into the image
-		vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+        // copy the buffer into the image
+        vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
-		if (mipmapped) {
-			vkutil::generate_mipmaps(cmd, new_image.image, VkExtent2D{new_image.imageExtent.width, new_image.imageExtent.height});
-		} else {
-			vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		}
-	});
+        if (mipmapped) {
+            vkutil::generate_mipmaps(cmd, new_image.image, VkExtent2D{new_image.imageExtent.width, new_image.imageExtent.height});
+        } else {
+            vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        }
+    });
 
-	destroyBuffer(uploadbuffer);
+    destroyBuffer(uploadbuffer);
 
-	return new_image;
+    return new_image;
 }
 
 void Engine::destroyImage(const AllocatedImage &img)
 {
-	LOGFN();
+    LOGFN();
 
-	vkDestroyImageView(m_device, img.imageView, nullptr);
-	vmaDestroyImage(m_allocator, img.image, img.allocation);
+    vkDestroyImageView(m_device, img.imageView, nullptr);
+    vmaDestroyImage(m_allocator, img.image, img.allocation);
 }
-
-void Engine::generateMeshes()
-{
-	const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
-	const std::vector<Vertex> vertices {
-		{
-			.position = {0.f, 0.f, 0.f},
-			.uv_x = 0.f,
-			.normal = {0.f, 0.f, 1.f},
-			.uv_y = 0.f,
-			.color = glm::vec4(0.f, 1.f, 0.f, 1.f),
-		},
-		{
-			.position = {0.f, 1.f, 0.f},
-			.uv_x = 0.f,
-			.normal = {0.f, 0.f, 1.f},
-			.uv_y = 1.f,
-			.color = glm::vec4(1.f, 0.f, 0.f, 1.f),
-		},
-		{
-			.position = {1.f, 0.f, 0.f},
-			.uv_x = 1.f,
-			.normal = {0.f, 0.f, 1.f},
-			.uv_y = 0.f,
-			.color = glm::vec4(0.f, 0.f, 1.f, 1.f),
-		},
-		{
-			.position = {1.f, 1.f, 0.f},
-			.uv_x = 1.f,
-			.normal = {0.f, 0.f, 1.f},
-			.uv_y = 1.f,
-			.color = glm::vec4(1.f, 1.f, 0.f, 1.f),
-		},
-	};
-
-	m_meshBuffers = uploadMesh(indices, vertices);
-
-    m_mainDeletionQueue.push_function([&]() {
-        destroyBuffer(m_meshBuffers.indexBuffer);
-        destroyBuffer(m_meshBuffers.vertexBuffer);
-    });
-}
-
 
 void Engine::setScene(World::Scene &scene)
 {
-	m_scene = &scene;
+    m_scene = &scene;
 }
 
 } // namespace Graphics

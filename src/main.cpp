@@ -15,7 +15,8 @@ int main(int argc, char **argv)
 	UNUSED(argv);
 	UNUSED(argc);
 
-    World::Scene scene{};
+    std::vector<World::Chunk> chunks{};
+    World::Scene scene(chunks);
     Orchestrator orchestrator{};
 
     {

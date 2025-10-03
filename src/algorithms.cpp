@@ -1,7 +1,7 @@
 #include "algorithms.h"
 
+#include <glm/geometric.hpp>
 #include <potracelib.h>
-
 
 /*
 #define BM_USET(bm, x, y) (*bm_index(bm, x, y) |= bm_mask(x))
@@ -31,7 +31,7 @@ ImageVectorizer::~ImageVectorizer()
 	potrace_param_free(m_params);
 }
 
-void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &image, int channelsCount)
+void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &image, const int channelsCount)
 {
 	points.clear();
 	normals.clear();
@@ -40,34 +40,35 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
 	// If we have only 3 channels, this means that there is no alpha channel, so the border's just the image.
 	if (channelsCount == 3) {
-		normals.resize(4);
-		points.resize(4);
+        normals.resize(4);
+        points.resize(5);
 
-		// Up, right, down, left.
-		normals[0] = glm::vec2{0.f, 1.f};
-		normals[1] = glm::vec2{1.f, 0.f};
-		normals[2] = glm::vec2{0.f, -1.f};
-		normals[3] = glm::vec2{-1.f, 0.f};
+        // Up, right, down, left.
+        normals[0] = glm::vec2{-1.f, 0.f};
+        normals[1] = glm::vec2{0.f, 1.f};
+        normals[2] = glm::vec2{1.f, 0.f};
+        normals[3] = glm::vec2{0.f, -1.f};
 
-		points[0] = glm::vec2{0.f, 0.f};
-		points[1] = glm::vec2{0.f, 1.f};
-		points[2] = glm::vec2{1.f, 1.f};
-		points[3] = glm::vec2{1.f, 0.f};
+        points[0] = glm::vec2{0.f, 0.f};
+        points[1] = glm::vec2{0.f, 1.f};
+        points[2] = glm::vec2{1.f, 1.f};
+        points[3] = glm::vec2{1.f, 0.f};
+        points[4] = glm::vec2{0.f, 0.f};
 
-		min = glm::vec2{0.f, 0.f};
-		max = glm::vec2{static_cast<float>(imageWidth / channelsCount), static_cast<float>(image.height())};
+        min = glm::vec2{0.f, 0.f};
+        max = glm::vec2{static_cast<float>(imageWidth / channelsCount), static_cast<float>(image.height())};
 
-		return;
-	}
+        return;
+    }
 
-	const size_t imgRealWidth = imageWidth/4;
+    const size_t imgRealWidth = imageWidth / 4;
 
-	// Words per line.
-	const auto dy = (imgRealWidth + po_wbs_sub) / po_wbs;
-	// Perform resize. Our storage is per-byte.
-	m_memory.resize(dy * image.height() * po_ws);
+    // Words per line.
+    const auto dy = (imgRealWidth + po_wbs_sub) / po_wbs;
+    // Perform resize. Our storage is per-byte.
+    m_memory.resize(dy * image.height() * po_ws);
 
-	const potrace_bitmap_t bm {
+    const potrace_bitmap_t bm {
 	    .w = static_cast<int>(image.width()),
 	    .h = static_cast<int>(image.height()),
 	    .dy = static_cast<int>(dy),
@@ -97,28 +98,29 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 	// If we have no curve, it means that all the image is non-transparent.
 	if (!st->plist) {
 		normals.resize(4);
-		points.resize(4);
+        points.resize(5);
 
-		// Up, right, down, left.
-		normals[0] = glm::vec2{0.f, 1.f};
-		normals[1] = glm::vec2{1.f, 0.f};
-		normals[2] = glm::vec2{0.f, -1.f};
-		normals[3] = glm::vec2{-1.f, 0.f};
+        // Up, right, down, left.
+        normals[0] = glm::vec2{-1.f, 0.f};
+        normals[1] = glm::vec2{0.f, 1.f};
+        normals[2] = glm::vec2{1.f, 0.f};
+        normals[3] = glm::vec2{0.f, -1.f};
 
-		points[0] = glm::vec2{0.f, 0.f};
-		points[1] = glm::vec2{0.f, 1.f};
-		points[2] = glm::vec2{1.f, 1.f};
-		points[3] = glm::vec2{1.f, 0.f};
+        points[0] = glm::vec2{0.f, 0.f};
+        points[1] = glm::vec2{0.f, 1.f};
+        points[2] = glm::vec2{1.f, 1.f};
+        points[3] = glm::vec2{1.f, 0.f};
+        points[4] = glm::vec2{0.f, 0.f};
 
-		min = glm::vec2{0.f, 0.f};
-		max = glm::vec2{static_cast<float>(imgRealWidth), static_cast<float>(image.height())};
+        min = glm::vec2{0.f, 0.f};
+        max = glm::vec2{static_cast<float>(imgRealWidth), static_cast<float>(image.height())};
 
-		return;
-	}
+        return;
+    }
 
-	// Convert to vector paths
+    // Convert to vector paths
 
-	/*
+    /*
 	 * We use simple physics. We just need points to delimit the area of the image.
 	 * For this purpose, we count any corner. However, for each bezier curve,
 	 * the reality is that we just use the ctl points.
@@ -144,14 +146,14 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 			path = path->next;
 		}
 
-		points.resize(pointsCount);
-		normals.resize(pointsCount -1);
-	}
+        points.reserve(pointsCount + 1); // Due to enclosing point.
+        normals.reserve(pointsCount);
+    }
 
-	{
-		const potrace_path_t *path = st->plist;
-		while (path) {
-			const potrace_curve_t &curve = path->curve;
+    /* Determine the points */ {
+        const potrace_path_t *path = st->plist;
+        while (path) {
+            const potrace_curve_t &curve = path->curve;
 
 			for (auto i = 0; i < curve.n; i++) {
 				if (curve.tag[i] == POTRACE_CORNER) {
@@ -163,24 +165,22 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 			}
 
 			path = path->next;
-		}
-	}
+        }
 
-	// Determine the normals.
-	{
-		auto p = 0;
-		const potrace_path_t *path = st->plist;
-		while (path->next) {
-			const potrace_curve_t &curve = path->curve;
+        // Append the first point to enclose the path.
+        points.push_back(points.front());
+    }
+
+    /* Determine the normals. */ {
+        auto p = 0;
+        const potrace_path_t *path = st->plist;
+        while (path->next) {
+            const potrace_curve_t &curve = path->curve;
 
 			for (auto i = 0; i < curve.n -1; i++) {
-				auto vec = points[p+1] - points[p];
-				const auto len = vec.length();
-				// Normalize
-				vec /= len;
-
-				// Add perpendicular vector.
-				normals.push_back(glm::vec2{-vec.y, vec.x});
+                const auto vec = glm::normalize(points[p + 1] - points[p]);
+                // Add perpendicular vector.
+                normals.push_back(glm::vec2{-vec.y, vec.x});
 
 				p++;
 			}
@@ -189,31 +189,34 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 			p++;
 
 			path = path->next;
-		}
+        }
 
-		// Process the last curve.
+        // Process the last curve.
 		const potrace_curve_t &curve = path->curve;
 
 		for (auto i = 0; i < curve.n -1; i++) {
-			auto vec = points[p+1] - points[p];
-			const auto len = vec.length();
-			// Normalize
-			vec /= len;
+            const auto vec = glm::normalize(points[p + 1] - points[p]);
+            // Add perpendicular vector.
+            normals.push_back(glm::vec2{-vec.y, vec.x});
 
-			// Add perpendicular vector.
-			normals.push_back(glm::vec2{-vec.y, vec.x});
+            p++;
+        }
 
-			p++;
-		}
-	}
+        // Add the joined one.
+        {
+            const auto vec = glm::normalize(points.front() - points.back());
+            // Add perpendicular vector.
+            normals.push_back(glm::vec2{-vec.y, vec.x});
+        }
+    }
 
-	// Normalize the points within the image.
-	const float width = static_cast<float>(imgRealWidth);
-	for (auto &p : points) {
-		p.x /= width;
-	}
+    // Normalize the points within the image.
+    const float width = static_cast<float>(imgRealWidth);
+    for (auto &p : points) {
+        p.x /= width;
+    }
 
-	const float height = static_cast<float>(image.height());
+    const float height = static_cast<float>(image.height());
 	for (auto &p : points) {
 		p.y /= height;
 	}
@@ -221,29 +224,29 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 	min = glm::vec2{width, height};
 	max = glm::vec2{0.f, 0.f};
 
-	for (auto &p : points) {
-		if (p.x < min.x) {
-			min.x = p.x;
-		}
-	}
-	for (auto &p : points) {
-		if (p.y < min.y) {
+    for (const auto &p : points) {
+        if (p.x < min.x) {
+            min.x = p.x;
+        }
+    }
+    for (const auto &p : points) {
+        if (p.y < min.y) {
 			min.y = p.y;
 		}
-	}
+    }
 
-	for (auto &p : points) {
-		if (p.x > max.x) {
+    for (const auto &p : points) {
+        if (p.x > max.x) {
 			max.x = p.x;
 		}
-	}
-	for (auto &p : points) {
-		if (p.y > max.y) {
+    }
+    for (const auto &p : points) {
+        if (p.y > max.y) {
 			max.y = p.y;
 		}
-	}
+    }
 
-	potrace_state_free(st);
+    potrace_state_free(st);
 }
 
 

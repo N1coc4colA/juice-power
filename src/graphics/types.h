@@ -73,12 +73,31 @@ struct Vertex
 	glm::vec4 color {};
 };
 
+struct LineVertex
+{
+    glm::vec2 position;
+};
+
 /// @brief GPU resources for a mesh
 struct GPUMeshBuffers
 {
 	AllocatedBuffer indexBuffer {};
 	AllocatedBuffer vertexBuffer {};
 	VkDeviceAddress vertexBufferAddress = 0;
+};
+
+struct GPULineBuffers
+{
+    AllocatedBuffer indexBuffer{};
+    AllocatedBuffer vertexBuffer{};
+    VkDeviceAddress vertexBufferAddress = 0;
+};
+
+struct GPUPointBuffers
+{
+    AllocatedBuffer indexBuffer{};
+    AllocatedBuffer vertexBuffer{};
+    VkDeviceAddress vertexBufferAddress = 0;
 };
 
 /// @brief Push constants for indirect mesh drawing
@@ -93,6 +112,19 @@ struct GPUDrawPushConstants
 
     glm::mat4 worldMatrix{};
     VkDeviceAddress vertexBuffer = 0;
+};
+
+struct GPUDrawLinePushConstants
+{
+    glm::mat4 worldMatrix{};
+    glm::vec3 color{};
+    VkDeviceAddress vertexBuffer = 0;
+};
+
+struct GPUDrawPointPushConstants
+{
+    glm::vec2 pos{};
+    glm::vec4 color{};
 };
 
 struct GPUSceneData

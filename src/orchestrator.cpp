@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <thread>
+
 #include "graphics/engine.h"
 #include "input/engine.h"
 #include "loaders/map.h"
@@ -44,9 +46,11 @@ void Orchestrator::run()
 {
     m_commands = 0;
 
-    std::jthread m_physicsThread([this]() { m_physicsEngine->run(&m_commands); });
-    std::jthread m_inputThread([this]() { m_inputEngine->run(&m_commands); });
-    m_graphicsEngine->run([this]() { m_physicsEngine->prepare(); }, &m_commands);
+    m_physicsEngine->setInputState(m_inputEngine->state());
+
+    std::jthread m_physicsThread([this]() { m_physicsEngine->run(m_commands); });
+    std::jthread m_inputThread([this]() { m_inputEngine->run(m_commands); });
+    m_graphicsEngine->run([this]() { m_physicsEngine->prepare(); }, m_commands);
 }
 
 void Orchestrator::cleanup()

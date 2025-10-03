@@ -3,8 +3,10 @@
 #include <chrono>
 #include <iostream>
 
+#include "src/input/defines.h"
+
+//#include "src/helpers.h"
 #include "src/states.h"
-#include "src/utils.h"
 
 namespace
 {
@@ -14,6 +16,10 @@ constexpr double pi3_4 = M_PI_2 + M_PI;
 
 }
 
+inline constexpr auto epsiloned(const auto &t)
+{
+    return t;
+}
 
 namespace Physics
 {
@@ -25,6 +31,11 @@ Engine::Engine()
 void Engine::setScene(World::Scene &scene)
 {
 	m_scene = &scene;
+}
+
+void Engine::setInputState(Input::InnerState &state)
+{
+    m_inputState = &state;
 }
 
 void Engine::prepare()
@@ -74,39 +85,59 @@ inline constexpr glm::vec2 rotate(const glm::vec2 &v, const double angle)
 
 void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const CollisionInfo &info)
 {
-	const glm::vec2 comToPointA {};
-	const glm::vec2 comToPointB {};
-
-	const auto rotSpeedA = glm::length(comToPointA);
-	const auto rotSpeedB = glm::length(comToPointB);
-
-	const auto perpRotVectA = rotate(comToPointA, pi3_4);
-	const auto perpRotVectB = rotate(comToPointB, pi3_4);
-
-	const auto rotVectA = perpRotVectA * rotSpeedA;
-	const auto rotVectB = perpRotVectB * rotSpeedB;
-
-	const auto relPoint = (a.velocity + rotVectA) - (b.velocity + rotVectB);
-
-	const auto distVect = b.center() - a.center();
-	const auto perpImpVect = distVect / glm::length(distVect);
-
-    const auto termA = glm::sqrt(utils::cross(comToPointA, perpImpVect)) / a.MoI;
-    const auto termB = glm::sqrt(utils::cross(comToPointB, perpImpVect)) / b.MoI;
-
-    const float elasticity = std::max(a.elasticity, b.elasticity);
-
-    const auto impulse = glm::dot(relPoint, perpImpVect) * -(1.f + elasticity) / (1.f / a.mass + 1.f / b.mass + termA + termB);
-	const auto perpImpVectImp = perpImpVect * impulse;
-
-	if (b.isNotFixed) {
-		b.velocity -= perpImpVectImp / b.mass;
-        b.angularVelocity -= utils::cross(comToPointB, perpImpVectImp) / b.MoI;
+    if (info.depth < 0.00001f) {
+        return;
     }
 
-	if (a.isNotFixed) {
-		a.velocity += perpImpVectImp / a.mass;
-        a.angularVelocity += utils::cross(comToPointA, perpImpVectImp) / a.MoI;
+    // Relative velocity
+    const glm::vec2 relVel = a.velocity - b.velocity;
+
+    // Velocity along the normal
+    const float velAlongNormal = glm::dot(relVel, info.normal);
+
+    // If separating and no penetration, skip
+    if (velAlongNormal > 0.00001f && info.depth <= 0.00001f) {
+        return;
+    }
+
+    // Restitution (elasticity)
+    const float e = std::clamp(std::min(a.elasticity, b.elasticity), 0.0f, 1.0f);
+
+    // Inverse masses
+    const float invMassA = a.isNotFixed ? 1.0f / a.mass : 0.0f;
+    const float invMassB = b.isNotFixed ? 1.0f / b.mass : 0.0f;
+
+    const float denom = epsiloned(invMassA + invMassB);
+    if (denom == 0.f) {
+        return; // both infinite mass
+    }
+
+    // Impulse scalar (normal)
+    const float j = -(1.0f + e) * velAlongNormal * 0.95f / denom;
+
+    const glm::vec2 impulse = j * info.normal;
+
+    if (a.canCollide && b.canCollide) {
+        {
+            const auto v = epsiloned(impulse * invMassA);
+
+            a.velocity += v;
+        }
+        {
+            const auto v = epsiloned(impulse * invMassB);
+
+            b.velocity -= v;
+        }
+    } else if (a.canCollide) {
+        const auto v = epsiloned(impulse * invMassA);
+
+        a.velocity += v;
+        a.position -= info.normal * info.depth;
+    } else if (b.canCollide) {
+        const auto v = epsiloned(impulse * invMassB);
+
+        b.velocity -= v;
+        b.position += info.normal * info.depth;
     }
 }
 
@@ -120,121 +151,156 @@ void Engine::compute()
 		return;
 	}
 
-	for (auto &c : m_scene->view) {
-		for (auto &obj : c.entities) {
-			obj.cleanup();
-		}
-	}
+    /* Resolve collisions */ {
+        m_scene->collisions.clear();
 
-	for (auto &c : m_scene->view) {
-		for (auto &obj : c.entities) {
-			obj.compute(delta);
-		}
-	}
-
-	// Reset collisions data.
-	m_scene->collisions.clear();
-
-	{
-		const auto size = m_scene->view.size();
-
-		for (size_t i = 0; i < size; i++) {
-			auto &c = m_scene->view[i];
-
-			// For every entity in the current chunk, we check the entities in the current AND next chunk.
-			// Previous chunks' entities have already been checked against.
-			for (auto &e : c.entities) {
-				for (size_t j = i; j < size; j++) {
-					auto &c2 = m_scene->view[j];
-
-					for (auto &e2 : c2.entities) {
-						CollisionInfo info {};
-
-						// If both elements are not the same, we can check for collision.
-						const auto m = std::min(&e, &e2);
-                        if (&e != &e2) {
-                            [[likely]];
-
-                            if (!m_scene->collisions.contains(m) || !m_scene->collisions[m].contains(std::max(&e, &e2))) {
-                                if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
-                                    // We need to resolve the collision.
-                                    if (e.collides(e2, info)) {
-                                        resolveCollision(e, e2, info);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    for (auto &e2 : m_scene->movings.entities) {
-                        CollisionInfo info{};
-
-                        // If both elements are not the same, we can check for collision.
-                        const auto m = std::min(&e, &e2);
-                        if (&e != &e2) {
-                            [[likely]];
-
-                            if (!m_scene->collisions.contains(m) || !m_scene->collisions[m].contains(std::max(&e, &e2))) {
-                                if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
-                                    // We need to resolve the collision.
-                                    if (e.collides(e2, info)) {
-                                        resolveCollision(e, e2, info);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        for (auto &c : m_scene->view) {
+            for (auto &e : c.entities) {
+                e.has_collision = false;
             }
         }
-
         for (auto &e : m_scene->movings.entities) {
-            for (auto &e2 : m_scene->movings.entities) {
-                CollisionInfo info{};
+            e.has_collision = false;
+        }
 
-                // If both elements are not the same, we can check for collision.
-                const auto m = std::min(&e, &e2);
-                if (&e != &e2) {
-                    [[likely]];
+        resolveAllCollisions();
+    }
 
-                    if (!m_scene->collisions.contains(m) || !m_scene->collisions[m].contains(std::max(&e, &e2))) {
-                        if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
-                            // We need to resolve the collision.
-                            if (e.collides(e2, info)) {
-                                resolveCollision(e, e2, info);
-                            }
-                        }
-                    }
-                }
+    /* Cleaning up */ {
+        for (auto &c : m_scene->view) {
+            for (auto &obj : c.entities) {
+                obj.cleanup();
             }
         }
+        for (auto &obj : m_scene->movings.entities) {
+            obj.cleanup();
+        }
+    }
+
+    /* Position update */ {
+        for (auto &c : m_scene->view) {
+            for (auto &obj : c.entities) {
+                obj.compute(delta);
+            }
+        }
+        for (auto &obj : m_scene->movings.entities) {
+            obj.compute(delta);
+        }
+
+        updateMainPosition();
     }
 
     prevChrono = currentTime;
 }
 
-void Engine::run(std::atomic<uint64_t> *commands)
+void Engine::resolveCollisions(std::vector<Physics::Entity> &en1, Physics::Entity &e)
 {
-    while (!(*commands & CommandStates::Stop)) {
-        compute();
+    for (auto &e2 : en1) {
+        CollisionInfo info{};
 
-        if ((*commands) & CommandStates::PrepareDrawing) {
-            for (auto &chunk : m_scene->view) {
-                const auto size = chunk.entities.size();
-                for (size_t i = 0; i < size; ++i) {
-                    chunk.positions[i] = glm::vec3(chunk.entities[i].position, 0.f);
+        // If both elements are not the same, we can check for collision.
+        const std::pair m = {std::min(&e, &e2), std::max(&e, &e2)};
+        if (&e != &e2) {
+            [[likely]];
+
+            if (!m_scene->collisions.contains(m)) {
+                if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
+                    // We need to resolve the collision.
+                    if (e.collides(e2, info)) {
+                        resolveCollision(e, e2, info);
+
+                        if (e.canCollide) {
+                            e.has_collision = true;
+                        }
+                        if (e2.canCollide) {
+                            e2.has_collision = true;
+                        }
+
+                        m_scene->collisions.insert(m);
+                    }
                 }
             }
+        }
+    }
+}
 
-            const auto size = m_scene->movings.entities.size();
-            for (size_t i = 0; i < size; ++i) {
-                m_scene->movings.positions[i] = glm::vec3(m_scene->movings.entities[i].position, 0.f);
+void Engine::resolveAllCollisions()
+{
+    {
+        const auto size = m_scene->view.size();
+
+        for (size_t i = 0; i < size; i++) {
+            // For every entity in the current chunk, we check the entities in the current AND next chunk.
+            // Previous chunks' entities have already been checked against.
+            for (auto &e : m_scene->view[i].entities) {
+                for (size_t j = i; j < size; j++) {
+                    auto &c2 = m_scene->view[j];
+
+                    resolveCollisions(c2.entities, e);
+                }
+            }
+        }
+
+        for (auto &c : m_scene->view) {
+            for (auto &e : c.entities) {
+                resolveCollisions(m_scene->movings.entities, e);
+            }
+        }
+
+        for (auto &e : m_scene->movings.entities) {
+            resolveCollisions(m_scene->movings.entities, e);
+        }
+    }
+}
+
+void copyPositions(World::Chunk &c)
+{
+    const auto size = c.entities.size();
+    for (size_t i = 0; i < size; ++i) {
+        c.positions[i] = glm::vec3(c.entities[i].position, 0.f);
+    }
+}
+
+void Engine::run(std::atomic<uint64_t> &commands)
+{
+    while (!(commands & CommandStates::Stop)) {
+        compute();
+
+        if (commands & CommandStates::PrepareDrawing) {
+            copyPositions(m_scene->movings);
+            for (auto &chunk : m_scene->view) {
+                copyPositions(chunk);
             }
 
             // Update states.
-            *commands &= ~CommandStates::PrepareDrawing;
-            *commands |= CommandStates::DrawingPrepared;
+            commands &= ~CommandStates::PrepareDrawing;
+            commands |= CommandStates::DrawingPrepared;
         }
+    }
+}
+
+void Engine::updateMainPosition()
+{
+    constexpr auto horVel = 0.05f;
+    constexpr auto vertVel = 0.01f;
+
+    if (m_inputState->left.unsafeGet().state) {
+        std::cout << "left" << std::endl;
+        //m_scene->movings.entities[0].velocity.x += horVel;
+        m_scene->movings.entities[0].thrusts.push_back(Thrust{.vector = {horVel, 0.f, 0.f}});
+    }
+    if (m_inputState->right.unsafeGet().state) {
+        std::cout << "right" << std::endl;
+        //m_scene->movings.entities[0].velocity.x += horVel;
+        m_scene->movings.entities[0].thrusts.push_back(Thrust{.vector = {-horVel, 0.f, 0.f}});
+    }
+    if (m_inputState->down.unsafeGet().state) {
+        std::cout << "down" << std::endl;
+        m_scene->movings.entities[0].velocity.x -= vertVel;
+    }
+    if (m_inputState->up.unsafeGet().state && !m_inputState->up.unsafeGet().hold) {
+        std::cout << "up" << std::endl;
+        m_scene->movings.entities[0].velocity.x += vertVel;
     }
 }
 }

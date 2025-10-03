@@ -11,13 +11,14 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include "../graphics/engine.h"
-#include "../graphics/resources.h"
+#include "src/graphics/engine.h"
+#include "src/graphics/resources.h"
+#include "src/graphics/utils.h"
 
-#include "../world/scene.h"
-#include "../world/chunk.h"
+#include "src/world/chunk.h"
+#include "src/world/scene.h"
 
-#include "../algorithms.h"
+#include "src/algorithms.h"
 
 #include "json.h"
 
@@ -32,9 +33,10 @@ namespace Loaders
 Map::Map(const std::string &path)
 	: m_path(path)
 {
+    stbi_set_flip_vertically_on_load(false);
 }
 
-inline void copyValues(const std::vector<JsonChunkElement> &c, World::Chunk &s, JsonMap &map, World::Scene &m_scene)
+inline void copyValues(const std::vector<JsonChunkElement> &c, World::Chunk &s, const JsonMap &map, const World::Scene &m_scene)
 {
     const auto esize = s.entities.size();
     for (size_t j = 0; j < esize; j++) {
@@ -53,6 +55,12 @@ inline void copyValues(const std::vector<JsonChunkElement> &c, World::Chunk &s, 
         const auto &e = c[j];
 
         s.entities[j].acceleration = glm::vec2{e.acceleration[0], e.acceleration[1]};
+    }
+
+    for (size_t j = 0; j < esize; j++) {
+        const auto &e = c[j];
+
+        s.entities[j].friction = e.friction;
     }
 
     for (size_t j = 0; j < esize; j++) {
@@ -97,6 +105,44 @@ inline void copyValues(const std::vector<JsonChunkElement> &c, World::Chunk &s, 
     }
 }
 
+inline void fillBasicObjectInfo(const std::vector<Loaders::JsonChunkElement> &c, World::Chunk &s)
+{
+    std::transform(c.cbegin(), c.cend(), s.descriptions.begin(), [](const auto &e) { return e.type; });
+    std::transform(c.cbegin(), c.cend(), s.positions.begin(), [](const auto &e) { return glm::vec3{e.position[0], e.position[1], e.position[2]}; });
+}
+
+inline void prepareVectors(const size_t count, World::Chunk &s)
+{
+    s.descriptions.resize(count);
+    s.positions.resize(count);
+    s.animFrames.resize(count);
+    s.entities.resize(count);
+}
+
+Status loadChunk(std::vector<std::vector<JsonChunkElement>> &chunks, const std::string &chunkName)
+{
+    std::ifstream chunkFile(chunkName, std::ifstream::in);
+    if (!chunkFile.is_open()) {
+        return Status::OpenError;
+    }
+
+    const auto chunkResSize = fs::file_size(chunkName);
+    std::string chunkContent(chunkResSize, '\0');
+    chunkFile.read(chunkContent.data(), static_cast<std::streamsize>(chunkResSize));
+
+    const auto chunkJson = glz::read_json<std::vector<JsonChunkElement>>(chunkContent);
+    if (!chunkJson.has_value()) {
+        std::cout << __LINE__;
+        std::cout << "Failed to open file " << chunkName << ':' << chunkJson.error().location << ':' << magic_enum::enum_name(chunkJson.error().ec)
+                  << ':' << chunkJson.error().includer_error << '\n';
+        return Status::JsonError;
+    }
+
+    chunks.push_back(chunkJson.value());
+
+    return Status::Ok;
+}
+
 Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 {
 	if (!fs::exists(m_path)) {
@@ -116,29 +162,28 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		return Status::NotDir;
 	}
 
-	std::vector<fs::path> paths {};
-	std::vector<std::string> names {};
-	const auto crop = m_path.length() +1;
+    std::vector<fs::path> paths{};
+    std::vector<std::string> names{};
+    const auto crop = m_path.length() + 1;
 
-	for (const auto &entry : fs::directory_iterator(m_path)) {
-		const auto &p = entry.path();
-		paths.push_back(p);
-		names.push_back(p.string().substr(crop));
-	}
+    for (const auto &entry : fs::directory_iterator(m_path)) {
+        const auto &p = entry.path();
+        paths.push_back(p);
+        names.push_back(p.string().substr(crop));
+    }
 
-	const auto mapAccess = std::find(names.cbegin(), names.cend(), "map.json");
-	if (mapAccess == names.cend()) {
-		return Status::MissingMapFile;
-	}
+    const auto mapAccess = std::find(names.cbegin(), names.cend(), "map.json");
+    if (mapAccess == names.cend()) {
+        return Status::MissingMapFile;
+    }
 
-	const auto pathsMapIndex = std::distance(names.cbegin(), mapAccess);
-	std::ifstream f {};
-	f.open(paths[pathsMapIndex], std::ifstream::in);
-	if (!f.is_open()) {
-		return Status::OpenError;
-	}
+    const auto pathsMapIndex = std::distance(names.cbegin(), mapAccess);
+    std::ifstream f(paths[pathsMapIndex], std::ifstream::in);
+    if (!f.is_open()) {
+        return Status::OpenError;
+    }
 
-	const auto size = fs::file_size(paths[pathsMapIndex]);
+    const auto size = fs::file_size(paths[pathsMapIndex]);
 	std::string mapContent(size, '\0');
 	f.read(mapContent.data(), static_cast<std::streamsize>(size));
 
@@ -161,100 +206,64 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 		}
 
 		const auto pathsResIndex = std::distance(names.cbegin(), resAccess);
-		std::ifstream f {};
-		f.open(paths[pathsResIndex], std::ifstream::in);
-		if (!f.is_open()) {
-			return Status::OpenError;
-		}
+        std::ifstream resFile(paths[pathsResIndex], std::ifstream::in);
+        if (!resFile.is_open()) {
+            return Status::OpenError;
+        }
 
-		const auto size = std::filesystem::file_size(paths[pathsResIndex]);
-		std::string resContent(size, '\0');
-		f.read(resContent.data(), static_cast<std::streamsize>(size));
+        const auto resSize = std::filesystem::file_size(paths[pathsResIndex]);
+        std::string resContent(resSize, '\0');
+        resFile.read(resContent.data(), static_cast<std::streamsize>(resSize));
 
-		const auto resJson = glz::read_json<std::vector<JsonResourceElement>>(resContent);
-		if (!resJson.has_value()) {
-			std::cout << __LINE__;
-			std::cout << "Failed to open file " << paths[pathsResIndex]
-					  << ':' << resJson.error().location
-					  << ':' << magic_enum::enum_name(resJson.error().ec)
-					  << ':' << resJson.error().includer_error
-					  << ':' << resJson.error().custom_error_message
-					  << '\n';
-			return Status::JsonError;
-		}
+        const auto resJson = glz::read_json<std::vector<JsonResourceElement>>(resContent);
+        if (!resJson.has_value()) {
+            std::cout << __LINE__;
+            std::cout << "Failed to open file " << paths[pathsResIndex] << ':' << resJson.error().location << ':'
+                      << magic_enum::enum_name(resJson.error().ec) << ':' << resJson.error().includer_error << ':'
+                      << resJson.error().custom_error_message << '\n';
+            return Status::JsonError;
+        }
 
-		const std::vector<JsonResourceElement> &res = resJson.value();
-		map.resources = res;//.resources;
-	}
+        const std::vector<JsonResourceElement> &res = resJson.value();
+        map.resources = res; //.resources;
+    }
 
-	// Check that every resource does exist.
-	if (!std::all_of(map.resources.cbegin(), map.resources.cend(), [&m_assets](const JsonResourceElement &res) { return fs::exists(m_assets + res.source); })) {
-		return Status::MissingResource;
-	}
+    // Check that every resource does exist.
+    if (!std::all_of(map.resources.cbegin(), map.resources.cend(), [&m_assets](const JsonResourceElement &res) {
+            return fs::exists(m_assets + res.source);
+        })) {
+        return Status::MissingResource;
+    }
 
-	if (map.chunksExternal) {
-		const auto size = map.chunksCount;
+    if (map.chunksExternal) {
+        const auto chunksSize = map.chunksCount;
 
-		std::vector<std::vector<JsonChunkElement>> chunks {};
-
-		// Check that all files exist
-        for (size_t i = 0; i < size; ++i) {
+        // Check that all files exist
+        for (size_t i = 0; i < chunksSize; ++i) {
             if (!fs::exists(m_path + '/' + std::to_string(i) + ".json")) {
                 return Status::MissingJson;
             }
         }
 
-        chunks.reserve(size);
+        map.chunks.reserve(chunksSize);
 
         // Try to open & load all chunk files.
-        for (size_t i = 0; i < size; ++i) {
-            const std::string chunkName = m_path + '/' + std::to_string(i) + ".json";
-            std::ifstream f{};
-            f.open(chunkName, std::ifstream::in);
-            if (!f.is_open()) {
-                return Status::OpenError;
-            }
-
-            const auto size = fs::file_size(chunkName);
-            std::string chunkContent(size, '\0');
-            f.read(chunkContent.data(), static_cast<std::streamsize>(size));
-
-            const auto chunkJson = glz::read_json<std::vector<JsonChunkElement>>(chunkContent);
-            if (!chunkJson.has_value()) {
-                std::cout << __LINE__;
-                std::cout << "Failed to open file " << chunkName << ':' << chunkJson.error().location << ':'
-                          << magic_enum::enum_name(chunkJson.error().ec) << ':' << chunkJson.error().includer_error << '\n';
-                return Status::JsonError;
-            }
-
-            chunks.push_back(chunkJson.value());
+        auto status = Status::Ok;
+        for (size_t i = 0; i < chunksSize && status == Status::Ok; ++i) {
+            status = loadChunk(map.chunks, m_path + '/' + std::to_string(i) + ".json");
         }
 
-        {
-            const std::string chunkName = m_path + "/movings.json";
-            std::ifstream f{};
-            f.open(chunkName, std::ifstream::in);
-            if (!f.is_open()) {
-                return Status::OpenError;
-            }
-
-            const auto size = fs::file_size(chunkName);
-            std::string chunkContent(size, '\0');
-            f.read(chunkContent.data(), static_cast<std::streamsize>(size));
-
-            const auto chunkJson = glz::read_json<std::vector<JsonChunkElement>>(chunkContent);
-            if (!chunkJson.has_value()) {
-                std::cout << __LINE__;
-                std::cout << "Failed to open file " << chunkName << ':' << chunkJson.error().location << ':'
-                          << magic_enum::enum_name(chunkJson.error().ec) << ':' << chunkJson.error().includer_error << '\n';
-                return Status::JsonError;
-            }
-
-            map.movings = chunkJson.value();
+        if (status != Status::Ok) {
+            return status;
         }
 
-        // Now that we properly loaded it all, we just have to replace it.
-        map.chunks = chunks;
+        std::vector<std::vector<JsonChunkElement>> tmp{};
+        tmp.reserve(1);
+        if (const auto mvStatus = loadChunk(tmp, m_path + "/movings.json")) {
+            return mvStatus;
+        }
+
+        map.movings = tmp[0];
     }
 
     // Now that any external resource have been check or loaded, we can generate the object.
@@ -262,14 +271,11 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
 
     m_scene.res = new Graphics::Resources{};
 
-    std::map<std::string, int> mapped; // Maps name to resource ID.
     const auto resSize = map.resources.size();
     m_scene.res->images.reserve(resSize);
     m_scene.res->types.reserve(resSize);
     m_scene.res->borders.reserve(resSize);
     m_scene.res->normals.reserve(resSize);
-
-    //const std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2};
 
     algo::ImageVectorizer vectorizer{};
 
@@ -350,8 +356,6 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
             m_scene.res->animInterval.push_back(res.interval);
             m_scene.res->animFrames.push_back(res.frames ? res.frames : res.gridSize[0] * res.gridSize[1]);
 
-            // We succeed, let's add it.
-            mapped.insert({res.name, i});
             ++i;
         }
     }
@@ -362,69 +366,38 @@ Status Map::load(Graphics::Engine &engine, World::Scene &m_scene)
     // Setup transform matrices
     m_scene.movings.transforms = std::vector(map.movings.size(), glm::mat4{1.f});
     for (size_t i = 0; i < csize; ++i) {
-        auto &s = m_scene.chunks[i];
-        const auto count = map.chunks[i].size();
-
         // At first, all objects have their usual transform matrix.
-        s.transforms = std::vector(count, glm::mat4{1.f});
+        m_scene.chunks[i].transforms = std::vector(map.chunks[i].size(), glm::mat4{1.f});
     }
 
-    // Reserve space for our vectors.
-    {
-        const auto count = map.movings.size();
-
-        m_scene.movings.descriptions.reserve(count);
-        m_scene.movings.positions.reserve(count);
-        m_scene.movings.animFrames.resize(count);
-    }
+    // We fill it in later to avoid constructing and then change the data.
+    prepareVectors(map.movings.size(), m_scene.movings);
     for (size_t i = 0; i < csize; ++i) {
-        auto &s = m_scene.chunks[i];
-        const auto count = map.chunks[i].size();
-
-        // We fill it in later to avoid constructing and then change the data.
-        s.descriptions.reserve(count);
-        s.positions.reserve(count);
-        s.animFrames.resize(count);
-    }
-
-    {
-        const auto count = map.movings.size();
-        m_scene.movings.entities.resize(count);
-    }
-    for (size_t i = 0; i < csize; ++i) {
-        const auto count = map.chunks[i].size();
-
-        m_scene.chunks[i].entities.resize(count);
+        prepareVectors(map.chunks[i].size(), m_scene.chunks[i]);
     }
 
     // Fill in basic data
-    {
-        const auto &c = map.movings;
-        auto &s = m_scene.movings;
-
-        for (const auto &e : c) {
-            s.descriptions.push_back(e.type);
-        }
-        for (const auto &e : c) {
-            s.positions.push_back(glm::vec3{e.position[0], e.position[1], e.position[2]});
-        }
-    }
+    fillBasicObjectInfo(map.movings, m_scene.movings);
     for (size_t i = 0; i < csize; ++i) {
-        const auto &c = map.chunks[i];
-        auto &s = m_scene.chunks[i];
-
-        for (const auto &e : c) {
-            s.descriptions.push_back(e.type);
-        }
-        for (const auto &e : c) {
-            s.positions.push_back(glm::vec3{e.position[0], e.position[1], e.position[2]});
-        }
+        fillBasicObjectInfo(map.chunks[i], m_scene.chunks[i]);
     }
 
     // Update entities' information.
     copyValues(map.movings, m_scene.movings, map, m_scene);
     for (size_t i = 0; i < csize; ++i) {
         copyValues(map.chunks[i], m_scene.chunks[i], map, m_scene);
+    }
+
+    {
+        size_t i = 0;
+        for (auto &e : m_scene.movings.entities) {
+            e.id = i++;
+        }
+        for (auto &c : m_scene.chunks) {
+            for (auto &e : c.entities) {
+                e.id = i++;
+            }
+        }
     }
 
     m_scene.res->build(engine);

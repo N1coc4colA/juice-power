@@ -86,16 +86,21 @@ class Entity
 public:
 	typedef std::array<double, 3> state_type;
 
-	AABB boundingBox {};
+    size_t id;
+
+    bool has_collision = false;
+
+    AABB boundingBox {};
 
 	/// @brief Vectors representing the bounds of the entity.
 	std::vector<glm::vec2> borders {};
 	/// @brief Vectors corresponding to the normals associated to each vector in @variable borders.
 	std::vector<glm::vec2> normals {};
 	/// @brief Frictions associated to this entity.
-	std::vector<Friction> frictions {};
+    float friction{};
+    float baseFriction{};
 
-	std::vector<Thrust> thrusts {};
+    std::vector<Thrust> thrusts {};
 	std::vector<float> torques {};
 
 	glm::vec2 position {};
@@ -109,14 +114,14 @@ public:
 	float mass = 8.f;
 	float angle = 0.f;
 	float angularVelocity = 0.f;
-	float elasticity = 1.f;
-	/// @brief Moment of Inertia.
-	float MoI = 1.f;
+    float elasticity = 0.f;
+    /// @brief Moment of Inertia.
+    float MoI = 1.f;
 
-	/// @brief Tells if other objects have an impact on the entity.
+    /// @brief Tells if other objects have an impact on the entity.
 	/// @value true means the object will not be affected by other entity's interactions.
-	bool canCollide = false;
-	/// @brief Tells if the object is affected by gravity or not.
+    bool canCollide = true;
+    /// @brief Tells if the object is affected by gravity or not.
 	bool isNotFixed = true;
 
 	constexpr glm::vec2 nextPosition(const float timeDelta) const noexcept
@@ -130,7 +135,8 @@ public:
 	}
 
 	// Used for integration of forces. Here it's not King Kunta but King Kutta !!
-	void KingKutta(const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
+    void KingKutta(
+        const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
     Forces resultOfForces(const double timeStep) const;
     void compute(const double timeDelta);
 
@@ -221,10 +227,10 @@ public:
 			smallestAxis = -smallestAxis;
 		}
 
-		info.normal = smallestAxis;
-		info.depth = minOverlap;
+        info.normal = glm::normalize(smallestAxis);
+        info.depth = minOverlap;
 
-		return true;
+        return true;
     }
 
     /// @brief Performs cleanups for post-position update.
