@@ -19,10 +19,10 @@ namespace Graphics
 class PipelineBuilder
 {
 public:
-	/// @brief Shader stages to include in the pipeline
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStages {};
+    /// @brief Shader stages to include in the pipeline
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStages{};
 
-	/// @brief Vertex input assembly state (topology)
+    /// @brief Vertex input assembly state (topology)
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
 
 	/// @brief Rasterization state (polygon mode, culling, etc)
@@ -46,13 +46,12 @@ public:
 	/// @brief Color attachment format
 	VkFormat colorAttachmentformat = VK_FORMAT_MAX_ENUM;
 
-	/// @brief Constructs a new PipelineBuilder with default states
-	inline PipelineBuilder()
-	{
-		clear();
-	}
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
 
-	/// @brief Resets all pipeline states to defaults
+    /// @brief Constructs a new PipelineBuilder with default states
+    inline PipelineBuilder() { clear(); }
+
+    /// @brief Resets all pipeline states to defaults
 	void clear();
 
 	/**
@@ -121,10 +120,12 @@ public:
 	void enableBlendingAdditive();
 
 	/// @brief Enables alpha blending (src.alpha * src.rgb + (1-src.alpha) * dst.rgb)
-	void enableBlendingAlphablend();
+    void enableBlendingAlphaBlend();
+
+private:
+    void setupBlending();
+    void setupDepthTest();
 };
-
-
 }
 
 

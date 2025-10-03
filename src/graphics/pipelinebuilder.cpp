@@ -3,6 +3,7 @@
 #include <cassert>
 
 #include <fmt/printf.h>
+#include <magic_enum.hpp>
 
 #include "initializers.h"
 
@@ -28,14 +29,17 @@ void PipelineBuilder::clear()
 
 	renderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 
-	shaderStages.clear();
+    vertexInputInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+
+    shaderStages.clear();
 }
 
 VkPipeline PipelineBuilder::buildPipeline(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
+    assert(pipelineLayout != VK_NULL_HANDLE);
 
-	// make viewport state from our stored viewport and scissor.
+    // make viewport state from our stored viewport and scissor.
 	// at the moment we wont support multiple viewports or scissors
 	const VkPipelineViewportStateCreateInfo viewportState = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -54,11 +58,6 @@ VkPipeline PipelineBuilder::buildPipeline(VkDevice device)
 		.logicOp = VK_LOGIC_OP_COPY,
 		.attachmentCount = 1,
 		.pAttachments = &colorBlendAttachment,
-	};
-
-	// completely clear VertexInputStateCreateInfo, as we have no need for it
-	const VkPipelineVertexInputStateCreateInfo vertexInputInfo {
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
 	};
 
 	// build the actual pipeline
@@ -96,12 +95,13 @@ VkPipeline PipelineBuilder::buildPipeline(VkDevice device)
 	// its easy to error out on create graphics pipeline, so we handle it a bit
 	// better than the common VK_CHECK case
 	VkPipeline newPipeline = VK_NULL_HANDLE;
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) != VK_SUCCESS) {
-		fmt::println("failed to create pipeline");
-		return VK_NULL_HANDLE; // failed to create graphics pipeline
-	} else {
-		return newPipeline;
-	}
+    const VkResult err = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline);
+    if (err != VK_SUCCESS) {
+        fmt::println("Failed to create pipeline: {}", magic_enum::enum_name(err));
+        return VK_NULL_HANDLE; // failed to create graphics pipeline
+    } else {
+        return newPipeline;
+    }
 }
 
 void PipelineBuilder::setShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader)
@@ -158,13 +158,9 @@ void PipelineBuilder::setMultisamplingNone()
 void PipelineBuilder::disableBlending()
 {
 	// default write mask
-	colorBlendAttachment.colorWriteMask = 0
-		| VK_COLOR_COMPONENT_R_BIT
-		| VK_COLOR_COMPONENT_G_BIT
-		| VK_COLOR_COMPONENT_B_BIT
-		| VK_COLOR_COMPONENT_A_BIT;
-	// no blending
-	colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    // no blending
+    colorBlendAttachment.blendEnable = VK_FALSE;
 }
 
 void PipelineBuilder::setColorAttachmentFormat(const VkFormat format)
@@ -189,12 +185,8 @@ void PipelineBuilder::disableDepthtest()
 	depthStencil.depthTestEnable = VK_FALSE;
 	depthStencil.depthWriteEnable = VK_FALSE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.stencilTestEnable = VK_FALSE;
-	depthStencil.front = {};
-	depthStencil.back = {};
-	depthStencil.minDepthBounds = 0.f;
-	depthStencil.maxDepthBounds = 1.f;
+
+    setupDepthTest();
 }
 
 void PipelineBuilder::enableDepthtest(bool depthWriteEnable, VkCompareOp op)
@@ -202,45 +194,40 @@ void PipelineBuilder::enableDepthtest(bool depthWriteEnable, VkCompareOp op)
 	depthStencil.depthTestEnable = VK_TRUE;
 	depthStencil.depthWriteEnable = depthWriteEnable;
 	depthStencil.depthCompareOp = op;
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.stencilTestEnable = VK_FALSE;
-	depthStencil.front = {};
-	depthStencil.back = {};
-	depthStencil.minDepthBounds = 0.f;
-	depthStencil.maxDepthBounds = 1.f;
+
+    setupDepthTest();
 }
 
 void PipelineBuilder::enableBlendingAdditive()
 {
-	colorBlendAttachment.colorWriteMask = 0
-		| VK_COLOR_COMPONENT_R_BIT
-		| VK_COLOR_COMPONENT_G_BIT
-		| VK_COLOR_COMPONENT_B_BIT
-		| VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_TRUE;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR;
+    setupBlending();
 }
 
-void PipelineBuilder::enableBlendingAlphablend()
+void PipelineBuilder::enableBlendingAlphaBlend()
 {
-	colorBlendAttachment.colorWriteMask = 0
-		| VK_COLOR_COMPONENT_R_BIT
-		| VK_COLOR_COMPONENT_G_BIT
-		| VK_COLOR_COMPONENT_B_BIT
-		| VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_TRUE;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    setupBlending();
 }
 
+void PipelineBuilder::setupBlending()
+{
+    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+}
 
+void PipelineBuilder::setupDepthTest()
+{
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+    depthStencil.front = {};
+    depthStencil.back = {};
+    depthStencil.minDepthBounds = 0.f;
+    depthStencil.maxDepthBounds = 1.f;
+}
 }

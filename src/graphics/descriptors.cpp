@@ -35,15 +35,15 @@ VkDescriptorSetLayout DescriptorLayoutBuilder::build(VkDevice device, const VkSh
 		b.stageFlags |= shaderStages;
 	}
 
-	const VkDescriptorSetLayoutCreateInfo info {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.bindingCount = (uint32_t)bindings.size(),
-		.pBindings = bindings.data(),
-	};
+    const VkDescriptorSetLayoutCreateInfo info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .bindingCount = static_cast<uint32_t>(bindings.size()),
+        .pBindings = bindings.data(),
+    };
 
-	VkDescriptorSetLayout set = VK_NULL_HANDLE;
+    VkDescriptorSetLayout set = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
 
 	return set;
@@ -212,23 +212,20 @@ VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const 
 	std::vector<VkDescriptorPoolSize> poolSizes;
 	poolSizes.reserve(poolRatios.size());
 
-	for (const PoolSizeRatio &ratio : poolRatios) {
-		poolSizes.push_back(VkDescriptorPoolSize {
-			.type = ratio.type,
-			.descriptorCount = static_cast<uint32_t>(ratio.ratio * static_cast<float>(setCount)),
-		});
-	}
+    std::transform(poolRatios.cbegin(), poolRatios.cend(), poolSizes.begin(), [setCount](const auto &ratio) {
+        return VkDescriptorPoolSize{.type = ratio.type, .descriptorCount = static_cast<uint32_t>(ratio.ratio * static_cast<float>(setCount))};
+    });
 
-	const VkDescriptorPoolCreateInfo pool_info {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		.flags = 0,
-		.maxSets = setCount,
-		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
-		.pPoolSizes = poolSizes.data(),
-	};
+    const VkDescriptorPoolCreateInfo pool_info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = 0,
+        .maxSets = setCount,
+        .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+        .pPoolSizes = poolSizes.data(),
+    };
 
-	VkDescriptorPool newPool = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateDescriptorPool(device, &pool_info, nullptr, &newPool));
+    VkDescriptorPool newPool = VK_NULL_HANDLE;
+    VK_CHECK(vkCreateDescriptorPool(device, &pool_info, nullptr, &newPool));
 
 	return newPool;
 }

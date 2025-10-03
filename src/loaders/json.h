@@ -81,9 +81,12 @@ struct JsonChunkElement
 	/// @brief Initial angular velocity of the element.
 	float angularVelocity = 0.f;
 
-	/// @brief If the object is affected by collisions.
-	bool canCollide = true;
-	/// @brief If the object is subject to gravity.
+    /// @brief Friction from the environment.
+    float friction = 0.0001f;
+
+    /// @brief If the object is affected by collisions.
+    bool canCollide = true;
+    /// @brief If the object is subject to gravity.
 	bool isNotFixed = true;
 
 	// [TODO] See how to handle initial frictions, thrusts & torques...

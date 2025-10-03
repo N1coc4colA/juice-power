@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <stb_image.h>
+
 #include <cassert>
 #include <cmath>
 #include <fstream>
@@ -251,6 +253,4 @@ void generate_mipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
 	// transition all mip levels into the final read_only layout
 	transition_image(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
-
-
-}
+} // namespace Graphics::vkutil
