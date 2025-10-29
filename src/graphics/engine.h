@@ -12,6 +12,7 @@
 
 #include "allocatedimage.h"
 #include "descriptors.h"
+#include "src/world/objectdata.h"
 #include "structs.h"
 #include "types.h"
 
@@ -34,6 +35,7 @@ namespace Graphics
 {
 
 class Resources;
+class Resources2;
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
@@ -69,6 +71,11 @@ public:
 
     GPULineBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const LineVertex> &vertices);
 
+    GPUAnimationBuffers uploadMesh(const std::span<const AnimationData> &animations);
+
+    void uploadObjectDataForDrawing();
+    void uploadObjectData(const std::span<Graphics::ObjectData> &objectData);
+
     inline World::Scene *scene() { return m_scene; }
     inline const World::Scene *scene() const { return m_scene; }
 
@@ -85,21 +92,22 @@ protected:
 	void initBackgroundPipelines();
 	void initImgui();
 	void initDefaultData();
+    void initObjectDataBuffer();
 
-	void draw();
-	void drawBackground(VkCommandBuffer cmd);
+    void draw();
+    void drawBackground(VkCommandBuffer cmd);
     void drawImgui(VkCommandBuffer cmd, VkImageView targetImageView);
-    void drawGeometry(VkCommandBuffer cmd);
+    void drawGeometry2(VkCommandBuffer cmd);
     // For debugging purposes.
-    void drawPhysics(VkCommandBuffer cmd);
-    void drawPoints(VkCommandBuffer cmd);
-    //void drawChunkGeometry(const World::Chunk &chunk, GPUDrawPushConstants &push_constants, VkCommandBuffer cmd);
+    void drawPhysics2(VkCommandBuffer cmd);
+    void drawPoints2(VkCommandBuffer cmd);
 
     void createSwapchain(const uint32_t w, const uint32_t h);
     void destroySwapchain();
     void resizeSwapchain();
 
-    void updateAnimations(World::Scene &scene);
+    //void updateAnimations(World::Scene &scene);
+    void updateAnimations2(World::Scene &scene);
 
 private:
     inline FrameData &getCurrentFrame() { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
@@ -259,18 +267,29 @@ private:
 
     /* Scene */
 
-    GPUSceneData m_sceneData{};
-    VkDescriptorSetLayout m_gpuSceneDataDescriptorLayout = VK_NULL_HANDLE;
     World::Scene *m_scene = nullptr;
 
     /* Animation */
+
     double m_deltaMS = 0.0;
+
+    /* Stats data */
+
+    int m_objCount = 0;
+    int m_switchesCount = 0;
+
+    /* Objects */
+
+    GPUObjectDataBuffer m_objectDataBuffer{};
+
+    /* Others */
 
     static Engine *loadedEngine;
     static decltype(std::chrono::system_clock::now()) prevChrono;
 
     friend class ::Loaders::Map;
     friend class Resources;
+    friend class Resources2;
     friend class DrawingFuncs;
 };
 

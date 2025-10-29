@@ -7,15 +7,10 @@
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
+#include "align_check.h"
 
 namespace Graphics
 {
-
-struct MeshPushConstants
-{
-	glm::vec4 data {};
-	glm::mat4 render_matrix {};
-};
 
 /**
  * @brief Push constants for compute shader operations
@@ -23,10 +18,10 @@ struct MeshPushConstants
  */
 struct ComputePushConstants
 {
-	glm::vec4 data1 {};
-	glm::vec4 data2 {};
-	glm::vec4 data3 {};
-	glm::vec4 data4 {};
+    GPU_EXPOSED(glm::vec4, data1) {};
+    GPU_EXPOSED(glm::vec4, data2) {};
+    GPU_EXPOSED(glm::vec4, data3) {};
+    GPU_EXPOSED(glm::vec4, data4) {};
 };
 
 struct ComputeEffect
@@ -66,16 +61,14 @@ struct EngineStats
  */
 struct Vertex
 {
-	glm::vec3 position {};
-	float uv_x = 0.f;
-	glm::vec3 normal {};
-	float uv_y = 0.f;
-	glm::vec4 color {};
+    GPU_EXPOSED(glm::vec3, position) {};
+    GPU_EXPOSED(glm::vec2, uv) {};
+    GPU_EXPOSED(glm::vec3, normal) {};
 };
 
 struct LineVertex
 {
-    glm::vec2 position;
+    GPU_EXPOSED(glm::vec2, position) {};
 };
 
 /// @brief GPU resources for a mesh
@@ -86,11 +79,23 @@ struct GPUMeshBuffers
 	VkDeviceAddress vertexBufferAddress = 0;
 };
 
+struct GPUObjectDataBuffer
+{
+    AllocatedBuffer buffer;
+    VkDeviceAddress deviceAddress;
+};
+
 struct GPULineBuffers
 {
     AllocatedBuffer indexBuffer{};
     AllocatedBuffer vertexBuffer{};
     VkDeviceAddress vertexBufferAddress = 0;
+};
+
+struct GPUAnimationBuffers
+{
+    AllocatedBuffer animationBuffer{};
+    VkDeviceAddress animationBufferAddress = 0;
 };
 
 struct GPUPointBuffers
@@ -101,44 +106,26 @@ struct GPUPointBuffers
 };
 
 /// @brief Push constants for indirect mesh drawing
-struct GPUDrawPushConstants
+struct GPUDrawPushConstants2
 {
-    float animationTime{};
-    float frameInterval = 0.01;
-
-    glm::uint16_t gridColumns = 1;
-    glm::uint16_t gridRows = 1;
-    glm::uint16_t framesCount = 0;
-
-    glm::mat4 worldMatrix{};
-    VkDeviceAddress vertexBuffer = 0;
+    GPU_EXPOSED(glm::mat4, worldMatrix) {};
+    GPU_EXPOSED(VkDeviceAddress, vertexBuffer) = 0;
+    GPU_EXPOSED(VkDeviceAddress, animationBuffer) = 0;
+    GPU_EXPOSED(VkDeviceAddress, objectsBuffer) = 0;
 };
 
 struct GPUDrawLinePushConstants
 {
-    glm::mat4 worldMatrix{};
-    glm::vec3 color{};
-    VkDeviceAddress vertexBuffer = 0;
+    GPU_EXPOSED(glm::mat4, worldMatrix) {};
+    GPU_EXPOSED(glm::vec3, color) {};
+    GPU_EXPOSED(VkDeviceAddress, vertexBuffer) = 0;
 };
 
 struct GPUDrawPointPushConstants
 {
-    glm::vec2 pos{};
-    glm::vec4 color{};
+    GPU_EXPOSED(glm::vec2, pos) {};
+    GPU_EXPOSED(glm::vec4, color) {};
 };
-
-struct GPUSceneData
-{
-	glm::mat4 view {};
-	glm::mat4 proj {};
-	glm::mat4 viewproj {};
-	glm::vec4 ambientColor {};
-	glm::vec4 sunlightDirection {}; // w for sun power
-	glm::vec4 sunlightColor {};
-};
-
-
 }
-
 
 #endif // GRAPHICS_TYPES_H

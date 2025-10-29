@@ -15,15 +15,14 @@ int main(int argc, char **argv)
 	UNUSED(argv);
 	UNUSED(argc);
 
-    std::vector<World::Chunk> chunks{};
+    std::vector<Graphics::Chunk2> chunks{};
     World::Scene scene(chunks);
     Orchestrator orchestrator{};
 
     {
-        const auto error
-            = orchestrator.loadMap(scene, "/home/nicolas/Documents/projects/juice-power/maps/0");
+        const auto error = orchestrator.loadMap(scene, "/home/nicolas/Documents/repos/github/juice-power/maps/0");
         if (error != Loaders::Status::Ok) {
-            std::cout << "Erreur: " << magic_enum::enum_name(error) << '\n';
+            std::cerr << "Erreur: " << magic_enum::enum_name(error) << '\n';
             return 0;
         }
     }
@@ -32,7 +31,7 @@ int main(int argc, char **argv)
 
     orchestrator.run();
 
-    scene.res->cleanup(orchestrator.graphicsEngine());
+    scene.res2->cleanup(orchestrator.graphicsEngine());
     orchestrator.cleanup();
 
     return 0;

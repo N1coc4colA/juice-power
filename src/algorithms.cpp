@@ -56,7 +56,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         points[4] = glm::vec2{0.f, 0.f};
 
         min = glm::vec2{0.f, 0.f};
-        max = glm::vec2{static_cast<float>(imageWidth / channelsCount), static_cast<float>(image.height())};
+        max = glm::vec2{1.f, 1.f};
 
         return;
     }
@@ -113,7 +113,9 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         points[4] = glm::vec2{0.f, 0.f};
 
         min = glm::vec2{0.f, 0.f};
-        max = glm::vec2{static_cast<float>(imgRealWidth), static_cast<float>(image.height())};
+        max = glm::vec2{1.f, 1.f};
+
+        assert(max.x <= 1.f && max.y <= 1.f);
 
         return;
     }

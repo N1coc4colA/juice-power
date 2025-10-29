@@ -7,6 +7,7 @@
 
 #include "../physics/entity.h"
 
+#include "objectdata.h"
 
 namespace World
 {
@@ -22,12 +23,15 @@ public:
 	 * At runtime, stored in the Resources.
 	 */
 	std::vector<uint32_t> descriptions {};
-	/**
+
+    //std::unordered_map < uint32_t,
+
+    /**
 	 * @brief Objects positions
 	 * The Z component is used exclusively for drawing.
 	 */
-	std::vector<glm::vec3> positions {};
-	/**
+    std::vector<glm::vec3> positions{};
+    /**
 	 * @brief Objects Transformation
 	 */
 	std::vector<glm::mat4> transforms {};
@@ -37,8 +41,6 @@ public:
     /// @brief Current animation frame
     std::vector<float> animFrames;
 };
-
-
 }
 
 

@@ -26,7 +26,7 @@ public:
     virtual const char *what() const noexcept override;
 
 private:
-    std::string m_msg;
+    std::string m_msg{};
 };
 
 

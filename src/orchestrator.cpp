@@ -67,5 +67,5 @@ void Orchestrator::setScene(World::Scene &scene)
 Loaders::Status Orchestrator::loadMap(World::Scene &scene, const std::string &path)
 {
     Loaders::Map mapLoader(path);
-    return mapLoader.load(*m_graphicsEngine, scene);
+    return mapLoader.load2(*m_graphicsEngine, scene);
 }

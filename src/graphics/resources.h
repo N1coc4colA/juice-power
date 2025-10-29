@@ -6,39 +6,41 @@
 #include <glm/glm.hpp>
 
 #include "allocatedimage.h"
+#include "src/world/objectdata.h"
 #include "types.h"
-
 
 namespace Graphics
 {
 
 class Engine;
 
-
-class Resources
+class Resources2
 {
 public:
-	/* Objects' Descriptions */
-	using Vertices = union { Vertex data[4]; };
+    /* Objects' Descriptions */
 
-	/// @brief Vertices for each element.
-	std::vector<Vertices> vertices {};
+    /// @brief Vertices for each element.
+    std::vector<Vertex> vertices{};
 
-	/// @brief Images of the different models.
-	std::vector<AllocatedImage> images {};
+    /// @brief Images of the different models.
+    std::vector<AllocatedImage> images{};
 
-	/**
+    /// @brief Animations for the whole scene.
+    std::vector<Graphics::AnimationData> animations{};
+    GPUAnimationBuffers animationsBuffer{};
+
+    /**
 	 * @brief Types of the models.
 	 * @note Used by the physics engine, never used in graphics.
 	 */
-	std::vector<uint32_t> types {};
+    std::vector<uint32_t> types{};
 
-	/**
+    /**
 	 * @brief Borders delimiting the limits of each resource.
 	 * This is determined when loading the resource, and then used by the
 	 * physics engine.
 	 */
-	std::vector<std::vector<glm::vec2>> borders {};
+    std::vector<std::vector<glm::vec2>> borders{};
     std::vector<uint32_t> borderOffsets{};
 
     /**
@@ -51,30 +53,20 @@ public:
     /**
 	 * @brief Bounding box of the resource.
 	 */
-	std::vector<std::tuple<glm::vec2, glm::vec2>> boundingBoxes{};
-
-    /// @brief Spritesheet columns
-    std::vector<float> animColumns{};
-    /// @brief Spritesheet rows
-    std::vector<float> animRows{};
-    /// @brief Duration of an animation frame, interval between 2 frames.
-    std::vector<float> animInterval{};
-    /// @brief Number of frames for the animation.
-    std::vector<glm::uint16_t> animFrames{};
+    std::vector<std::tuple<glm::vec2, glm::vec2>> boundingBoxes{};
 
     /// @brief Mesh buffers for vertices.
     GPUMeshBuffers meshBuffers{};
 
-    /// @brief to draw lines.
+    /// @brief To draw lines.
     GPULineBuffers linesBuffer{};
 
+    /// @brief To draw element root point.
     GPUPointBuffers pointsBuffer{};
 
     void build(Engine &engine);
     void cleanup(Engine &engine);
 };
-
-
 }
 
 
