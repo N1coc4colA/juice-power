@@ -1230,7 +1230,8 @@ public:
         int prevImgId = -1;
 
         for (const auto &refs : chunk.references) {
-            const auto currImgId = engine.m_scene->res2->animations[refs.front().animationId].imageId;
+            const auto currImgId = engine.m_scene->res2->groupedImagesMapping[engine.m_scene->res2->animations[refs.front().animationId].imageId];
+
             if (currImgId != prevImgId) {
                 prevImgId = currImgId;
                 ++engine.m_switchesCount;
@@ -1254,9 +1255,7 @@ public:
             vkCmdPushConstants(cmd, engine.m_meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants2), &push_constants);
             vkCmdBindIndexBuffer(cmd, engine.m_scene->res2->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-            assert(refs.size() > 0);
-            const auto bi = static_cast<uint32_t>(engine.m_objCount);
-            vkCmdDrawIndexed(cmd, 6, refs.size(), 0, 0, bi);
+            vkCmdDrawIndexed(cmd, 6, refs.size(), 0, 0, static_cast<uint32_t>(engine.m_objCount));
 
             engine.m_objCount += refs.size();
         }
@@ -1266,11 +1265,16 @@ public:
         __attribute__((always_inline))
     {
         for (const auto &refs : chunk.references) {
-            const auto currImgId = engine.m_scene->res2->animations[refs.front().animationId].imageId;
+            const auto currImgId = engine.m_scene->res2->groupedImagesMapping[engine.m_scene->res2->animations[refs.front().animationId].imageId];
 
             for (const auto &obj : refs) {
                 push_constants.color = chunk.entities[obj.objId].has_collision ? glm::vec3(1.f, 0.f, 0.f) : glm::vec3(0.f, 1.f, 0.f);
                 push_constants.worldMatrix = glm::translate(engine.worldMatrix, glm::vec3(obj.position.x, obj.position.y, 0.0f));
+                if (chunk.entities[obj.objId].has_collision) {
+                    std::cout << "Drawing collision of " << chunk.entities[obj.objId].id << '\n';
+                } else {
+                    std::cout << "Drawing non-collision of " << chunk.entities[obj.objId].id << '\n';
+                }
 
                 vkCmdPushConstants(cmd, engine.m_linePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawLinePushConstants), &push_constants);
                 vkCmdBindIndexBuffer(cmd, engine.m_scene->res2->linesBuffer.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -1607,9 +1611,31 @@ void Engine::uploadObjectData(const std::span<Graphics::ObjectData> &objectData)
     destroyBuffer(staging);
 }
 
+uint64_t Engine::getDeviceMaxImageSize() const
+{
+    assert(m_chosenGPU != VK_NULL_HANDLE);
+
+    VkImageFormatProperties props;
+    vkGetPhysicalDeviceImageFormatProperties(m_chosenGPU,
+                                             VK_FORMAT_R8G8B8A8_UNORM,
+                                             VK_IMAGE_TYPE_2D,
+                                             VK_IMAGE_TILING_OPTIMAL,
+                                             VK_IMAGE_USAGE_SAMPLED_BIT,
+                                             VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+                                             &props);
+
+    return props.maxResourceSize;
+}
+
 GPUAnimationBuffers Engine::uploadMesh(const std::span<const AnimationData> &animations)
 {
     LOGFN();
+
+    for (const auto &anim : animations) {
+        for (int i = 0; i < 4; i++) {
+            assert(anim.imageInfo[i] != -1);
+        }
+    }
 
     const size_t animationBufferSize = sizeof(Graphics::AnimationData) * animations.size();
 

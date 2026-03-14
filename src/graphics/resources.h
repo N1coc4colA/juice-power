@@ -1,6 +1,7 @@
 #ifndef GRAPHICS_RESOURCES_H
 #define GRAPHICS_RESOURCES_H
 
+#include <set>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -28,6 +29,8 @@ public:
     /// @brief Animations for the whole scene.
     std::vector<Graphics::AnimationData> animations{};
     GPUAnimationBuffers animationsBuffer{};
+
+    std::unordered_map<uint32_t, uint32_t> groupedImagesMapping{};
 
     /**
 	 * @brief Types of the models.

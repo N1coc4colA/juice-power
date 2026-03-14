@@ -33,14 +33,14 @@ public:
 	 * @brief Loads the map & associated resources from path provided to ctor.
 	 * @return The error status (Status::Ok if no error happened).
 	 */
-    Status load2(Graphics::Engine &engine, World::Scene &m_scene);
+    std::tuple<Status, std::string> load2(Graphics::Engine &engine, World::Scene &m_scene);
 
 protected:
-    static Status buildResources(const std::unordered_map<std::string, int> &imagesMap,
-                                 const std::string &m_assets,
-                                 Graphics::Resources2 &res2,
-                                 Graphics::Engine &engine,
-                                 const JsonMap &map);
+    static std::tuple<Status, std::string> buildResources(const std::unordered_map<std::string, int> &imagesMap,
+                                                          const std::string &m_assets,
+                                                          Graphics::Resources2 &res2,
+                                                          Graphics::Engine &engine,
+                                                          const JsonMap &map);
 
 private:
     std::string m_path;

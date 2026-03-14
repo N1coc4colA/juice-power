@@ -35,7 +35,7 @@ public:
     void run();
     void cleanup();
 
-    Loaders::Status loadMap(World::Scene &scene, const std::string &path);
+    std::tuple<Loaders::Status, std::string> loadMap(World::Scene &scene, const std::string &path);
     void setScene(World::Scene &scene);
 
     inline Graphics::Engine &graphicsEngine() { return *m_graphicsEngine; }

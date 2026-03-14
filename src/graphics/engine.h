@@ -79,6 +79,8 @@ public:
     inline World::Scene *scene() { return m_scene; }
     inline const World::Scene *scene() const { return m_scene; }
 
+    uint64_t getDeviceMaxImageSize() const;
+
 protected:
 	void initSDL();
 	void initVulkan();

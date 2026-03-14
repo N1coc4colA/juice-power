@@ -64,7 +64,7 @@ void Orchestrator::setScene(World::Scene &scene)
     m_physicsEngine->setScene(scene);
 }
 
-Loaders::Status Orchestrator::loadMap(World::Scene &scene, const std::string &path)
+std::tuple<Loaders::Status, std::string> Orchestrator::loadMap(World::Scene &scene, const std::string &path)
 {
     Loaders::Map mapLoader(path);
     return mapLoader.load2(*m_graphicsEngine, scene);

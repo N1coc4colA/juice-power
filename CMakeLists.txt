@@ -16,6 +16,9 @@ endif()
 set(CMAKE_CXX_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
 set(CMAKE_C_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
 
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fstack-protector -fstack-check -fsanitize=address,undefined,,memtag-stack,shadow-call-stack,leak," CACHE STRING "Flags for Debug build type")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g -fstack-protector -fstack-check -fsanitize=address,undefined,,memtag-stack,shadow-call-stack,leak," CACHE STRING "Flags for Debug build type")
+
 
 option(BUILD_STATIC "Build libraries as static" OFF)
 option(ENABLE_PROFILE "Enable profiling with gprof" OFF)
@@ -187,6 +190,7 @@ endif()
 add_subdirectory("submodules/vk-bootstrap")
 add_subdirectory("submodules/glaze")
 add_subdirectory("submodules") # For ImGui
+add_subdirectory("submodules/pack2")
 
 find_package(Vulkan REQUIRED)
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
@@ -256,6 +260,7 @@ juice-power
 		glaze::glaze
 		${Boost_LIBRARIES}
 		potrace
+		pack2
 )
 
 

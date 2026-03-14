@@ -30,6 +30,7 @@ layout(std430) struct AnimationData {
     uint16_t gridColumns;
     uint16_t framesCount;
     float frameInterval;
+    vec4 imageInfo;
 };
 
 
@@ -70,9 +71,9 @@ void main()
     const int row = frameIndex / int(anim.gridColumns);
 
     // Calculate UV coordinates for current frame
-    const vec2 frameSize = vec2(1.0 / anim.gridColumns, 1.0 / anim.gridRows);
+    const vec2 frameSize = vec2(anim.imageInfo.z / anim.gridColumns, anim.imageInfo.w / anim.gridRows);
     const vec2 frameOffset = vec2(col, row) * frameSize;
-    const vec2 uv = v.uv * frameSize + frameOffset;
+    const vec2 uv = v.uv * frameSize + frameOffset + anim.imageInfo.xy;
 
     gl_Position = PushConstants.render_matrix * vec4(v.position + objData.position.xyz, 1.0);
     //gl_Position = PushConstants.render_matrix * objData.transform * vec4(v.position, 1.0);

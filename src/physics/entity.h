@@ -5,6 +5,8 @@
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 
+#include <cstdlib>
+#include <iostream>
 #include <span>
 #include <vector>
 
@@ -142,7 +144,7 @@ public:
 
     inline constexpr glm::vec2 center() const noexcept
     {
-        return position + (boundingBox.max - boundingBox.min) / 2.f;
+        return position + (boundingBox.min + boundingBox.max) * 0.5f;
     }
 
     constexpr Projection getMinMax(const std::span<const glm::vec2> &borders,
@@ -174,7 +176,7 @@ public:
         };
     }
 
-    constexpr bool collides(const Entity &other, CollisionInfo &info) const noexcept
+    bool collides(const Entity &other, CollisionInfo &info) const noexcept
     {
         // t: this, o: other, b: borders, n: normals
         const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());
@@ -185,6 +187,15 @@ public:
         float minOverlap = std::numeric_limits<float>::max();
         glm::vec2 smallestAxis{};
 
+        const bool debug = getenv("JUICE_DEBUG_COLLISIONS") != nullptr;
+        if (debug) {
+            std::cout << "--- COLLISION CHECK: this id=" << id << " other id=" << other.id << "\n";
+            std::cout << "this pos=" << position.x << "," << position.y << " center=" << center().x << "," << center().y << "\n";
+            std::cout << "other pos=" << other.position.x << "," << other.position.y << " center=" << other.center().x << "," << other.center().y << "\n";
+            std::cout << "this borders count=" << borders.size() << " normals count=" << normals.size() << "\n";
+            std::cout << "other borders count=" << other.borders.size() << " normals count=" << other.normals.size() << "\n";
+        }
+
         {
 			for (const auto &normal : tn) {
 				const auto firstIntersect = getMinMax(tb, normal);
@@ -192,10 +203,17 @@ public:
 
 				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
 				if (isSeparated) {
+					if (debug) {
+						std::cout << "Separated on this's axis: (" << normal.x << "," << normal.y << ")\n";
+						std::cout << "  this proj: [" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other proj: [" << secondIntersect.minProj << "," << secondIntersect.maxProj << "]\n";
+					}
 					return false;
 				}
 
 				const float overlap = std::min(firstIntersect.maxProj - secondIntersect.minProj, secondIntersect.maxProj - firstIntersect.minProj);
+				if (debug) {
+					std::cout << "Axis (this): (" << normal.x << "," << normal.y << ") proj this=[" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other=[" << secondIntersect.minProj << "," << secondIntersect.maxProj << "] overlap=" << overlap << "\n";
+				}
 				if (overlap < minOverlap) {
 					minOverlap = overlap;
 					smallestAxis = normal;
@@ -210,10 +228,17 @@ public:
 
 				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
 				if (isSeparated) {
+					if (debug) {
+						std::cout << "Separated on other's axis: (" << normal.x << "," << normal.y << ")\n";
+						std::cout << "  this proj: [" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other proj: [" << secondIntersect.minProj << "," << secondIntersect.maxProj << "]\n";
+					}
 					return false;
 				}
 
 				const float overlap = std::min(firstIntersect.maxProj - secondIntersect.minProj, secondIntersect.maxProj - firstIntersect.minProj);
+				if (debug) {
+					std::cout << "Axis (other): (" << normal.x << "," << normal.y << ") proj this=[" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other=[" << secondIntersect.minProj << "," << secondIntersect.maxProj << "] overlap=" << overlap << "\n";
+				}
 				if (overlap < minOverlap) {
 					minOverlap = overlap;
 					smallestAxis = normal;
@@ -221,9 +246,11 @@ public:
 			}
 		}
 
-		const auto centerDelta = center() - other.center();
+		// Ensure the normal points from this entity to the other entity.
+		// Use (other.center - center) so a negative dot indicates the axis
+		// points away from the other entity and must be inverted.
+		const auto centerDelta = other.center() - center();
 		if (glm::dot(centerDelta, smallestAxis) < 0.f) {
-			// Means it's inverted, just invert it.
 			smallestAxis = -smallestAxis;
 		}
 

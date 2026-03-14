@@ -203,28 +203,29 @@ VkImageCreateInfo vkinit::image_create_info(const VkFormat format, const VkImage
 	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(usageFlags != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
 
-	const VkImageCreateInfo info {
-		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		.pNext = nullptr,
+    const VkImageCreateInfo info{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
 
-		.imageType = VK_IMAGE_TYPE_2D,
+        .flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+        .imageType = VK_IMAGE_TYPE_2D,
 
-		.format = format,
-		.extent = extent,
+        .format = format,
+        .extent = extent,
 
-		.mipLevels = 1,
-		.arrayLayers = 1,
+        .mipLevels = 1,
+        .arrayLayers = 1,
 
-		// for MSAA. we will not be using it by default, so default it to 1 sample per
-		// pixel.
-		.samples = VK_SAMPLE_COUNT_1_BIT,
+        // for MSAA. we will not be using it by default, so default it to 1 sample per
+        // pixel.
+        .samples = VK_SAMPLE_COUNT_1_BIT,
 
-		// optimal tiling, which means the image is stored on the best gpu format
-		.tiling = VK_IMAGE_TILING_OPTIMAL,
-		.usage = usageFlags,
-	};
+        // optimal tiling, which means the image is stored on the best gpu format
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = usageFlags,
+    };
 
-	return info;
+    return info;
 }
 
 VkImageViewCreateInfo vkinit::imageview_create_info(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags)

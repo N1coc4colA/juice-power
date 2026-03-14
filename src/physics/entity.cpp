@@ -5,7 +5,6 @@
 #include "src/defines.h"
 #include "src/utils.h"
 
-#include "src/helpers.h"
 
 constexpr double GRAVITY = -0.05;
 

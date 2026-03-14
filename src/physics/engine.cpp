@@ -117,7 +117,30 @@ void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const Coll
 
     const glm::vec2 impulse = j * info.normal;
 
-    if (a.canCollide && b.canCollide) {
+    const int choice = (1 << a.canCollide) + (2 << b.canCollide);
+    /*
+        a b choice
+        0 0 1+2 = 3 // Don't care.
+        0 1 1+4 = 5
+        1 0 2+2 = 4
+        1 1 2+4 = 6
+    */
+    switch (choice) {
+    case 4: {
+        const auto v = epsiloned(impulse * invMassA);
+
+        a.velocity += v;
+        a.position -= info.normal * info.depth;
+        break;
+    }
+    case 5: {
+        const auto v = epsiloned(impulse * invMassB);
+
+        b.velocity -= v;
+        b.position += info.normal * info.depth;
+        break;
+    }
+    case 6: {
         {
             const auto v = epsiloned(impulse * invMassA);
 
@@ -128,16 +151,15 @@ void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const Coll
 
             b.velocity -= v;
         }
-    } else if (a.canCollide) {
-        const auto v = epsiloned(impulse * invMassA);
-
-        a.velocity += v;
-        a.position -= info.normal * info.depth;
-    } else if (b.canCollide) {
-        const auto v = epsiloned(impulse * invMassB);
-
-        b.velocity -= v;
-        b.position += info.normal * info.depth;
+        break;
+    }
+    case 3: {
+        break;
+    }
+    default: {
+        assert(false && "Entering this switch case should never have happened.");
+        break;
+    }
     }
 }
 
@@ -203,21 +225,16 @@ void Engine::resolveCollisions(std::vector<Physics::Entity> &en1, Physics::Entit
         if (&e != &e2) {
             [[likely]];
 
-            if (!m_scene->collisions.contains(m)) {
-                if ((e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
-                    // We need to resolve the collision.
-                    if (e.collides(e2, info)) {
-                        resolveCollision(e, e2, info);
+            if (!m_scene->collisions.contains(m) && (e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
+                // We need to resolve the collision.
+                if (e.collides(e2, info)) {
+                    //std::cout << "Detected collision between entities " << e.id << " and " << e2.id << " normal=(" << info.normal.x << "," << info.normal.y << ") depth=" << info.depth << "\n";
+                    resolveCollision(e, e2, info);
 
-                        if (e.canCollide) {
-                            e.has_collision = true;
-                        }
-                        if (e2.canCollide) {
-                            e2.has_collision = true;
-                        }
+                    e.has_collision = e.canCollide;
+                    e2.has_collision = e2.canCollide;
 
-                        m_scene->collisions.insert(m);
-                    }
+                    m_scene->collisions.insert(m);
                 }
             }
         }
@@ -234,9 +251,7 @@ void Engine::resolveAllCollisions()
             // Previous chunks' entities have already been checked against.
             for (auto &e : m_scene->view2[i].entities) {
                 for (size_t j = i; j < size; j++) {
-                    auto &c2 = m_scene->view2[j];
-
-                    resolveCollisions(c2.entities, e);
+                    resolveCollisions(m_scene->view2[j].entities, e);
                 }
             }
         }

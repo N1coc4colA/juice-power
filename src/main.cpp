@@ -21,8 +21,8 @@ int main(int argc, char **argv)
 
     {
         const auto error = orchestrator.loadMap(scene, "/home/nicolas/Documents/repos/github/juice-power/maps/0");
-        if (error != Loaders::Status::Ok) {
-            std::cerr << "Erreur: " << magic_enum::enum_name(error) << '\n';
+        if (std::get<0>(error) != Loaders::Status::Ok) {
+            std::cerr << "Erreur: " << magic_enum::enum_name(std::get<0>(error)) << ": " << std::get<1>(error) << '\n';
             return 0;
         }
     }

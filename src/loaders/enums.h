@@ -16,11 +16,11 @@ enum Status : uint8_t {
     MissingChunkFile,
     MissingResourceFile,
     MissingResource,
+    MissingRequirement,
 
     First = Ok,
-    Last = MissingResource,
+    Last = MissingRequirement,
 };
-
 }
 
 #endif // LOADERS_ENUMS_H
