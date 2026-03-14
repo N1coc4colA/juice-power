@@ -39,7 +39,12 @@ struct AllocatedImage
 	VkFormat imageFormat = VK_FORMAT_MAX_ENUM;
 };
 
-
+struct CachedImage
+{
+    AllocatedImage image = {};
+    // pre-baked, persistent
+    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+};
 }
 
 

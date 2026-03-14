@@ -96,6 +96,9 @@ protected:
 	void initDefaultData();
     void initObjectDataBuffer();
 
+    void initImageDescriptors(const uint32_t imageCount);
+    void deinitImageDescriptors();
+
     void draw();
     void drawBackground(VkCommandBuffer cmd);
     void drawImgui(VkCommandBuffer cmd, VkImageView targetImageView);
@@ -159,6 +162,7 @@ private:
 	 * @note Automatically destroys both image and image view
 	 */
     void destroyImage(const AllocatedImage &img);
+    void destroyImage(const CachedImage &img);
 
     /**
 	 * @brief Creates a GPU buffer
@@ -270,6 +274,7 @@ private:
     /* Scene */
 
     World::Scene *m_scene = nullptr;
+    DescriptorAllocatorFreeable m_imageDescriptorAllocator{};
 
     /* Animation */
 

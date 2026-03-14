@@ -24,7 +24,7 @@ public:
     std::vector<Vertex> vertices{};
 
     /// @brief Images of the different models.
-    std::vector<AllocatedImage> images{};
+    std::vector<CachedImage> images{};
 
     /// @brief Animations for the whole scene.
     std::vector<Graphics::AnimationData> animations{};

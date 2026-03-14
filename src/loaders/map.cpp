@@ -442,7 +442,10 @@ std::tuple<Status, std::string> Map::buildResources(const std::unordered_map<std
     for (size_t fi = 0; fi < imageFrames.size(); ++fi) {
         const auto &frameInfo = imageFrames[fi];
         // createImage expects a pointer to pixel data arranged as RGBA
-        res2.images[fi] = engine.createImage(frameImages[fi].get(), VkExtent3D{static_cast<uint32_t>(frameInfo.w), static_cast<uint32_t>(frameInfo.h), 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+        res2.images[fi].image = engine.createImage(frameImages[fi].get(),
+                                                   VkExtent3D{static_cast<uint32_t>(frameInfo.w), static_cast<uint32_t>(frameInfo.h), 1},
+                                                   VK_FORMAT_R8G8B8A8_UNORM,
+                                                   VK_IMAGE_USAGE_SAMPLED_BIT);
     }
 
     /* Update animations' data */ {

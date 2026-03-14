@@ -67,6 +67,8 @@ void Resources2::build(Engine &engine)
     }
 
     animationsBuffer = engine.uploadMesh(animations);
+
+    engine.initImageDescriptors(static_cast<uint32_t>(images.size()));
 }
 
 void Resources2::cleanup(Engine &engine)
@@ -84,6 +86,7 @@ void Resources2::cleanup(Engine &engine)
     for (const auto &img : images) {
         engine.destroyImage(img);
     }
+    engine.deinitImageDescriptors();
 
     images.clear();
     vertices.clear();

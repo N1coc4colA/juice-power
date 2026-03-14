@@ -186,7 +186,23 @@ private:
     uint32_t m_setsPerPool = -1;
 };
 
+/**
+ * @brief Fixed-size descriptor allocator with per-set free support.
+ *
+ * Backed by a pool created with FREE_DESCRIPTOR_SET_BIT.
+ * Intended for long-lived descriptors that may be individually released.
+ */
+struct DescriptorAllocatorFreeable
+{
+    void init(VkDevice device, const uint32_t maxSets, const VkDescriptorType type);
+    void destroyPool(VkDevice device);
 
+    VkDescriptorSet allocate(VkDevice device, const VkDescriptorSetLayout layout);
+    void free(VkDevice device, const VkDescriptorSet set);
+
+private:
+    VkDescriptorPool m_pool = VK_NULL_HANDLE;
+};
 }
 
 

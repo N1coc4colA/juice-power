@@ -265,5 +265,60 @@ VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescrip
 	return ds;
 }
 
+void DescriptorAllocatorFreeable::init(VkDevice device, const uint32_t maxSets, const VkDescriptorType type)
+{
+    assert(device != VK_NULL_HANDLE);
+    assert(maxSets != 0);
 
+    const VkDescriptorPoolSize poolSize{
+        .type = type,
+        .descriptorCount = maxSets,
+    };
+
+    const VkDescriptorPoolCreateInfo poolInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = maxSets,
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize,
+    };
+
+    VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &m_pool));
+}
+
+void DescriptorAllocatorFreeable::destroyPool(VkDevice device)
+{
+    assert(device != VK_NULL_HANDLE);
+
+    vkDestroyDescriptorPool(device, m_pool, nullptr);
+    m_pool = VK_NULL_HANDLE;
+}
+
+VkDescriptorSet DescriptorAllocatorFreeable::allocate(VkDevice device, const VkDescriptorSetLayout layout)
+{
+    assert(device != VK_NULL_HANDLE);
+    assert(layout != VK_NULL_HANDLE);
+    assert(m_pool != VK_NULL_HANDLE);
+
+    const VkDescriptorSetAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = m_pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &layout,
+    };
+
+    VkDescriptorSet ds = VK_NULL_HANDLE;
+    VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &ds));
+
+    return ds;
+}
+
+void DescriptorAllocatorFreeable::free(VkDevice device, const VkDescriptorSet set)
+{
+    assert(device != VK_NULL_HANDLE);
+    assert(set != VK_NULL_HANDLE);
+    assert(m_pool != VK_NULL_HANDLE);
+
+    vkFreeDescriptorSets(device, m_pool, 1, &set);
+}
 }

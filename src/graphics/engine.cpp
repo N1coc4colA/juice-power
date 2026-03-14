@@ -1235,26 +1235,34 @@ public:
             if (currImgId != prevImgId) {
                 prevImgId = currImgId;
                 ++engine.m_switchesCount;
-                //bind the texture
-                VkDescriptorSet imageSet = engine.getCurrentFrame().frameDescriptors.allocate(engine.m_device, engine.m_singleImageDescriptorLayout);
-                {
-                    DescriptorWriter writer{};
 
+                // No allocation, no write — just bind the pre-baked set
+                CachedImage &cachedImage = engine.m_scene->res2->images[currImgId];
+
+                VkDescriptorSet imageSet = cachedImage.descriptorSet;
+                // We need to cache the image to the GPU so that it can be used without reuploads.
+                if (imageSet == VK_NULL_HANDLE) [[unlikely]] {
+                    imageSet = engine.m_imageDescriptorAllocator.allocate(engine.m_device, engine.m_singleImageDescriptorLayout);
+                    //imageSet = engine.getCurrentFrame().frameDescriptors.allocate(engine.m_device, engine.m_singleImageDescriptorLayout);
+
+                    DescriptorWriter writer{};
                     writer.writeImage(0,
-                                      engine.m_scene->res2->images[currImgId].imageView,
+                                      cachedImage.image.imageView,
                                       engine.m_defaultSamplerNearest,
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
                     writer.updateSet(engine.m_device, imageSet);
+                    cachedImage.descriptorSet = imageSet;
                 }
-                assert(imageSet != VK_NULL_HANDLE);
 
+                assert(imageSet != VK_NULL_HANDLE);
                 vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, engine.m_meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
             }
 
             vkCmdPushConstants(cmd, engine.m_meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants2), &push_constants);
             vkCmdBindIndexBuffer(cmd, engine.m_scene->res2->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
+            // SEGFAULT: (Vulkan) vkCmdDrawIndexed > (Vulkan Validation Layers) vulkan_layer_chassis::CmdDrawIndexed > vvl::dispatch::Device::CmdDrawIndexed > (MESA) gfx9_CmdDrawIndexed > cmd_buffer_flush_gfx_state > gfx9_cmd_buffer_flush_descriptor_sets > emit_samplers
             vkCmdDrawIndexed(cmd, 6, refs.size(), 0, 0, static_cast<uint32_t>(engine.m_objCount));
 
             engine.m_objCount += refs.size();
@@ -1798,6 +1806,16 @@ void Engine::initObjectDataBuffer()
     m_mainDeletionQueue.push_function([this]() { destroyBuffer(m_objectDataBuffer.buffer); });
 }
 
+void Engine::initImageDescriptors(const uint32_t imageCount)
+{
+    m_imageDescriptorAllocator.init(m_device, imageCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+}
+
+void Engine::deinitImageDescriptors()
+{
+    m_imageDescriptorAllocator.destroyPool(m_device);
+}
+
 void Engine::createSwapchain(const uint32_t w, const uint32_t h)
 {
     LOGFN();
@@ -1961,6 +1979,17 @@ void Engine::destroyImage(const AllocatedImage &img)
 
     vkDestroyImageView(m_device, img.imageView, nullptr);
     vmaDestroyImage(m_allocator, img.image, img.allocation);
+}
+
+void Engine::destroyImage(const CachedImage &img)
+{
+    LOGFN();
+
+    if (img.descriptorSet != VK_NULL_HANDLE) {
+        m_imageDescriptorAllocator.free(m_device, img.descriptorSet);
+    }
+
+    destroyImage(img.image);
 }
 
 void Engine::setScene(World::Scene &scene)
