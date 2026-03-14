@@ -24,6 +24,13 @@ private:
     uchar __reserved[S];
 } __attribute__((packed));
 
+template<size_t CurrentOffset, size_t RequiredAlign>
+constexpr size_t padding_needed()
+{
+    constexpr size_t remainder = CurrentOffset % RequiredAlign;
+    return remainder == 0 ? 0 : (RequiredAlign - remainder);
+}
+
 namespace details {
 
 template<typename T, typename... Ts>
@@ -184,14 +191,14 @@ template<typename S>
     requires details::is_one_of_v<S, glm::mat2>
 constexpr size_t std430_compliant()
 {
-    return 16;
+    return 8;
 }
 
 template<typename S>
     requires details::is_one_of_v<S, glm::mat3>
 constexpr size_t std430_compliant()
 {
-    return 48;
+    return 16;
 }
 
 template<typename S>
@@ -199,6 +206,21 @@ template<typename S>
 constexpr size_t std430_compliant()
 {
     return 16;
+}
+
+template<typename S, size_t Offset>
+constexpr bool validate_struct_members()
+{
+    bool valid = true;
+    size_t current_offset = Offset;
+    boost::pfr::for_each_field(S{}, [&]<size_t I>(auto& field) {
+        using FieldType = std::remove_cvref_t<decltype(field)>;
+        // align current_offset, then validate
+        current_offset += padding_needed<current_offset, std430_compliant<FieldType>()>();
+        valid &= is_std430_compliant<FieldType, current_offset, S, I>();
+        current_offset += sizeof(FieldType);
+    });
+    return valid;
 }
 
 } // namespace GPUChecks
