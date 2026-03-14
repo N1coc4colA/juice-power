@@ -50,10 +50,10 @@ struct AllocatedBuffer
 struct EngineStats
 {
 	float frameTime = 0.f;
-	int triangleCount = 0.f;
-	int drawcallCount = 0.f;
-	float sceneUpdateTime = 0.f;
-	float meshDrawTime = 0.f;
+    int triangleCount = 0;
+    int drawcallCount = 0;
+    float sceneUpdateTime = 0.f;
+    float meshDrawTime = 0.f;
 };
 
 /**
@@ -62,8 +62,11 @@ struct EngineStats
 struct Vertex
 {
     GPU_EXPOSED(glm::vec3, position) {};
+    GPUChecks::Padding<4> _pad0;
     GPU_EXPOSED(glm::vec2, uv) {};
+    GPUChecks::Padding<8> _pad1;
     GPU_EXPOSED(glm::vec3, normal) {};
+    GPUChecks::Padding<4> _pad2;
 };
 
 struct LineVertex
@@ -118,14 +121,37 @@ struct GPUDrawLinePushConstants
 {
     GPU_EXPOSED(glm::mat4, worldMatrix) {};
     GPU_EXPOSED(glm::vec3, color) {};
+    GPUChecks::Padding<4> _pad0;
     GPU_EXPOSED(VkDeviceAddress, vertexBuffer) = 0;
 };
 
 struct GPUDrawPointPushConstants
 {
     GPU_EXPOSED(glm::vec2, pos) {};
+    GPUChecks::Padding<8> _pad0;
     GPU_EXPOSED(glm::vec4, color) {};
 };
-}
+
+namespace __Types {
+struct __Check
+{
+    __Check() = delete;
+
+    static_assert(sizeof(Vertex) == 48, "Vertex size mismatch");
+    static_assert(offsetof(Vertex, uv) == 16, "uv offset mismatch");
+    static_assert(offsetof(Vertex, normal) == 32, "normal offset mismatch");
+
+    static_assert(sizeof(GPUDrawPushConstants2) == 64 + 8 + 8 + 8 + /*padding*/ 8, "GPUDrawPushConstants2 size mismatch");
+    static_assert(offsetof(GPUDrawPushConstants2, vertexBuffer) == 64, "");
+    static_assert(offsetof(GPUDrawPushConstants2, animationBuffer) == 72, "");
+    static_assert(offsetof(GPUDrawPushConstants2, objectsBuffer) == 80, "");
+
+    static_assert(offsetof(GPUDrawLinePushConstants, vertexBuffer) == 80, "vertexBuffer offset mismatch");
+
+    static_assert(offsetof(GPUDrawPointPushConstants, color) == 16, "color offset mismatch");
+};
+
+} // namespace __Types
+} // namespace Graphics
 
 #endif // GRAPHICS_TYPES_H
