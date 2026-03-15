@@ -1,33 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
 
-## Build options ##
-
-# Set available build types
-set(VALID_BUILD_TYPES Debug Release MinRelSize Optimized)
-set(CMAKE_CONFIGURATION_TYPES "${VALID_BUILD_TYPES}" CACHE STRING "Available build types" FORCE)
-
-# Default to Release if not specified
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-endif()
-
-# Add custom build type flags
-set(CMAKE_CXX_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
-set(CMAKE_C_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
-
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fstack-protector -fstack-check -fsanitize=address,undefined,,memtag-stack,shadow-call-stack,leak," CACHE STRING "Flags for Debug build type")
-set(CMAKE_C_FLAGS_DEBUG "-O0 -g -fstack-protector -fstack-check -fsanitize=address,undefined,,memtag-stack,shadow-call-stack,leak," CACHE STRING "Flags for Debug build type")
-
-
-option(BUILD_STATIC "Build libraries as static" OFF)
-option(ENABLE_PROFILE "Enable profiling with gprof" OFF)
-
-# Custom optimization level override
-set(OPTIMIZATION_LEVEL "" CACHE STRING "Custom optimization level (e.g., -O0, -O1, -O2, -O3, or leave empty for default)")
-set_property(CACHE OPTIMIZATION_LEVEL PROPERTY STRINGS "" -O0 -O1 -O2 -O3)
-
-
 ## General project configuration ##
 
 project(
@@ -48,12 +21,60 @@ set(MAGIC_ENUM_INCL_DIR "")
 enable_testing()
 
 
+## Build options ##
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    set(CLANG_TIDY_STDLIB "--extra-arg=--stdlib=libstdc++")
+    set(CLANG_TIDY_DRIVER "--extra-arg-before=--driver-mode=g++")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CLANG_TIDY_DRIVER "--extra-arg-before=--driver-mode=cl")
+    if(APPLE)
+        set(CLANG_TIDY_STDLIB "--extra-arg=--stdlib=libc++")
+    else()
+        set(CLANG_TIDY_STDLIB "--extra-arg=--stdlib=libstdc++")
+    endif()
+endif()
+
+# Used for tooling
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+option(ENABLE_CLANG_TIDY "Enable Clang-Tidy during build" ON)
+
+# Set available build types
+set(VALID_BUILD_TYPES Debug Release MinRelSize Optimized)
+set(CMAKE_CONFIGURATION_TYPES "${VALID_BUILD_TYPES}" CACHE STRING "Available build types" FORCE)
+
+# Default to Release if not specified
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+# Add custom build type flags
+set(CMAKE_CXX_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
+set(CMAKE_C_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		set(SANITIZER_FLAGS "-fsanitize=address,undefined,memtag-stack,,leak") #shadow-call-stack
+	elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+		set(SANITIZER_FLAGS "-fsanitize=address,undefined,,leak") #shadow-call-stack
+	endif()
+endif()
+
+
+option(BUILD_STATIC "Build libraries as static" OFF)
+option(ENABLE_PROFILE "Enable profiling with gprof" OFF)
+
+# Custom optimization level override
+set(OPTIMIZATION_LEVEL "" CACHE STRING "Custom optimization level (e.g., -O0, -O1, -O2, -O3, or leave empty for default)")
+set_property(CACHE OPTIMIZATION_LEVEL PROPERTY STRINGS "" -O0 -O1 -O2 -O3)
+
+
 ## Handle build options ##
 
 if(BUILD_STATIC)
-  set(LIB_TYPE STATIC)
+	set(LIB_TYPE STATIC)
 else()
-  set(LIB_TYPE SHARED)
+	set(LIB_TYPE SHARED)
 endif()
 
 
@@ -62,21 +83,21 @@ set(EXTRA_FLAGS "")
 
 # Apply profiling flags
 if(ENABLE_PROFILE)
-  message(STATUS "Profiling enabled (gprof)")
-  list(APPEND EXTRA_FLAGS "-pg")
+	message(STATUS "Profiling enabled (gprof)")
+	list(APPEND EXTRA_FLAGS "-pg")
 
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 endif()
 
 # Apply optimization override if set
 if(OPTIMIZATION_LEVEL)
-  message(STATUS "Using custom optimization level: ${OPTIMIZATION_LEVEL}")
+	message(STATUS "Using custom optimization level: ${OPTIMIZATION_LEVEL}")
 
-  # Strip existing optimization flags and set ours
-  string(REGEX REPLACE "-O[0-3s]" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPTIMIZATION_LEVEL}")
-  string(REGEX REPLACE "-O[0-3s]" "" CMAKE_${lang}_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPTIMIZATION_LEVEL}")
+	# Strip existing optimization flags and set ours
+	string(REGEX REPLACE "-O[0-3s]" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OPTIMIZATION_LEVEL}")
+	string(REGEX REPLACE "-O[0-3s]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPTIMIZATION_LEVEL}")
 endif()
 
 # Apply extra flags to all configurations
@@ -126,6 +147,14 @@ juice-power
 	${CXX_SOURCES}
 	${C_SOURCES}
 )
+
+if(SANITIZER_FLAGS)
+	target_compile_options(juice-power PRIVATE
+		-O0 -g -fstack-protector -fstack-check ${SANITIZER_FLAGS}
+	)
+	target_link_options(juice-power PRIVATE ${SANITIZER_FLAGS})
+endif()
+
 
 # Shader compilation steps
 foreach(shader_source ${SHADER_SOURCES})
@@ -197,6 +226,26 @@ find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
 find_package(Boost REQUIRED)
 find_package(fmt CONFIG REQUIRED)			# Convenience dependency
 find_package(magic_enum CONFIG REQUIRED)	# Convenience dependency
+find_package(gsl-lite CONFIG REQUIRED)
+
+
+## Tooling for analysis ##
+find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
+if(CLANG_TIDY_EXE AND ENABLE_CLANG_TIDY)
+	set(CMAKE_CXX_CLANG_TIDY
+		"${CLANG_TIDY_EXE}"
+		"--extra-arg=-std=c++26"
+		"${CLANG_TIDY_DRIVER}"
+		"${CLANG_TIDY_STDLIB}"
+		"--header-filter=."
+		"--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
+		"-p=${CMAKE_BINARY_DIR}"
+	)
+endif()
+
+if(CLANG_TIDY_EXE AND ENABLE_CLANG_TIDY)
+	set_target_properties(juice-power PROPERTIES CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}")
+endif()
 
 
 ## Continue targets build ##
@@ -249,6 +298,7 @@ juice-power
 target_link_libraries(
 juice-power
 	PRIVATE
+		gsl::gsl-lite-v1
 		Vulkan::Vulkan
 		vk-bootstrap::vk-bootstrap
 		SDL3::SDL3
