@@ -237,7 +237,7 @@ if(CLANG_TIDY_EXE AND ENABLE_CLANG_TIDY)
 		"--extra-arg=-std=c++26"
 		"${CLANG_TIDY_DRIVER}"
 		"${CLANG_TIDY_STDLIB}"
-		"--header-filter=."
+		"--header-filter=${CMAKE_CURRENT_SOURCE_DIR}/src/.*"
 		"--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
 		"-p=${CMAKE_BINARY_DIR}"
 	)

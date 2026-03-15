@@ -1,5 +1,5 @@
-Checks: '-*,cppcoreguidelines-*,readability-unused-*,bugprone-unused-*,modernize-*,performance-*'
-HeaderFilterRegex: '.*'
+Checks: '-*,cppcoreguidelines-*,readability-unused-*,bugprone-unused-*,modernize-*,performance-*,readability-identifier-naming,-cppcoreguidelines-pro-type-union-access'
+HeaderFilterRegex: './src/.*'
 FormatStyle: file
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
