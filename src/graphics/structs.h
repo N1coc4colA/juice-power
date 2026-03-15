@@ -22,12 +22,9 @@ struct DeletionQueue
 {
 	std::deque<std::function<void()>> deletors {};
 
-	inline void push_function(std::function<void()> &&function)
-	{
-		deletors.push_back(std::move(function));
-	}
+    inline void pushFunction(std::function<void()> &&function) { deletors.push_back(std::move(function)); }
 
-	/// @brief Executes all queued cleanup operations
+    /// @brief Executes all queued cleanup operations
 	void flush();
 };
 

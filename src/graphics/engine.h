@@ -60,13 +60,15 @@ public:
     static constexpr uint64_t standardInfiniteVkTimeout = 9999999999;
     static constexpr int windowWidth = 1700;
     static constexpr int windowHeight = 900;
+    static constexpr float orthographicHorizontalOffset = 80.f;
+    static constexpr float orthographicVerticalOffset = 50.f;
 
     /// @brief Returns the global engine instance.
-	static Engine &get();
+    static auto get() -> Engine &;
 
-	/// @brief Inits the engine & related libs
-	void init();
-	/// @brief Runs the main rendering loop
+    /// @brief Inits the engine & related libs
+    void init();
+    /// @brief Runs the main rendering loop
     void run(const std::function<void()> &prepare, std::atomic<uint64_t> &commands);
     /// @brief Stops the engine, cleans the resources & notifies related libs.
     void cleanup();
@@ -79,19 +81,17 @@ public:
 	 * @param vertices Vertex data span (must match Vertex struct layout)
 	 * @return GPUMeshBuffers containing uploaded GPU resources
 	 */
-    _nodiscard GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
-
-    _nodiscard GPULineBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const LineVertex> &vertices);
-
-    _nodiscard GPUAnimationBuffers uploadMesh(const std::span<const AnimationData> &animations);
+    _nodiscard auto uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices) -> GPUMeshBuffers;
+    _nodiscard auto uploadMesh(const std::span<const uint32_t> &indices, const std::span<const LineVertex> &vertices) -> GPULineBuffers;
+    _nodiscard auto uploadMesh(const std::span<const AnimationData> &animations) -> GPUAnimationBuffers;
 
     void uploadObjectDataForDrawing();
     void uploadObjectData(const std::span<Graphics::ObjectData> &objectData);
 
-    inline World::Scene *scene() { return m_scene; }
-    _nodiscard inline const World::Scene *scene() const { return m_scene; }
+    _nodiscard inline auto scene() -> World::Scene * { return m_scene; }
+    _nodiscard inline auto scene() const -> const World::Scene * { return m_scene; }
 
-    _nodiscard uint64_t getDeviceMaxImageSize() const;
+    _nodiscard auto getDeviceMaxImageSize() const -> uint64_t;
 
 protected:
 	void initSDL();
@@ -127,8 +127,8 @@ protected:
     void updateAnimations2(World::Scene &scene);
 
 private:
-    inline FrameData &getCurrentFrame() { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
-    _nodiscard inline const FrameData &getCurrentFrame() const { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    _nodiscard inline auto getCurrentFrame() -> FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    _nodiscard inline auto getCurrentFrame() const -> const FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
 
     /**
 	 * @brief Creates an empty GPU image
@@ -141,10 +141,7 @@ private:
 	 * @note Always allocates as GPU-only device-local memory
 	 * @note Automatically handles depth format aspect flags
 	 */
-    AllocatedImage createImage(const VkExtent3D &size,
-                               const VkFormat format,
-                               const VkImageUsageFlags usage,
-                               const bool mipmapped = false);
+    auto createImage(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false) -> AllocatedImage;
 
     /**
 	 * @brief Creates and initializes a GPU image with pixel data
@@ -161,11 +158,8 @@ private:
 	 *	   - Layout transitions
 	 *	   - Mipmap generation (if enabled)
 	 */
-    AllocatedImage createImage(const void *data,
-                               const VkExtent3D &size,
-                               const VkFormat format,
-                               const VkImageUsageFlags usage,
-                               const bool mipmapped = false);
+    auto createImage(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false)
+        -> AllocatedImage;
 
     /**
 	 * @brief Destroys image resources
@@ -185,9 +179,7 @@ private:
 	 *
 	 * @note Creates with VMA_ALLOCATION_CREATE_MAPPED_BIT by default
 	 */
-    AllocatedBuffer createBuffer(const size_t allocSize,
-                                 const VkBufferUsageFlags usage,
-                                 const VmaMemoryUsage memoryUsage);
+    auto createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
 
     /**
 	 * @brief Destroys buffer resources
@@ -198,9 +190,9 @@ private:
     void destroyBuffer(const AllocatedBuffer &buffer);
 
     /// @brief Generates ASAP exec of a drawing function, synced with GPU.
-	void immediate_submit(const std::function<void(VkCommandBuffer cmd)> &function);
+    void immediateSubmit(const std::function<void(VkCommandBuffer cmd)> &function);
 
-	/* General */
+    /* General */
 
     bool m_isInitialized = false;
     int m_frameNumber = 0;

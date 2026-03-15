@@ -39,7 +39,7 @@ Orchestrator::~Orchestrator()
     delete m_physicsEngine;
 }
 
-Orchestrator &Orchestrator::get()
+auto Orchestrator::get() -> Orchestrator &
 {
     return *m_instance;
 }
@@ -55,9 +55,9 @@ void Orchestrator::run()
 
     m_physicsEngine->setInputState(m_inputEngine->state());
 
-    std::jthread m_physicsThread([this]() { m_physicsEngine->run(m_commands); });
-    std::jthread m_inputThread([this]() { m_inputEngine->run(m_commands); });
-    m_graphicsEngine->run([this]() { m_physicsEngine->prepare(); }, m_commands);
+    std::jthread m_physicsThread([this]() -> void { m_physicsEngine->run(m_commands); });
+    std::jthread m_inputThread([this]() -> void { m_inputEngine->run(m_commands); });
+    m_graphicsEngine->run([this]() -> void { m_physicsEngine->prepare(); }, m_commands);
 }
 
 void Orchestrator::cleanup()
@@ -71,7 +71,7 @@ void Orchestrator::setScene(World::Scene &scene)
     m_physicsEngine->setScene(scene);
 }
 
-std::tuple<Loaders::Status, std::string> Orchestrator::loadMap(World::Scene &scene, const std::string &path)
+auto Orchestrator::loadMap(World::Scene &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>
 {
     Loaders::Map mapLoader(path);
     return mapLoader.load2(*m_graphicsEngine, scene);

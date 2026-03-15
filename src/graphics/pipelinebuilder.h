@@ -60,9 +60,9 @@ public:
 	 * @return The created VkPipeline object
 	 * @throws Failure with VkPipelineCreation if creation fails
 	 */
-	VkPipeline buildPipeline(VkDevice device);
+    auto buildPipeline(VkDevice device) -> VkPipeline;
 
-	/**
+    /**
 	 * @brief Sets the vertex and fragment shaders
 	 * @param vertexShader Module containing vertex shader code
 	 * @param fragmentShader Module containing fragment shader code

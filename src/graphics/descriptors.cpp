@@ -27,7 +27,7 @@ void DescriptorLayoutBuilder::clear()
 	bindings.clear();
 }
 
-VkDescriptorSetLayout DescriptorLayoutBuilder::build(VkDevice device, const VkShaderStageFlags shaderStages)
+auto DescriptorLayoutBuilder::build(VkDevice device, const VkShaderStageFlags shaderStages) -> VkDescriptorSetLayout
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(shaderStages != VK_PIPELINE_LAYOUT_CREATE_FLAG_BITS_MAX_ENUM);
@@ -57,7 +57,7 @@ void DescriptorAllocator::destroyPool(VkDevice device)
 	vkDestroyDescriptorPool(device, pool, nullptr);
 }
 
-VkDescriptorSet DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLayout layout)
+auto DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(layout != VK_NULL_HANDLE);
@@ -183,7 +183,7 @@ void DescriptorAllocatorGrowable::destroyPools(VkDevice device)
 	m_fullPools.clear();
 }
 
-VkDescriptorPool DescriptorAllocatorGrowable::getPool(VkDevice device)
+auto DescriptorAllocatorGrowable::getPool(VkDevice device) -> VkDescriptorPool
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -205,7 +205,8 @@ VkDescriptorPool DescriptorAllocatorGrowable::getPool(VkDevice device)
     return newPool;
 }
 
-VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
+auto DescriptorAllocatorGrowable::createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
+    -> VkDescriptorPool
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(setCount != 0);
@@ -231,7 +232,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const 
 	return newPool;
 }
 
-VkDescriptorSet DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayout layout)
+auto DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(layout != VK_NULL_HANDLE);
@@ -295,7 +296,7 @@ void DescriptorAllocatorFreeable::destroyPool(VkDevice device)
     m_pool = VK_NULL_HANDLE;
 }
 
-VkDescriptorSet DescriptorAllocatorFreeable::allocate(VkDevice device, const VkDescriptorSetLayout layout)
+auto DescriptorAllocatorFreeable::allocate(VkDevice device, const VkDescriptorSetLayout layout) -> VkDescriptorSet
 {
     assert(device != VK_NULL_HANDLE);
     assert(layout != VK_NULL_HANDLE);

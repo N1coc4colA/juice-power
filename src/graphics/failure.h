@@ -24,7 +24,7 @@ public:
 	explicit Failure(FailureType type);
 	Failure(FailureType type, const std::string &message);
 
-    _nodiscard const char *what() const noexcept override;
+    _nodiscard auto what() const noexcept -> const char * override;
 
 private:
     std::string m_msg{};

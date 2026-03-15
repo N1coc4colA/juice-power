@@ -84,8 +84,8 @@ struct GPUMeshBuffers
 
 struct GPUObjectDataBuffer
 {
-    AllocatedBuffer buffer;
-    VkDeviceAddress deviceAddress;
+    AllocatedBuffer buffer{};
+    VkDeviceAddress deviceAddress = 0;
 };
 
 struct GPULineBuffers

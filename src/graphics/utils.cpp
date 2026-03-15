@@ -13,7 +13,7 @@
 namespace Graphics::vkutil
 {
 
-void transition_image(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout)
+void transitionImage(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout)
 {
 	assert(cmd != VK_NULL_HANDLE);
 	assert(image != VK_NULL_HANDLE);
@@ -24,37 +24,37 @@ void transition_image(VkCommandBuffer cmd, VkImage image, const VkImageLayout cu
 			? VK_IMAGE_ASPECT_DEPTH_BIT
 			: VK_IMAGE_ASPECT_COLOR_BIT;
 
-	const VkImageMemoryBarrier2 imageBarrier {
-		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-		.pNext = nullptr,
-		.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-		.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
-		.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-		.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
-		.oldLayout = currentLayout,
-		.newLayout = newLayout,
-		.srcQueueFamilyIndex = 0,
-		.dstQueueFamilyIndex = 0,
-		.image = image,
-		.subresourceRange = vkinit::image_subresource_range(aspectMask),
-	};
+    const VkImageMemoryBarrier2 imageBarrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .pNext = nullptr,
+        .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
+        .oldLayout = currentLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = 0,
+        .dstQueueFamilyIndex = 0,
+        .image = image,
+        .subresourceRange = vkinit::imageSubresourceRange(aspectMask),
+    };
 
-	const VkDependencyInfo depInfo {
-		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-		.pNext = nullptr,
-		.dependencyFlags = 0,
-		.memoryBarrierCount = 0,
-		.pMemoryBarriers = nullptr,
-		.bufferMemoryBarrierCount = 0,
-		.pBufferMemoryBarriers = nullptr,
-		.imageMemoryBarrierCount = 1,
-		.pImageMemoryBarriers = &imageBarrier,
-	};
+    const VkDependencyInfo depInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = nullptr,
+        .dependencyFlags = 0,
+        .memoryBarrierCount = 0,
+        .pMemoryBarriers = nullptr,
+        .bufferMemoryBarrierCount = 0,
+        .pBufferMemoryBarriers = nullptr,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &imageBarrier,
+    };
 
-	vkCmdPipelineBarrier2(cmd, &depInfo);
+    vkCmdPipelineBarrier2(cmd, &depInfo);
 }
 
-void copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage destination, const VkExtent2D &srcSize, const VkExtent2D &dstSize)
+void copyImageToImage(VkCommandBuffer cmd, VkImage source, VkImage destination, const VkExtent2D &srcSize, const VkExtent2D &dstSize)
 {
 	assert(cmd != VK_NULL_HANDLE);
 	assert(source != VK_NULL_HANDLE);
@@ -108,7 +108,7 @@ void copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage destinatio
 	vkCmdBlitImage2(cmd, &blitInfo);
 }
 
-bool load_shader_module(const char *filePath, VkDevice device, VkShaderModule &outShaderModule)
+auto loadShaderModule(const char *filePath, VkDevice device, VkShaderModule &outShaderModule) -> bool
 {
 	assert(filePath != nullptr);
 	assert(device != VK_NULL_HANDLE);
@@ -131,10 +131,10 @@ bool load_shader_module(const char *filePath, VkDevice device, VkShaderModule &o
 	file.seekg(0);
 
 	// load the entire file into the buffer
-	file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
+    file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
 
-	// now that the file is loaded into the buffer, we can close it
-	file.close();
+    // now that the file is loaded into the buffer, we can close it
+    file.close();
 
 	// create a new shader module, using the buffer we loaded
 	const VkShaderModuleCreateInfo createInfo {
@@ -158,7 +158,7 @@ bool load_shader_module(const char *filePath, VkDevice device, VkShaderModule &o
 	return true;
 }
 
-void generate_mipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
+void generateMipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
 {
 	const int mipLevels = int(std::floor(std::log2(std::max(imageSize.width, imageSize.height)))) + 1;
 
@@ -169,9 +169,9 @@ void generate_mipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
 
 		const VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-		auto subresourceRange = vkinit::image_subresource_range(aspectMask);
-		subresourceRange.levelCount = 1;
-		subresourceRange.baseMipLevel = mip;
+        auto subresourceRange = vkinit::imageSubresourceRange(aspectMask);
+        subresourceRange.levelCount = 1;
+        subresourceRange.baseMipLevel = mip;
 
 		const VkImageMemoryBarrier2 imageBarrier {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -251,6 +251,6 @@ void generate_mipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
 	}
 
 	// transition all mip levels into the final read_only layout
-	transition_image(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    transitionImage(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 } // namespace Graphics::vkutil

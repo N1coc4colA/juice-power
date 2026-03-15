@@ -6,13 +6,13 @@
 namespace Graphics::vkutil
 {
 
-void transition_image(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout);
+void transitionImage(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout);
 
-void copy_image_to_image(VkCommandBuffer cmd, VkImage source, VkImage destination, const VkExtent2D &srcSize, const VkExtent2D &dstSize);
+void copyImageToImage(VkCommandBuffer cmd, VkImage source, VkImage destination, const VkExtent2D &srcSize, const VkExtent2D &dstSize);
 
-bool load_shader_module(const char *filePath, VkDevice device, VkShaderModule &outShaderModule);
+auto loadShaderModule(const char *filePath, VkDevice device, VkShaderModule &outShaderModule) -> bool;
 
-void generate_mipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize);
+void generateMipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize);
 }
 
 #endif // GRAPHICS_UTILS_H

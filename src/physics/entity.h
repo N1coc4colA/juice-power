@@ -21,7 +21,7 @@ struct AABB
 	glm::vec2 min {};
 	glm::vec2 max {};
 
-    _nodiscard constexpr bool intersects(const AABB &other) const
+    _nodiscard constexpr auto intersects(const AABB &other) const
     {
         if (max.x < other.min.x || min.x > other.max.x) {
             return false;
@@ -89,7 +89,7 @@ class Entity
 public:
     using state_type = std::array<double, 3>;
 
-    size_t id;
+    size_t id = std::numeric_limits<size_t>::max();
 
     bool has_collision = false;
 
@@ -127,19 +127,19 @@ public:
     /// @brief Tells if the object is affected by gravity or not.
 	bool isNotFixed = true;
 
-    _nodiscard constexpr glm::vec2 nextPosition(const float timeDelta) const noexcept { return position + velocity * timeDelta; }
+    _nodiscard constexpr auto nextPosition(const float timeDelta) const noexcept { return position + velocity * timeDelta; }
 
-    _nodiscard constexpr glm::vec2 nextVelocity(const float timeDelta) const noexcept { return velocity + acceleration * timeDelta; }
+    _nodiscard constexpr auto nextVelocity(const float timeDelta) const noexcept { return velocity + acceleration * timeDelta; }
 
     // Used for integration of forces. Here it's not King Kunta but King Kutta !!
     void KingKutta(
         const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
-    _nodiscard Forces resultOfForces(const double timeStep) const;
+    _nodiscard auto resultOfForces(const double timeStep) const -> Forces;
     void compute(const double timeDelta);
 
-    _nodiscard inline constexpr glm::vec2 center() const noexcept { return position + (boundingBox.min + boundingBox.max) * 0.5f; }
+    _nodiscard inline constexpr auto center() const noexcept { return position + (boundingBox.min + boundingBox.max) * 0.5f; }
 
-    _nodiscard constexpr Projection getMinMax(const std::span<const glm::vec2> &borders, const glm::vec2 &axis) const noexcept
+    _nodiscard constexpr auto getMinMax(const std::span<const glm::vec2> &borders, const glm::vec2 &axis) const noexcept
     {
         float minProj = glm::dot(position + borders[0], axis);
         float maxProj = minProj;
@@ -167,7 +167,7 @@ public:
         };
     }
 
-    _nodiscard bool collides(const Entity &other, CollisionInfo &info) const noexcept
+    _nodiscard auto collides(const Entity &other, CollisionInfo &info) const noexcept
     {
         // t: this, o: other, b: borders, n: normals
         const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());
@@ -198,7 +198,8 @@ public:
 						std::cout << "Separated on this's axis: (" << normal.x << "," << normal.y << ")\n";
 						std::cout << "  this proj: [" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other proj: [" << secondIntersect.minProj << "," << secondIntersect.maxProj << "]\n";
 					}
-					return false;
+
+                    return false;
 				}
 
 				const float overlap = std::min(firstIntersect.maxProj - secondIntersect.minProj, secondIntersect.maxProj - firstIntersect.minProj);
@@ -223,7 +224,8 @@ public:
 						std::cout << "Separated on other's axis: (" << normal.x << "," << normal.y << ")\n";
 						std::cout << "  this proj: [" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other proj: [" << secondIntersect.minProj << "," << secondIntersect.maxProj << "]\n";
 					}
-					return false;
+
+                    return false;
 				}
 
 				const float overlap = std::min(firstIntersect.maxProj - secondIntersect.minProj, secondIntersect.maxProj - firstIntersect.minProj);

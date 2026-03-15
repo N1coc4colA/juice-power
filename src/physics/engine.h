@@ -15,7 +15,9 @@ namespace Physics
 class Engine
 {
 public:
-	Engine();
+    static constexpr float epsilon = 0.00001f;
+
+    Engine();
 
 	void setScene(World::Scene &scene);
     void setInputState(Input::InnerState &state);

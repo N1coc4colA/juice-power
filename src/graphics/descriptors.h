@@ -34,7 +34,7 @@ struct DescriptorLayoutBuilder
 	 * @param shaderStages Shader stages that will use these descriptors
 	 * @return The created descriptor set layout
 	 */
-	VkDescriptorSetLayout build(VkDevice device, const VkShaderStageFlags shaderStages);
+    auto build(VkDevice device, const VkShaderStageFlags shaderStages) -> VkDescriptorSetLayout;
 };
 
 
@@ -114,7 +114,7 @@ struct DescriptorAllocator
 	 * @param layout The layout for the descriptor set
 	 * @return The allocated descriptor set
 	 */
-	VkDescriptorSet allocate(VkDevice device, VkDescriptorSetLayout layout);
+    auto allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet;
 };
 
 /**
@@ -164,7 +164,7 @@ public:
 	 * @param layout The layout for the descriptor set
 	 * @return The allocated descriptor set
 	 */
-	VkDescriptorSet allocate(VkDevice device, VkDescriptorSetLayout layout);
+    auto allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet;
 
 private:
 	/**
@@ -172,16 +172,16 @@ private:
 	 * @param device The Vulkan device
 	 * @return A pool ready for allocations
 	 */
-	VkDescriptorPool getPool(VkDevice device);
+    auto getPool(VkDevice device) -> VkDescriptorPool;
 
-	/**
+    /**
 	 * @brief Creates a new descriptor pool
 	 * @param device The Vulkan device
 	 * @param setCount Number of sets the pool should hold
 	 * @param poolRatios Ratios of descriptor types
 	 * @return The created descriptor pool
 	 */
-	VkDescriptorPool createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios);
+    auto createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool;
 
     std::vector<PoolSizeRatio> m_ratios{};
     std::vector<VkDescriptorPool> m_fullPools{};
@@ -200,7 +200,7 @@ struct DescriptorAllocatorFreeable
     void init(VkDevice device, const uint32_t maxSets, const VkDescriptorType type);
     void destroyPool(VkDevice device);
 
-    VkDescriptorSet allocate(VkDevice device, const VkDescriptorSetLayout layout);
+    auto allocate(VkDevice device, const VkDescriptorSetLayout layout) -> VkDescriptorSet;
     void free(VkDevice device, const VkDescriptorSet set);
 
 private:

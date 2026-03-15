@@ -4,6 +4,7 @@
 #include <potracelib.h>
 
 #include <iostream>
+#include <ranges>
 
 /*
 #define BM_USET(bm, x, y) (*bm_index(bm, x, y) |= bm_mask(x))
@@ -143,16 +144,16 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 		while (path) {
 			const potrace_curve_t &curve = path->curve;
 
-			for (auto i = 0; i < curve.n; i++) {
-				if (curve.tag[i] == POTRACE_CORNER) {
-					pointsCount++;
-				} else if (curve.tag[i] == POTRACE_CURVETO) {
-					pointsCount += 2;
-				}
-			}
+            for (const auto &tag : std::span(curve.tag, curve.n)) {
+                if (tag == POTRACE_CORNER) {
+                    pointsCount++;
+                } else if (tag == POTRACE_CURVETO) {
+                    pointsCount += 2;
+                }
+            }
 
-			path = path->next;
-		}
+            path = path->next;
+        }
 
         points.reserve(pointsCount + 1); // Due to enclosing point.
         normals.reserve(pointsCount);
@@ -172,14 +173,17 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
             const potrace_curve_t &curve = path->curve;
             const int startIndex = static_cast<int>(points.size());
 
+            const auto tags = std::span(curve.tag, curve.n);
+            const auto controls = std::span(curve.c, curve.n);
+
             int countThisPath = 0;
-            for (auto i = 0; i < curve.n; i++) {
-                if (curve.tag[i] == POTRACE_CORNER) {
-                    points.emplace_back(curve.c[i][1].x, curve.c[i][1].y);
+            for (const auto &[tag, c] : std::views::zip(tags, controls)) {
+                if (tag == POTRACE_CORNER) {
+                    points.emplace_back(c[1].x, c[1].y);
                     countThisPath += 1;
-                } else if (curve.tag[i] == POTRACE_CURVETO) {
-                    points.emplace_back(curve.c[i][0].x, curve.c[i][0].y);
-                    points.emplace_back(curve.c[i][1].x, curve.c[i][1].y);
+                } else if (tag == POTRACE_CURVETO) {
+                    points.emplace_back(c[0].x, c[0].y);
+                    points.emplace_back(c[1].x, c[1].y);
                     countThisPath += 2;
                 }
             }
@@ -303,8 +307,5 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
     potrace_state_free(st);
 }
-
-;
-;
 
 } // namespace algorithms

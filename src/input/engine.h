@@ -18,8 +18,8 @@ public:
 
     void run(std::atomic<uint64_t> &commands);
 
-    inline State &state() { return m_state; }
-    inline const State &state() const { return m_state; }
+    inline auto state() -> State & { return m_state; }
+    inline auto state() const -> const State & { return m_state; }
 
 protected:
     State m_state{};

@@ -8,7 +8,7 @@
 #include <iostream>
 
 // Try packing images into a frame with given dimensions using stb_rect_pack
-int tryPackFrame(std::vector<ImageInfo> &images, const int start_idx, const int frame_w, const int frame_h, const int frame_id)
+auto tryPackFrame(std::vector<ImageInfo> &images, const int start_idx, const int frame_w, const int frame_h, const int frame_id) -> int
 {
     const auto count = images.size();
     stbrp_context context{};
@@ -16,8 +16,6 @@ int tryPackFrame(std::vector<ImageInfo> &images, const int start_idx, const int 
     // Allocate nodes for the packing algorithm
     std::vector<stbrp_node> nodes(frame_w);
     std::vector<stbrp_rect> rects(count);
-
-    ;
 
     // Initialize the packing context with frame dimensions
     stbrp_init_target(&context, frame_w, frame_h, nodes.data(), static_cast<int>(nodes.size()));
@@ -52,22 +50,23 @@ int tryPackFrame(std::vector<ImageInfo> &images, const int start_idx, const int 
         }
     }
 
-    return std::count_if(rects.cbegin(), rects.cend(), [](const auto &rect) { return rect.was_packed; });
+    return static_cast<int>(std::count_if(rects.cbegin(), rects.cend(), [](const auto &rect) -> bool { return rect.was_packed; }));
 }
 
 // Find optimal frame dimensions given constraint W*H <= S
-std::tuple<int, int> findFrameDimensions(const uint64_t maxArea, const std::vector<const ImageInfo *> &unpacked)
+auto findFrameDimensions(const uint64_t maxArea, const std::vector<const ImageInfo *> &unpacked) -> std::tuple<int, int>
 {
     uint64_t w = 0, h = 0;
 
     // Find max dimensions needed among unpacked images
     uint64_t max_w = 0, max_h = 0;
     for (const auto &up : unpacked) {
-        if (up->width > max_w) {
-            max_w = up->width;
+        const auto uw = static_cast<uint64_t>(up->width), uh = static_cast<uint64_t>(up->height);
+        if (uw > max_w) {
+            max_w = uw;
         }
-        if (up->height > max_h) {
-            max_h = up->height;
+        if (uh > max_h) {
+            max_h = uh;
         }
     }
 
@@ -100,23 +99,23 @@ std::tuple<int, int> findFrameDimensions(const uint64_t maxArea, const std::vect
     return {static_cast<int>(w), static_cast<int>(h)};
 }
 
-int packImagesMultiFrame(std::vector<ImageInfo> &images, const uint64_t maxArea, std::vector<Frame> &frames)
+auto packImagesMultiFrame(std::vector<ImageInfo> &images, const uint64_t maxArea, std::vector<Frame> &frames) -> int
 {
     assert(maxArea > 0);
 
     // Sort images by area (largest first)
-    std::ranges::sort(images, [](const auto &a, const auto &b) { return a.width * a.height > b.width * b.height; });
+    std::ranges::sort(images, [](const auto &a, const auto &b) -> bool { return a.width * a.height > b.width * b.height; });
 
     const auto count = images.size();
 
     // Initialize packing state
-    for (int i = 0; i < count; i++) {
-        images[i].packed = 0;
-        images[i].frame_id = -1;
+    for (auto &img : images) {
+        img.packed = 0;
+        img.frame_id = -1;
     }
 
     int frameId = 0;
-    int totalPacked = 0;
+    size_t totalPacked = 0;
 
     while (totalPacked < count) {
         // Count unpacked images

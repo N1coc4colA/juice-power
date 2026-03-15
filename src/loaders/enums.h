@@ -5,7 +5,7 @@
 
 namespace Loaders {
 
-enum Status : uint8_t {
+enum class Status : uint8_t {
     Ok = 0,
     OpenError,
     NotDir,

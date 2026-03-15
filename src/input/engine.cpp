@@ -34,12 +34,12 @@ void Engine::run(std::atomic<uint64_t> &commands)
         while (SDL_PollEvent(&e) != 0) {
             switch (e.type) {
             case SDL_EVENT_KEY_DOWN: {
-                std::cout << e.key.key << std::endl;
-                m_state.*(m_eventToEntry[m_keyToEvent[e.key.key]]) = {true, e.key.repeat};
+                std::cout << e.key.key << '\n';
+                m_state.*(m_eventToEntry[m_keyToEvent[e.key.key]]) = {.state = true, .hold = e.key.repeat};
                 break;
             }
             case SDL_EVENT_KEY_UP: {
-                m_state.*(m_eventToEntry[m_keyToEvent[e.key.key]]) = {false, e.key.repeat};
+                m_state.*(m_eventToEntry[m_keyToEvent[e.key.key]]) = {.state = false, .hold = e.key.repeat};
                 break;
             }
             case SDL_EVENT_QUIT: {

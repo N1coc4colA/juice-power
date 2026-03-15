@@ -7,34 +7,36 @@
 namespace Graphics::vkinit
 {
 
-VkCommandPoolCreateInfo command_pool_create_info(const VkCommandPoolCreateFlags flags = 0);
-VkCommandBufferAllocateInfo command_buffer_allocate_info(VkCommandPool pool, const uint32_t count = 1);
+auto commandPoolCreateInfo(const VkCommandPoolCreateFlags flags = 0) -> VkCommandPoolCreateInfo;
+auto commandBufferAllocateInfo(VkCommandPool pool, const uint32_t count = 1) -> VkCommandBufferAllocateInfo;
 
-VkCommandBufferBeginInfo command_buffer_begin_info(const VkCommandBufferUsageFlags flags = 0);
-VkCommandBufferSubmitInfo command_buffer_submit_info(VkCommandBuffer cmd);
+auto commandBufferBeginInfo(const VkCommandBufferUsageFlags flags = 0) -> VkCommandBufferBeginInfo;
+auto commandBufferSubmitInfo(VkCommandBuffer cmd) -> VkCommandBufferSubmitInfo;
 
-VkFenceCreateInfo fence_create_info(const VkFenceCreateFlags flags = 0);
+auto fenceCreateInfo(const VkFenceCreateFlags flags = 0) -> VkFenceCreateInfo;
 
-VkSemaphoreCreateInfo semaphore_create_info(const VkSemaphoreCreateFlags flags = 0);
+auto semaphoreCreateInfo(const VkSemaphoreCreateFlags flags = 0) -> VkSemaphoreCreateInfo;
 
-VkSubmitInfo2 submit_info(const VkCommandBufferSubmitInfo &cmd, const VkSemaphoreSubmitInfo *signalSemaphoreInfo, const VkSemaphoreSubmitInfo *waitSemaphoreInfo);
+auto submitInfo(const VkCommandBufferSubmitInfo &cmd, const VkSemaphoreSubmitInfo *signalSemaphoreInfo, const VkSemaphoreSubmitInfo *waitSemaphoreInfo)
+    -> VkSubmitInfo2;
 
-VkRenderingAttachmentInfo attachment_info(VkImageView view, const VkClearValue *clear, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+auto attachmentInfo(VkImageView view, const VkClearValue *clear, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    -> VkRenderingAttachmentInfo;
 
-VkRenderingAttachmentInfo depth_attachment_info(VkImageView view, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+auto depthAttachmentInfo(VkImageView view, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) -> VkRenderingAttachmentInfo;
 
-VkRenderingInfo rendering_info(const VkExtent2D &renderExtent, const VkRenderingAttachmentInfo *colorAttachment, const VkRenderingAttachmentInfo *depthAttachment);
+auto renderingInfo(const VkExtent2D &renderExtent, const VkRenderingAttachmentInfo *colorAttachment, const VkRenderingAttachmentInfo *depthAttachment)
+    -> VkRenderingInfo;
 
-VkImageSubresourceRange image_subresource_range(const VkImageAspectFlags aspectMask);
+auto imageSubresourceRange(const VkImageAspectFlags aspectMask) -> VkImageSubresourceRange;
 
-VkSemaphoreSubmitInfo semaphore_submit_info(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore);
+auto semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore) -> VkSemaphoreSubmitInfo;
 
-VkImageCreateInfo image_create_info(const VkFormat format, const VkImageUsageFlags usageFlags, const VkExtent3D &extent);
-VkImageViewCreateInfo imageview_create_info(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags);
-VkPipelineLayoutCreateInfo pipeline_layout_create_info();
-VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry = "main");
-
-
+auto imageCreateInfo(const VkFormat format, const VkImageUsageFlags usageFlags, const VkExtent3D &extent) -> VkImageCreateInfo;
+auto imageViewCreateInfo(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags) -> VkImageViewCreateInfo;
+auto pipelineLayoutCreateInfo() -> VkPipelineLayoutCreateInfo;
+auto pipelineShaderStageCreateInfo(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry = "main")
+    -> VkPipelineShaderStageCreateInfo;
 }
 
 

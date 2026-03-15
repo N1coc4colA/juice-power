@@ -116,7 +116,7 @@ inline void prepareVectors2(const size_t count, Graphics::Chunk2 &s)
     s.entities.resize(count);
 }
 
-std::tuple<Status, std::string> loadChunk(std::vector<std::vector<JsonChunkElement>> &chunks, const std::string &chunkName)
+auto loadChunk(std::vector<std::vector<JsonChunkElement>> &chunks, const std::string &chunkName) -> std::tuple<Status, std::string>
 {
     std::ifstream chunkFile(chunkName, std::ifstream::in);
     if (!chunkFile.is_open()) {
@@ -138,7 +138,7 @@ std::tuple<Status, std::string> loadChunk(std::vector<std::vector<JsonChunkEleme
     return {Status::Ok, ""};
 }
 
-std::tuple<Status, std::string> readMapFile(const std::vector<fs::path> &paths, const std::vector<std::string> &names, JsonMap &out)
+auto readMapFile(const std::vector<fs::path> &paths, const std::vector<std::string> &names, JsonMap &out) -> std::tuple<Status, std::string>
 {
     const auto mapAccess = std::ranges::find(names, std::string("map.json"));
     if (mapAccess == names.cend()) {
@@ -167,7 +167,7 @@ std::tuple<Status, std::string> readMapFile(const std::vector<fs::path> &paths, 
     return {Status::Ok, ""};
 }
 
-std::tuple<Status, std::string> loadResources(const std::vector<fs::path> &paths, const std::vector<std::string> &names, JsonMap &map)
+auto loadResources(const std::vector<fs::path> &paths, const std::vector<std::string> &names, JsonMap &map) -> std::tuple<Status, std::string>
 {
     // Load separate resources if relevant.
     if (map.resourcesExternal) {
@@ -203,7 +203,7 @@ std::tuple<Status, std::string> loadResources(const std::vector<fs::path> &paths
     return {Status::Ok, ""};
 }
 
-std::tuple<Status, std::string> loadChunks(const std::string &m_path, JsonMap &map)
+auto loadChunks(const std::string &m_path, JsonMap &map) -> std::tuple<Status, std::string>
 {
     // Load separate chunks if relevant.
     if (map.chunksExternal) {
@@ -233,7 +233,7 @@ std::tuple<Status, std::string> loadChunks(const std::string &m_path, JsonMap &m
         tmp.reserve(1);
 
         const auto mvStatus = loadChunk(tmp, m_path + "/movings.json");
-        if (std::get<0>(mvStatus)) {
+        if (std::get<0>(mvStatus) != Status::Ok) {
             return mvStatus;
         }
 
@@ -279,7 +279,7 @@ void addVertices(const auto w, const auto h, Graphics::Resources2 &res2)
 
 // Because my clang impl std lib does not provide std::ranges::view for now
 template<typename T, auto Member>
-std::vector<std::span<T>> group_by(std::vector<T> &v)
+auto groupBy(std::vector<T> &v) -> std::vector<std::span<T>>
 {
     std::vector<std::span<T>> result{};
     size_t i = 0;
@@ -298,11 +298,11 @@ std::vector<std::span<T>> group_by(std::vector<T> &v)
     return result;
 }
 
-std::tuple<Status, std::string> Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
-                                                    const std::string &m_assets,
-                                                    Graphics::Resources2 &res2,
-                                                    Graphics::Engine &engine,
-                                                    const JsonMap &map)
+auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
+                         const std::string &m_assets,
+                         Graphics::Resources2 &res2,
+                         Graphics::Engine &engine,
+                         const JsonMap &map) -> std::tuple<Status, std::string>
 {
     res2.images.resize(imagesMap.size());
 
@@ -311,7 +311,7 @@ std::tuple<Status, std::string> Map::buildResources(const std::unordered_map<std
 
     std::unordered_map<std::string, std::tuple<std::vector<glm::vec2>, std::vector<glm::vec2>, std::tuple<glm::vec2, glm::vec2>>> mapped{};
 
-    const auto maxSize = engine.getDeviceMaxImageSize() / 4; // Because we need 4 channels, and each compo on 1 byte.
+    const uint64_t maxSize = engine.getDeviceMaxImageSize() / 4; // Because we need 4 channels, and each compo on 1 byte.
     std::vector<ImageInfo> infos{};
     infos.resize(imagesMap.size());
 
@@ -412,18 +412,19 @@ std::tuple<Status, std::string> Map::buildResources(const std::unordered_map<std
             const auto frameInfo = imageFrames[info.frame_id];
             auto &frame = frameImages[info.frame_id];
 
-            const size_t src_w = static_cast<size_t>(info.width);
-            const size_t src_h = static_cast<size_t>(info.height);
-            const size_t src_row_bytes = src_w * 4;
+            const auto src_w = static_cast<size_t>(info.width);
+            const auto src_h = static_cast<size_t>(info.height);
+            const auto src_row_bytes = src_w * 4;
 
-            const size_t frame_w = static_cast<size_t>(frameInfo.w);
-            const size_t frame_h = static_cast<size_t>(frameInfo.h);
+            const auto frame_w = static_cast<size_t>(frameInfo.w);
+            const auto frame_h = static_cast<size_t>(frameInfo.h);
+
             const size_t frame_total_bytes = frame_w * frame_h * 4;
             const size_t src_total_bytes = src_w * src_h * 4;
 
             for (size_t row = 0; row < src_h; ++row) {
-                const size_t dest_row = static_cast<size_t>(info.y) + row;
-                const size_t dest_col = static_cast<size_t>(info.x);
+                const auto dest_row = static_cast<size_t>(info.y) + row;
+                const auto dest_col = static_cast<size_t>(info.x);
 
                 const size_t dest_offset = (dest_row * frame_w + dest_col) * 4;
                 const size_t src_offset = row * src_row_bytes;
@@ -551,7 +552,7 @@ std::tuple<Status, std::string> Map::buildResources(const std::unordered_map<std
 
 void chunkObjectsGrouping(Graphics::Chunk2 &chunk)
 {
-    const auto groups = group_by<Graphics::ObjectData, &Graphics::ObjectData::animationId>(chunk.objects);
+    const auto groups = groupBy<Graphics::ObjectData, &Graphics::ObjectData::animationId>(chunk.objects);
     chunk.references.reserve(groups.size());
 
     size_t index = 0;
@@ -567,7 +568,7 @@ void chunkObjectsGrouping(Graphics::Chunk2 &chunk)
     }
 }
 
-std::tuple<Status, std::string> Map::load2(Graphics::Engine &engine, World::Scene &m_scene)
+auto Map::load2(Graphics::Engine &engine, World::Scene &m_scene) -> std::tuple<Status, std::string>
 {
     if (!fs::exists(m_path)) {
         return {Status::MissingDirectory, m_path};
@@ -600,7 +601,7 @@ std::tuple<Status, std::string> Map::load2(Graphics::Engine &engine, World::Scen
     JsonMap map;
     {
         const auto status = readMapFile(paths, names, map);
-        if (std::get<0>(status)) {
+        if (std::get<0>(status) != Status::Ok) {
             return status;
         }
     }
@@ -609,7 +610,7 @@ std::tuple<Status, std::string> Map::load2(Graphics::Engine &engine, World::Scen
     // Or load from external sources the chunk files.
     {
         const auto status = loadResources(paths, names, map);
-        if (std::get<0>(status)) {
+        if (std::get<0>(status) != Status::Ok) {
             return status;
         }
     }
@@ -656,7 +657,7 @@ std::tuple<Status, std::string> Map::load2(Graphics::Engine &engine, World::Scen
 
     {
         const auto status = loadChunks(m_path, map);
-        if (std::get<0>(status)) {
+        if (std::get<0>(status) != Status::Ok) {
             return status;
         }
     }
@@ -672,7 +673,7 @@ std::tuple<Status, std::string> Map::load2(Graphics::Engine &engine, World::Scen
 
     {
         const auto status = buildResources(imagesMap, m_assets, *m_scene.res2, engine, map);
-        if (std::get<0>(status)) {
+        if (std::get<0>(status) != Status::Ok) {
             return status;
         }
     }

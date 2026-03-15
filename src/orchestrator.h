@@ -27,21 +27,24 @@ class Orchestrator
 public:
     explicit Orchestrator();
     Orchestrator(const Orchestrator &) = delete;
+    Orchestrator(Orchestrator &&) = delete;
     ~Orchestrator();
-    Orchestrator &operator=(const Orchestrator &) = delete;
 
-    static Orchestrator &get();
+    auto operator=(const Orchestrator &) -> Orchestrator & = delete;
+    auto operator=(Orchestrator &&) -> Orchestrator & = delete;
+
+    static auto get() -> Orchestrator &;
 
     void init();
     void run();
     void cleanup();
 
-    std::tuple<Loaders::Status, std::string> loadMap(World::Scene &scene, const std::string &path);
+    auto loadMap(World::Scene &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>;
     void setScene(World::Scene &scene);
 
-    inline Graphics::Engine &graphicsEngine() { return *m_graphicsEngine; }
-    inline Physics::Engine &physicsEngine() { return *m_physicsEngine; }
-    inline Input::Engine &inputEngine() { return *m_inputEngine; }
+    inline auto graphicsEngine() -> Graphics::Engine & { return *m_graphicsEngine; }
+    inline auto physicsEngine() -> Physics::Engine & { return *m_physicsEngine; }
+    inline auto inputEngine() -> Input::Engine & { return *m_inputEngine; }
 
 private:
     Graphics::Engine *m_graphicsEngine = nullptr;

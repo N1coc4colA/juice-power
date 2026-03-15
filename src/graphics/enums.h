@@ -11,7 +11,7 @@ namespace Graphics {
  * Categorizes all known failure points during engine initialization and operation,
  * with specific attention to Vulkan, SDL, and ImGui integration points.
  */
-enum FailureType : uint8_t {
+enum class FailureType : uint8_t {
     // ImGui related failures
     ImguiContext = 0,         ///< Failed to create ImGui context
     ImguiInitialisation,      ///< General ImGui initialization failure

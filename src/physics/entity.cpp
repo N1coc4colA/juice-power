@@ -18,9 +18,9 @@ void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravi
     //const auto &theta = y[2];
 
     if (isNotFixed) {
-		vx = (static_cast<double>(utils::accumulate<utils::access<&Thrust::vector, &glm::vec3::x>>(thrusts, 0.f)) - kx*vx) / static_cast<double>(mass);
+		vx = (static_cast<double>(utils::accumulate<utils::Access<&Thrust::vector, &glm::vec3::x>>(thrusts, 0.f)) - kx*vx) / static_cast<double>(mass);
 		// Because for us, Y is in the opposite direction, we have to invert the operation for the Weight & frictions.
-        vy = (static_cast<double>(utils::accumulate<utils::access<&Thrust::vector, &glm::vec3::y>>(thrusts, 0.f))
+        vy = (static_cast<double>(utils::accumulate<utils::Access<&Thrust::vector, &glm::vec3::y>>(thrusts, 0.f))
               + static_cast<double>(mass) * gravity - ky * vy)
              / static_cast<double>(mass);
     }
@@ -36,7 +36,7 @@ void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravi
               / static_cast<double>(MoI);*/
 }
 
-Forces Entity::resultOfForces(const double timeStep) const
+auto Entity::resultOfForces(const double timeStep) const -> Forces
 {
 	// [vx, vy, theta]
     state_type y{static_cast<double>(velocity.x), static_cast<double>(velocity.y), static_cast<double>(angularVelocity + temporaryAngularVelocities)};

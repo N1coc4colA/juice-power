@@ -27,10 +27,6 @@ public:
 	{
 	}
 
-    _nodiscard constexpr inline size_t width() const { return _width; }
-
-    _nodiscard constexpr inline size_t height() const { return _height; }
-
     constexpr inline auto get(const size_t h, const size_t w)
     {
         assert(h <= _height);
@@ -39,25 +35,26 @@ public:
         return _data[h * _width + w];
     }
 
-    constexpr inline std::span<T> operator[](const size_t h)
+    constexpr inline auto operator[](const size_t h)
     {
         assert(h <= _height);
         return std::span<T>(&_data[h * _width], _width);
     }
 
-    constexpr inline std::span<const T> operator[](const size_t h) const
+    constexpr inline auto operator[](const size_t h) const
     {
         assert(h <= _height);
         return std::span<const T>(&_data[h * _width], _width);
     }
 
-    _nodiscard constexpr inline const T *data() const { return _data; }
+    _nodiscard constexpr inline auto data() { return _data; }
+    _nodiscard constexpr inline auto data() const { return _data; }
 
-    constexpr inline T *data() { return _data; }
+    _nodiscard constexpr inline auto flattened() { return std::span<T>(_data, _width * _height); }
+    _nodiscard constexpr inline auto flattened() const { return std::span<const T>(_data, _width * _height); }
 
-    constexpr inline std::span<T> flattened() { return std::span<T>(_data, _width * _height); }
-
-    _nodiscard constexpr inline std::span<const T> flattened() const { return std::span<const T>(_data, _width * _height); }
+    _nodiscard constexpr inline auto width() const -> size_t { return _width; }
+    _nodiscard constexpr inline auto height() const -> size_t { return _height; }
 
 private:
 	T *_data = nullptr;
@@ -74,13 +71,12 @@ public:
     static constexpr int transparencyLimit = 100;
 
     ImageVectorizer();
-    ~ImageVectorizer();
-
     ImageVectorizer(const ImageVectorizer &) = delete;
     ImageVectorizer(ImageVectorizer &&) = delete;
+    ~ImageVectorizer();
 
-    ImageVectorizer &operator=(const ImageVectorizer &) const = delete;
-    ImageVectorizer &operator=(ImageVectorizer &&) const = delete;
+    auto operator=(const ImageVectorizer &) const -> ImageVectorizer & = delete;
+    auto operator=(ImageVectorizer &&) const -> ImageVectorizer & = delete;
 
     /**
 	 * @brief determineImageBorders
@@ -97,12 +93,12 @@ public:
 	 *  As every point is just following in order, but we may have 2 groups,
 	 *  when points switch from one group to another, the normal is null.
 	 */
-    inline const std::vector<glm::vec2> &getPoints() { return points; }
+    _nodiscard inline auto getPoints() const -> const std::vector<glm::vec2> & { return points; }
     /// @brief Resulting normals of the previous @fn determineImageBorders call.
-    inline const std::vector<glm::vec2> &getNormals() { return normals; }
+    _nodiscard inline auto getNormals() const -> const std::vector<glm::vec2> & { return normals; }
 
-    inline glm::vec2 getMin() { return min; }
-    inline glm::vec2 getMax() { return max; }
+    _nodiscard inline auto getMin() const { return min; }
+    _nodiscard inline auto getMax() const { return max; }
 
 private:
     potrace_param_t *m_params = nullptr;

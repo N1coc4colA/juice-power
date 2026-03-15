@@ -34,7 +34,7 @@ public:
 
     ~Exclusive() = default;
 
-    Exclusive &operator=(const T &other)
+    auto operator=(const T &other) -> Exclusive &
     {
         std::scoped_lock lg(m_mtx.get());
         m_value = other;
@@ -42,7 +42,7 @@ public:
         return *this;
     }
 
-    Exclusive &operator=(T &&other)
+    auto operator=(T &&other) -> Exclusive &
     {
         std::scoped_lock lg(m_mtx.get());
         m_value = std::move(other);
@@ -50,7 +50,7 @@ public:
         return *this;
     }
 
-    Exclusive &operator=(const Exclusive &other)
+    auto operator=(const Exclusive &other) -> Exclusive &
     {
         m_mtx = other.m_mtx;
         m_value = other;
@@ -58,7 +58,7 @@ public:
         return *this;
     }
 
-    Exclusive &operator=(Exclusive &&other) noexcept
+    auto operator=(Exclusive &&other) noexcept -> Exclusive &
     {
         m_mtx = other.m_mtx;
         m_value = other;
@@ -72,21 +72,20 @@ public:
         return m_value;
     }
 
-    T &get()
+    auto get() -> T &
     {
         std::scoped_lock lg(m_mtx);
         return m_value;
     }
 
-    const T &get() const
+    auto get() const -> const T &
     {
         std::scoped_lock lg(m_mtx);
         return m_value;
     }
 
-    T &unsafeGet() { return m_value; }
-
-    const T &unsafeGet() const { return m_value; }
+    auto unsafeGet() -> T & { return m_value; }
+    auto unsafeGet() const -> const T & { return m_value; }
 
 private:
     mutable std::reference_wrapper<std::mutex> m_mtx;

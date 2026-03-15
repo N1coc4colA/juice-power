@@ -10,7 +10,7 @@
 #include "loaders/map.h"
 #include "world/scene.h"
 
-int main(int argc, char **argv)
+auto main(int argc, char **argv) -> int
 {
 	UNUSED(argv);
 	UNUSED(argc);

@@ -42,7 +42,7 @@ public:
     {}
 };
 
-enum class EventType {
+enum class EventType : uint8_t {
     Up,
     Down,
     Left,

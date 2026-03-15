@@ -6,6 +6,7 @@
 #include <execinfo.h>
 #include <fmt/printf.h>
 #include <iostream>
+#include <span>
 #include <vector>
 
 #include <gsl-lite/gsl-lite.hpp>
@@ -36,13 +37,13 @@ void BackTrace::easyPrint(const uint maxFrames)
         char *end_offset = nullptr;
 
         // Find parentheses and the + offset surrounded by parentheses
-        for (char *p = symbollist[i]; *p; p++) {
-            if (*p == '(') {
-                begin_name = p;
-            } else if (*p == '+') {
-                begin_offset = p;
-            } else if (*p == ')') {
-                end_offset = p;
+        for (char p : std::span(symbollist[i], std::strlen(symbollist[i]))) {
+            if (p == '(') {
+                begin_name = &p;
+            } else if (p == '+') {
+                begin_offset = &p;
+            } else if (p == ')') {
+                end_offset = &p;
                 break;
             }
         }
@@ -74,7 +75,7 @@ void BackTrace::easyPrint(const uint maxFrames)
     free(symbollist_);
 }
 
-std::span<BackTraceEntry> backtrace_entries(uint max_frames)
+auto backtraceEntries(const uint max_frames) -> std::span<BackTraceEntry>
 {
 	assert(max_frames > 0);
 
@@ -103,13 +104,13 @@ std::span<BackTraceEntry> backtrace_entries(uint max_frames)
         char *end_offset = nullptr;
 
         // Find parentheses and the + offset surrounded by parentheses
-        for (char *p = symbollist[i]; *p; p++) {
-            if (*p == '(') {
-                begin_name = p;
-            } else if (*p == '+') {
-                begin_offset = p;
-            } else if (*p == ')') {
-                end_offset = p;
+        for (char p : std::span(symbollist[i], std::strlen(symbollist[i]))) {
+            if (p == '(') {
+                begin_name = &p;
+            } else if (p == '+') {
+                begin_offset = &p;
+            } else if (p == ')') {
+                end_offset = &p;
                 break;
             }
         }
@@ -155,7 +156,7 @@ std::span<BackTraceEntry> backtrace_entries(uint max_frames)
 }
 
 BackTrace::BackTrace(const uint maxFrames)
-    : entries(backtrace_entries(maxFrames))
+    : entries(backtraceEntries(maxFrames))
     , m_bt(entries.data(), [](gsl::owner<BackTraceEntry *> d) -> void { delete[] d; })
 {
 	assert(maxFrames != 0);
@@ -173,7 +174,7 @@ void BackTrace::print() const
 	}
 }
 
-BackTrace &BackTrace::operator =(const BackTrace &other)
+auto BackTrace::operator=(const BackTrace &other) -> BackTrace &
 {
 	if (&other == this) {
 		return *this;
@@ -185,7 +186,7 @@ BackTrace &BackTrace::operator =(const BackTrace &other)
 	return *this;
 }
 
-BackTrace &BackTrace::operator =(BackTrace &&other) noexcept
+auto BackTrace::operator=(BackTrace &&other) noexcept -> BackTrace &
 {
 	if (&other == this) {
 		return *this;

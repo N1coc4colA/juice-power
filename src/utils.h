@@ -13,47 +13,47 @@
 namespace utils
 {
 
-inline constexpr float cross(const glm::vec2 &a, const glm::vec2 &b) noexcept
+inline constexpr auto cross(const glm::vec2 &a, const glm::vec2 &b) noexcept -> float
 {
     return (a.x * b.y) - (b.x * a.y);
 }
 
 using std::accumulate;
 
-template<auto Member, auto ... Members>
-struct access
+template<auto Member, auto... Members>
+struct Access
 {
-	using type = typename access<Members...>::type;
+    using type = typename Access<Members...>::type;
 
-	template<typename I>
-	static inline constexpr auto &&get(I &&instance)
-	{
-		return access<Members...>::get(instance.*Member);
-	}
+    template<typename I>
+    static inline constexpr auto get(I &&instance) -> auto &&
+    {
+        return Access<Members...>::get(instance.*Member);
+    }
 };
 
 template<auto Member>
-struct access<Member>
+struct Access<Member>
 {
 	using type = typename std::remove_reference_t<decltype(Member)>;
 
-	template<typename I>
-	static inline constexpr auto &get(I &instance)
-	{
-		return instance.*Member;
-	}
+    template<typename I>
+    static inline constexpr auto get(I &instance) -> auto &
+    {
+        return instance.*Member;
+    }
 };
 
+template<typename T>
+struct IsAccess : std::false_type
+{};
 
-template <typename T>
-struct is_access : std::false_type {};
-
-template <auto ... Args>
-struct is_access<access<Args ...>> : std::true_type {};
-
+template<auto... Args>
+struct IsAccess<Access<Args...>> : std::true_type
+{};
 
 template<typename A, typename B>
-constexpr bool is_callable(auto V)
+constexpr auto isCallable(auto V) -> bool
 {
 	return std::is_invocable_v<decltype(V), A, B>;
 }
@@ -61,7 +61,7 @@ constexpr bool is_callable(auto V)
 
 // @0
 template<typename T, auto Operation = std::plus<>(), class InputIterator>
-inline constexpr T accumulate(InputIterator first, InputIterator last, T init)
+inline constexpr auto accumulate(InputIterator first, InputIterator last, T init) -> T
 {
 	if constexpr (is_callable<T, T>(Operation)) {
 		for (; first != last; ++first) {
@@ -78,8 +78,8 @@ inline constexpr T accumulate(InputIterator first, InputIterator last, T init)
 
 // @1
 template<typename Path, typename T, auto Operation = std::plus<>(), class InputIterator>
-requires is_access<Path>::value
-inline constexpr T accumulate(InputIterator first, InputIterator last, T init)
+    requires IsAccess<Path>::value
+inline constexpr auto accumulate(InputIterator first, InputIterator last, T init) -> T
 {
 	for (; first != last; ++first) {
 		init = std::invoke(Operation, std::move(init), Path::get(*first));
@@ -90,8 +90,8 @@ inline constexpr T accumulate(InputIterator first, InputIterator last, T init)
 
 //@2
 template<typename Path0, typename Path1, typename T, auto Operation = std::plus<>(), auto Composer = std::plus<>(), class InputIterator>
-requires is_access<Path0>::value && is_access<Path1>::value
-inline constexpr T accumulate(InputIterator first, InputIterator last, T init)
+    requires IsAccess<Path0>::value && IsAccess<Path1>::value
+inline constexpr auto accumulate(InputIterator first, InputIterator last, T init) -> T
 {
 	for (; first != last; ++first) {
 		init = std::invoke(Operation, std::move(init), std::invoke(Composer, Path0::get(*first), Path1::get(*first)));
@@ -102,8 +102,8 @@ inline constexpr T accumulate(InputIterator first, InputIterator last, T init)
 
 // @3
 template<typename Path0, typename Path1, typename T, auto Operation = std::plus<>(), auto Composer = std::plus<>(), class InputIterator0, class InputIterator1>
-requires is_access<Path0>::value && is_access<Path1>::value
-inline constexpr T accumulate(InputIterator0 first0, InputIterator0 last0, InputIterator1 first1, InputIterator1 last1, T init)
+    requires IsAccess<Path0>::value && IsAccess<Path1>::value
+inline constexpr auto accumulate(InputIterator0 first0, InputIterator0 last0, InputIterator1 first1, InputIterator1 last1, T init) -> T
 {
 	for (; first0 != last0 && first1 != last1; ++first0, ++first1) {
 		init = std::invoke(Composer, std::move(init), std::invoke(Operation, Path0::get(*first0), Path1::get(*first1)));
@@ -114,7 +114,7 @@ inline constexpr T accumulate(InputIterator0 first0, InputIterator0 last0, Input
 
 // @4
 template<std::ranges::range Container, typename T, auto Operation = std::plus<>()>
-inline constexpr T accumulate(Container &&container, T init)
+inline constexpr auto accumulate(Container &&container, T init) -> T
 {
 	// Should target @0.
 	return accumulate<T, Operation>(
@@ -125,8 +125,8 @@ inline constexpr T accumulate(Container &&container, T init)
 
 // @5
 template<typename Path, std::ranges::range Container, typename T, auto Operation = std::plus<>()>
-requires is_access<Path>::value
-inline constexpr T accumulate(Container &&container, T init)
+    requires IsAccess<Path>::value
+inline constexpr auto accumulate(Container &&container, T init) -> T
 {
 	// Should target @1.
 	return accumulate<Path, T, Operation>(
@@ -137,8 +137,8 @@ inline constexpr T accumulate(Container &&container, T init)
 
 //@6
 template<typename Path0, typename Path1, std::ranges::range Container, typename T, auto Operation = std::plus<>(), auto Composer = std::plus<>()>
-requires is_access<Path0>::value && is_access<Path1>::value
-inline constexpr T accumulate(Container &&container, T init)
+    requires IsAccess<Path0>::value && IsAccess<Path1>::value
+inline constexpr auto accumulate(Container &&container, T init) -> T
 {
 	// Should target @2.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
@@ -149,8 +149,8 @@ inline constexpr T accumulate(Container &&container, T init)
 
 //@7
 template<typename Path0, typename Path1, auto Composer = std::plus<>(), auto Operation = std::plus<>(), typename T, std::ranges::range Container>
-requires is_access<Path0>::value && is_access<Path1>::value
-inline constexpr T accumulate(Container &&container, T init)
+    requires IsAccess<Path0>::value && IsAccess<Path1>::value
+inline constexpr auto accumulate(Container &&container, T init) -> T
 {
 	// Should target @2.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
@@ -160,9 +160,15 @@ inline constexpr T accumulate(Container &&container, T init)
 }
 
 // @8
-template<typename Path0, typename Path1, std::ranges::range Container0, std::ranges::range Container1, typename T, auto Composer = std::plus<>(), auto Operation = std::plus<>()>
-requires is_access<Path0>::value && is_access<Path1>::value
-inline constexpr T accumulate(Container0 &&container0, Container1 &&container1, T init)
+template<typename Path0,
+         typename Path1,
+         std::ranges::range Container0,
+         std::ranges::range Container1,
+         typename T,
+         auto Composer = std::plus<>(),
+         auto Operation = std::plus<>()>
+    requires IsAccess<Path0>::value && IsAccess<Path1>::value
+inline constexpr auto accumulate(Container0 &&container0, Container1 &&container1, T init) -> T
 {
 	// Should be @3.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
@@ -173,9 +179,15 @@ inline constexpr T accumulate(Container0 &&container0, Container1 &&container1, 
 }
 
 // @9
-template<typename Path0, typename Path1, auto Composer = std::plus<>(), auto Operation = std::plus<>(), typename T, std::ranges::range Container0, std::ranges::range Container1>
-requires is_access<Path0>::value && is_access<Path1>::value
-inline constexpr T accumulate(Container0 &&container0, Container1 &&container1, T init)
+template<typename Path0,
+         typename Path1,
+         auto Composer = std::plus<>(),
+         auto Operation = std::plus<>(),
+         typename T,
+         std::ranges::range Container0,
+         std::ranges::range Container1>
+    requires IsAccess<Path0>::value && IsAccess<Path1>::value
+inline constexpr auto accumulate(Container0 &&container0, Container1 &&container1, T init) -> T
 {
 	// Should be @3.
 	return accumulate<Path0, Path1, T, Operation, Composer>(

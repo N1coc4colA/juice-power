@@ -58,14 +58,14 @@ do { \
 namespace Graphics
 {
 
-void *get_mapped_data(VmaAllocation alloc)
+auto getMappedData(VmaAllocation alloc) -> void *
 {
 	assert(alloc != VK_NULL_HANDLE);
 
 	return alloc->GetMappedData();
 }
 
-int getAllocationsCount()
+auto getAllocationsCount() -> int
 {
 #ifdef VMA_USE_DEBUG_LOG
     return allocationCounter;

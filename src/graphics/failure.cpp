@@ -16,7 +16,7 @@ Failure::Failure(FailureType type)
 {
 }
 
-const char *Failure::what() const noexcept
+auto Failure::what() const noexcept -> const char *
 {
 	return m_msg.c_str();
 }

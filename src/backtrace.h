@@ -35,8 +35,8 @@ public:
 
 	void print() const;
 
-	BackTrace &operator =(const BackTrace &other);
-	BackTrace &operator =(BackTrace &&other) noexcept;
+    auto operator=(const BackTrace &other) -> BackTrace &;
+    auto operator=(BackTrace &&other) noexcept -> BackTrace &;
 
     static void easyPrint(const uint maxFrames);
 

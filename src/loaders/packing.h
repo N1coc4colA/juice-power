@@ -22,6 +22,6 @@ struct Frame
     int num_images;
 };
 
-int packImagesMultiFrame(std::vector<ImageInfo> &images, uint64_t max_area, std::vector<Frame> &frames);
+auto packImagesMultiFrame(std::vector<ImageInfo> &images, uint64_t max_area, std::vector<Frame> &frames) -> int;
 
 #endif // PACKING_H
