@@ -61,12 +61,12 @@ VkPipeline PipelineBuilder::buildPipeline(VkDevice device)
 	};
 
 	// build the actual pipeline
-	const VkDynamicState state[] = {
-		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR,
-	};
+    const auto state = std::array<VkDynamicState, 2>({
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+    });
 
-	const VkPipelineDynamicStateCreateInfo dynamicInfo {
+    const VkPipelineDynamicStateCreateInfo dynamicInfo {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 		.dynamicStateCount = 2,
 		.pDynamicStates = &state[0],

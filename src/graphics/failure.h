@@ -5,6 +5,7 @@
 #include <string>
 
 #include "enums.h"
+#include "src/keywords.h"
 
 namespace Graphics
 {
@@ -23,7 +24,7 @@ public:
 	explicit Failure(FailureType type);
 	Failure(FailureType type, const std::string &message);
 
-    virtual const char *what() const noexcept override;
+    _nodiscard const char *what() const noexcept override;
 
 private:
     std::string m_msg{};

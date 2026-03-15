@@ -26,19 +26,19 @@ struct BackTraceEntry
 class BackTrace
 {
 public:
-	explicit BackTrace(uint maxFrames);
-	BackTrace(const BackTrace &other);
-	BackTrace(BackTrace &&other) noexcept;
-	~BackTrace();
+    explicit BackTrace(const uint maxFrames);
+    BackTrace(const BackTrace &other) = default;
+    BackTrace(BackTrace &&other) noexcept;
+    ~BackTrace() = default;
 
-	std::span<BackTraceEntry> entries;
+    std::span<BackTraceEntry> entries;
 
 	void print() const;
 
 	BackTrace &operator =(const BackTrace &other);
 	BackTrace &operator =(BackTrace &&other) noexcept;
 
-	static void easyPrint(uint maxFrames);
+    static void easyPrint(const uint maxFrames);
 
 private:
     std::shared_ptr<BackTraceEntry> m_bt;

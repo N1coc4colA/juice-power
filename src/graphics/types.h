@@ -62,11 +62,11 @@ struct EngineStats
 struct Vertex
 {
     GPU_EXPOSED(glm::vec3, position) {};
-    GPUChecks::Padding<4> _pad0;
+    GPUChecks::Padding<4> _pad0{};
     GPU_EXPOSED(glm::vec2, uv) {};
-    GPUChecks::Padding<8> _pad1;
+    GPUChecks::Padding<8> _pad1{};
     GPU_EXPOSED(glm::vec3, normal) {};
-    GPUChecks::Padding<4> _pad2;
+    GPUChecks::Padding<4> _pad2{};
 };
 
 struct LineVertex
@@ -142,9 +142,9 @@ struct __Check
     static_assert(offsetof(Vertex, normal) == 32, "normal offset mismatch");
 
     static_assert(sizeof(GPUDrawPushConstants2) == 64 + 8 + 8 + 8 + /*padding*/ 8, "GPUDrawPushConstants2 size mismatch");
-    static_assert(offsetof(GPUDrawPushConstants2, vertexBuffer) == 64, "");
-    static_assert(offsetof(GPUDrawPushConstants2, animationBuffer) == 72, "");
-    static_assert(offsetof(GPUDrawPushConstants2, objectsBuffer) == 80, "");
+    static_assert(offsetof(GPUDrawPushConstants2, vertexBuffer) == 64, "vertexBuffer offset mismatch");
+    static_assert(offsetof(GPUDrawPushConstants2, animationBuffer) == 72, "animationBuffer offset mismatch");
+    static_assert(offsetof(GPUDrawPushConstants2, objectsBuffer) == 80, "objectsBuffer offset mismatch");
 
     static_assert(offsetof(GPUDrawLinePushConstants, vertexBuffer) == 80, "vertexBuffer offset mismatch");
 

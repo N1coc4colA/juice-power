@@ -1,6 +1,7 @@
 #ifndef WORLD_SCENE_H
 #define WORLD_SCENE_H
 
+#include <gsl/gsl-lite.hpp>
 #include <ranges>
 #include <set>
 
@@ -27,7 +28,7 @@ public:
     /**
      * @brief Resources associated to this scene.
      */
-    Graphics::Resources2 *res2 = nullptr;
+    gsl::owner<Graphics::Resources2 *> res2 = nullptr;
     /**
      * @brief Chunks composing the scene.
      */

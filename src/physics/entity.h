@@ -10,6 +10,7 @@
 #include <span>
 #include <vector>
 
+#include "src/keywords.h"
 #include "src/utils.h"
 
 namespace Physics
@@ -20,18 +21,18 @@ struct AABB
 	glm::vec2 min {};
 	glm::vec2 max {};
 
-	constexpr bool intersects(const AABB &other) const
-	{
-		if(max.x < other.min.x || min.x > other.max.x) {
-			return false;
-		}
-		if(max.y < other.min.y || min.y > other.max.y) {
-			return false;
-		}
+    _nodiscard constexpr bool intersects(const AABB &other) const
+    {
+        if (max.x < other.min.x || min.x > other.max.x) {
+            return false;
+        }
+        if (max.y < other.min.y || min.y > other.max.y) {
+            return false;
+        }
 
-		// No separating axis found, therefor there is at least one overlapping axis
-		return true;
-	}
+        // No separating axis found, therefor there is at least one overlapping axis
+        return true;
+    }
 };
 
 struct Projection
@@ -86,7 +87,7 @@ struct Thrust
 class Entity
 {
 public:
-	typedef std::array<double, 3> state_type;
+    using state_type = std::array<double, 3>;
 
     size_t id;
 
@@ -126,29 +127,19 @@ public:
     /// @brief Tells if the object is affected by gravity or not.
 	bool isNotFixed = true;
 
-	constexpr glm::vec2 nextPosition(const float timeDelta) const noexcept
-	{
-		return position + velocity*timeDelta;
-	}
+    _nodiscard constexpr glm::vec2 nextPosition(const float timeDelta) const noexcept { return position + velocity * timeDelta; }
 
-	constexpr glm::vec2 nextVelocity(const float timeDelta) const noexcept
-	{
-		return velocity + acceleration*timeDelta;
-	}
+    _nodiscard constexpr glm::vec2 nextVelocity(const float timeDelta) const noexcept { return velocity + acceleration * timeDelta; }
 
-	// Used for integration of forces. Here it's not King Kunta but King Kutta !!
+    // Used for integration of forces. Here it's not King Kunta but King Kutta !!
     void KingKutta(
         const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
-    Forces resultOfForces(const double timeStep) const;
+    _nodiscard Forces resultOfForces(const double timeStep) const;
     void compute(const double timeDelta);
 
-    inline constexpr glm::vec2 center() const noexcept
-    {
-        return position + (boundingBox.min + boundingBox.max) * 0.5f;
-    }
+    _nodiscard inline constexpr glm::vec2 center() const noexcept { return position + (boundingBox.min + boundingBox.max) * 0.5f; }
 
-    constexpr Projection getMinMax(const std::span<const glm::vec2> &borders,
-                                   const glm::vec2 &axis) const noexcept
+    _nodiscard constexpr Projection getMinMax(const std::span<const glm::vec2> &borders, const glm::vec2 &axis) const noexcept
     {
         float minProj = glm::dot(position + borders[0], axis);
         float maxProj = minProj;
@@ -176,7 +167,7 @@ public:
         };
     }
 
-    bool collides(const Entity &other, CollisionInfo &info) const noexcept
+    _nodiscard bool collides(const Entity &other, CollisionInfo &info) const noexcept
     {
         // t: this, o: other, b: borders, n: normals
         const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());

@@ -1,6 +1,8 @@
 #ifndef JP_ALGORITHMS_H
 #define JP_ALGORITHMS_H
 
+#include "keywords.h"
+
 #include <vector>
 #include <span>
 
@@ -8,8 +10,7 @@
 
 #include <cstddef>
 
-typedef struct potrace_param_s potrace_param_t;
-
+using potrace_param_t = struct potrace_param_s;
 
 namespace algorithms
 {
@@ -26,59 +27,37 @@ public:
 	{
 	}
 
-	constexpr
-	inline size_t width() const
-	{
-		return _width;
-	}
+    _nodiscard constexpr inline size_t width() const { return _width; }
 
-	constexpr
-	inline size_t height() const
-	{
-		return _height;
-	}
+    _nodiscard constexpr inline size_t height() const { return _height; }
 
-	constexpr
-	inline auto get(const size_t h, const size_t w)
-	{
-		return _data[h*_width + w];
-	}
+    constexpr inline auto get(const size_t h, const size_t w)
+    {
+        assert(h <= _height);
+        assert(w < _width);
 
-	constexpr
-	inline std::span<T> operator[](const size_t h)
-	{
-		return std::span<T>(&_data[h*_width], _width);
-	}
+        return _data[h * _width + w];
+    }
 
-	constexpr
-	inline std::span<const T> operator[](const size_t h) const
-	{
-		return std::span<const T>(&_data[h*_width], _width);
-	}
+    constexpr inline std::span<T> operator[](const size_t h)
+    {
+        assert(h <= _height);
+        return std::span<T>(&_data[h * _width], _width);
+    }
 
-	constexpr
-	inline const T *data() const
-	{
-		return _data;
-	}
+    constexpr inline std::span<const T> operator[](const size_t h) const
+    {
+        assert(h <= _height);
+        return std::span<const T>(&_data[h * _width], _width);
+    }
 
-	constexpr
-	inline T *data()
-	{
-		return _data;
-	}
+    _nodiscard constexpr inline const T *data() const { return _data; }
 
-	constexpr
-	inline std::span<T> flattened()
-	{
-		return std::span<T>(_data, _width*_height);
-	}
+    constexpr inline T *data() { return _data; }
 
-	constexpr
-	inline std::span<const T> flattened() const
-	{
-		return std::span<const T>(_data, _width*_height);
-	}
+    constexpr inline std::span<T> flattened() { return std::span<T>(_data, _width * _height); }
+
+    _nodiscard constexpr inline std::span<const T> flattened() const { return std::span<const T>(_data, _width * _height); }
 
 private:
 	T *_data = nullptr;
@@ -90,16 +69,20 @@ private:
 class ImageVectorizer
 {
 public:
-	ImageVectorizer();
-	~ImageVectorizer();
+    static constexpr int turdSize = 10;    // ignore small regions
+    static constexpr float alphaMax = 1.0; // corner threshold
+    static constexpr int transparencyLimit = 100;
 
-	ImageVectorizer(const ImageVectorizer &) = delete;
-	ImageVectorizer(ImageVectorizer &&) = delete;
+    ImageVectorizer();
+    ~ImageVectorizer();
 
-	ImageVectorizer &operator =(const ImageVectorizer &) const = delete;
-	ImageVectorizer &operator =(ImageVectorizer &&) const = delete;
+    ImageVectorizer(const ImageVectorizer &) = delete;
+    ImageVectorizer(ImageVectorizer &&) = delete;
 
-	/**
+    ImageVectorizer &operator=(const ImageVectorizer &) const = delete;
+    ImageVectorizer &operator=(ImageVectorizer &&) const = delete;
+
+    /**
 	 * @brief determineImageBorders
 	 * @param image
 	 * Data layout is RBGA, each channel with 8 bits, in pixel order, row-major order.
@@ -114,12 +97,12 @@ public:
 	 *  As every point is just following in order, but we may have 2 groups,
 	 *  when points switch from one group to another, the normal is null.
 	 */
-	std::vector<glm::vec2> points {};
-	/// @brief Resulting normals of the previous @fn determineImageBorders call.
-	std::vector<glm::vec2> normals {};
+    inline const std::vector<glm::vec2> &getPoints() { return points; }
+    /// @brief Resulting normals of the previous @fn determineImageBorders call.
+    inline const std::vector<glm::vec2> &getNormals() { return normals; }
 
-	glm::vec2 min {};
-	glm::vec2 max {};
+    inline glm::vec2 getMin() { return min; }
+    inline glm::vec2 getMax() { return max; }
 
 private:
     potrace_param_t *m_params = nullptr;
@@ -130,6 +113,12 @@ private:
 	 * calls to @fn determineImageBorders.
 	 */
     std::vector<unsigned char> m_memory{};
+
+    std::vector<glm::vec2> points{};
+    std::vector<glm::vec2> normals{};
+
+    glm::vec2 min{};
+    glm::vec2 max{};
 };
 
 

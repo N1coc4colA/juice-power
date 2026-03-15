@@ -1,5 +1,6 @@
 #include "descriptors.h"
 
+#include <algorithm>
 #include <cassert>
 
 #include <fmt/ostream.h>
@@ -143,13 +144,13 @@ void DescriptorAllocatorGrowable::init(VkDevice device, const uint32_t maxSets, 
 	assert(device != VK_NULL_HANDLE);
 	assert(maxSets != 0);
 
-	m_ratios.resize(poolRatios.size());
-	std::copy(poolRatios.cbegin(), poolRatios.cend(), m_ratios.begin());
+    m_ratios.resize(poolRatios.size());
+    std::ranges::copy(poolRatios, m_ratios.begin());
 
-	m_setsPerPool = static_cast<uint32_t>(static_cast<float>(maxSets) * 1.5f); //grow it next allocation
-	VkDescriptorPool newPool = createPool(device, maxSets, poolRatios);
+    m_setsPerPool = static_cast<uint32_t>(static_cast<float>(maxSets) * growthSize); //grow it next allocation
+    const VkDescriptorPool newPool = createPool(device, maxSets, poolRatios);
 
-	m_readyPools.push_back(newPool);
+    m_readyPools.push_back(newPool);
 }
 
 void DescriptorAllocatorGrowable::clearPools(VkDevice device)
@@ -186,22 +187,22 @@ VkDescriptorPool DescriptorAllocatorGrowable::getPool(VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
-	VkDescriptorPool newPool;
+    VkDescriptorPool newPool = VK_NULL_HANDLE;
 
-	if (m_readyPools.empty()) {
-		//need to create a new pool
-		newPool = createPool(device, m_setsPerPool, m_ratios);
+    if (m_readyPools.empty()) {
+        //need to create a new pool
+        newPool = createPool(device, m_setsPerPool, m_ratios);
 
-		m_setsPerPool = static_cast<uint32_t>(static_cast<float>(m_setsPerPool) * 1.5f);
-		if (m_setsPerPool > 4092) {
-			m_setsPerPool = 4092;
-		}
-	} else {
-		newPool = m_readyPools.back();
-		m_readyPools.pop_back();
-	}
+        m_setsPerPool = static_cast<uint32_t>(static_cast<float>(m_setsPerPool) * growthSize);
+        if (m_setsPerPool > maxSetsPerPool) {
+            m_setsPerPool = maxSetsPerPool;
+        }
+    } else {
+        newPool = m_readyPools.back();
+        m_readyPools.pop_back();
+    }
 
-	return newPool;
+    return newPool;
 }
 
 VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
@@ -212,7 +213,7 @@ VkDescriptorPool DescriptorAllocatorGrowable::createPool(VkDevice device, const 
 	std::vector<VkDescriptorPoolSize> poolSizes;
 	poolSizes.reserve(poolRatios.size());
 
-    std::transform(poolRatios.cbegin(), poolRatios.cend(), poolSizes.begin(), [setCount](const auto &ratio) {
+    std::ranges::transform(poolRatios, poolSizes.begin(), [setCount](const auto &ratio) -> auto {
         return VkDescriptorPoolSize{.type = ratio.type, .descriptorCount = static_cast<uint32_t>(ratio.ratio * static_cast<float>(setCount))};
     });
 

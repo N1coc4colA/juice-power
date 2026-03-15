@@ -11,7 +11,7 @@ namespace Input {
 
 class Engine
 {
-    typedef State::XS State::*_StateEntry;
+    using _StateEntry = State::XS State::*;
 
 public:
     explicit Engine(const std::unordered_map<uint32_t, EventType> &corresps);

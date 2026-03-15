@@ -126,7 +126,10 @@ struct DescriptorAllocator
 struct DescriptorAllocatorGrowable
 {
 public:
-	/**
+    static constexpr float growthSize = 1.5f;
+    static constexpr uint32_t maxSetsPerPool = 4092;
+
+    /**
 	 * @brief Descriptor type for allocation ratio
 	 */
 	struct PoolSizeRatio

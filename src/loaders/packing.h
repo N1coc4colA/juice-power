@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-typedef unsigned char stbi_uc;
+using stbi_uc = unsigned char;
 
 struct ImageInfo
 {

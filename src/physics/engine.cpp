@@ -246,11 +246,11 @@ void Engine::resolveAllCollisions()
     {
         const auto size = m_scene->view2.size();
 
-        for (size_t i = 0; i < size; i++) {
+        for (long i = 0; i < size; i++) {
             // For every entity in the current chunk, we check the entities in the current AND next chunk.
             // Previous chunks' entities have already been checked against.
             for (auto &e : m_scene->view2[i].entities) {
-                for (size_t j = i; j < size; j++) {
+                for (long j = i; j < size; j++) {
                     resolveCollisions(m_scene->view2[j].entities, e);
                 }
             }

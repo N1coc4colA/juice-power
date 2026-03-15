@@ -1,7 +1,9 @@
 #ifndef JP_DEFINES_H
 #define JP_DEFINES_H
 
-#define UNUSED(x) ((void)x)
+template<typename T>
+inline constexpr void UNUSED(T)
+{}
 
 #include <functional>
 #include <mutex>
@@ -17,7 +19,7 @@ public:
 
     explicit Exclusive(std::mutex &mtx, T &&val)
         : m_mtx(mtx)
-        , m_value(val)
+        , m_value(std::move(val))
     {}
 
     explicit Exclusive(const Exclusive &other)
@@ -25,50 +27,60 @@ public:
         , m_value(other.m_value)
     {}
 
-    explicit Exclusive(Exclusive &&other)
+    explicit Exclusive(Exclusive &&other) noexcept
         : m_mtx(other.m_mtx)
         , m_value(other.m_value)
     {}
 
-    void operator=(const T &other)
+    ~Exclusive() = default;
+
+    Exclusive &operator=(const T &other)
     {
-        std::lock_guard lg(m_mtx.get());
+        std::scoped_lock lg(m_mtx.get());
         m_value = other;
+
+        return *this;
     }
 
-    void operator=(T &&other)
+    Exclusive &operator=(T &&other)
     {
-        std::lock_guard lg(m_mtx.get());
-        m_value = other;
+        std::scoped_lock lg(m_mtx.get());
+        m_value = std::move(other);
+
+        return *this;
     }
 
-    void operator=(const Exclusive &other)
+    Exclusive &operator=(const Exclusive &other)
     {
         m_mtx = other.m_mtx;
         m_value = other;
+
+        return *this;
     }
 
-    void operator=(Exclusive &&other)
+    Exclusive &operator=(Exclusive &&other) noexcept
     {
         m_mtx = other.m_mtx;
         m_value = other;
+
+        return *this;
     }
 
     operator T() const
     {
-        std::lock_guard lg(m_mtx);
+        std::scoped_lock lg(m_mtx);
         return m_value;
     }
 
     T &get()
     {
-        std::lock_guard lg(m_mtx);
+        std::scoped_lock lg(m_mtx);
         return m_value;
     }
 
     const T &get() const
     {
-        std::lock_guard lg(m_mtx);
+        std::scoped_lock lg(m_mtx);
         return m_value;
     }
 

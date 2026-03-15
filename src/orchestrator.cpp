@@ -32,6 +32,13 @@ Orchestrator::Orchestrator()
     init();
 }
 
+Orchestrator::~Orchestrator()
+{
+    delete m_inputEngine;
+    delete m_graphicsEngine;
+    delete m_physicsEngine;
+}
+
 Orchestrator &Orchestrator::get()
 {
     return *m_instance;

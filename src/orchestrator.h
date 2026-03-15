@@ -27,6 +27,7 @@ class Orchestrator
 public:
     explicit Orchestrator();
     Orchestrator(const Orchestrator &) = delete;
+    ~Orchestrator();
     Orchestrator &operator=(const Orchestrator &) = delete;
 
     static Orchestrator &get();

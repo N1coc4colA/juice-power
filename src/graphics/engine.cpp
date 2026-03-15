@@ -20,6 +20,8 @@
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imgui.h>
 
+#include <gsl/gsl-lite.hpp>
+
 #include "../states.h"
 
 #include "../world/scene.h"
@@ -52,9 +54,11 @@ constexpr glm::mat4 createOrthographicProjection(const float left, const float r
     const float h = top - bottom;
     const float w = right - left;
 
-    glm::mat4 projection = glm::mat4(1.f);
-    projection[0][0] = 2.f / w;
-    projection[1][1] = -2.f / h;
+    constexpr float projectionRange = 2.f;
+
+    auto projection = glm::mat4(1.f);
+    projection[0][0] = projectionRange / w;
+    projection[1][1] = -projectionRange / h;
     projection[2][2] = 1.f; // Z for layer ordering
 
     projection[3][0] = (right + left) / w;
@@ -151,7 +155,7 @@ void Engine::initSDL()
 
 void enumerateDevices(VkInstance inst)
 {
-    uint32_t gpuCount;
+    uint32_t gpuCount = 0;
     VK_CHECK(vkEnumeratePhysicalDevices(inst, &gpuCount, nullptr));
 
     std::vector<VkPhysicalDevice> gpus(gpuCount);
@@ -161,9 +165,8 @@ void enumerateDevices(VkInstance inst)
     for (const auto &gpu : gpus) {
         vkGetPhysicalDeviceProperties(gpu, &props);
 
-        std::cout << "Available GPU: " << props.deviceName << '(' << props.deviceID << ':'
-                  << props.deviceType << ':' << props.apiVersion << ':' << props.driverVersion
-                  << ")\n";
+        std::cout << "Available GPU: " << static_cast<char *>(props.deviceName) << '(' << props.deviceID << ':' << props.deviceType << ':'
+                  << props.apiVersion << ':' << props.driverVersion << ")\n";
     }
 }
 
@@ -238,9 +241,8 @@ void Engine::initVulkan()
         VkPhysicalDeviceProperties props{};
         vkGetPhysicalDeviceProperties(m_chosenGPU, &props);
 
-        std::cout << "Chosen GPU: " << props.deviceName << '(' << props.deviceID << ':'
-                  << props.deviceType << ':' << props.apiVersion << ':' << props.driverVersion
-                  << ")\n";
+        std::cout << "Chosen GPU: " << static_cast<char *>(props.deviceName) << '(' << props.deviceID << ':' << props.deviceType << ':'
+                  << props.apiVersion << ':' << props.driverVersion << ")\n";
     }
 
     m_graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
@@ -275,7 +277,7 @@ void Engine::initVMA()
         throw Failure(FailureType::VMAInitialisation);
     }
 
-    m_mainDeletionQueue.push_function([this]() { vmaDestroyAllocator(m_allocator); });
+    m_mainDeletionQueue.push_function([this]() -> void { vmaDestroyAllocator(m_allocator); });
 }
 
 void Engine::initSwapchain()
@@ -323,7 +325,7 @@ void Engine::initSwapchain()
     }
 
     //add to deletion queues
-    m_mainDeletionQueue.push_function([this]() {
+    m_mainDeletionQueue.push_function([this]() -> void {
         vkDestroyImageView(m_device, m_drawImage.imageView, nullptr);
         vmaDestroyImage(m_allocator, m_drawImage.image, m_drawImage.allocation);
     });
@@ -358,7 +360,7 @@ void Engine::initSwapchain()
 		throw Failure(FailureType::VMAImageViewCreation, "Depth");
 	}
 
-    m_mainDeletionQueue.push_function([this]() {
+    m_mainDeletionQueue.push_function([this]() -> void {
         vkDestroyImageView(m_device, m_depthImage.imageView, nullptr);
         vmaDestroyImage(m_allocator, m_depthImage.image, m_depthImage.allocation);
     });
@@ -372,19 +374,19 @@ void Engine::initCommands()
 	//we also want the pool to allow for resetting of individual command buffers
 	const VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-    for (uint i = 0; i < FRAME_OVERLAP; ++i) {
-        VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_frames[i].commandPool));
-        if (m_frames[i].commandPool == VK_NULL_HANDLE) {
+    for (auto &m_frame : m_frames) {
+        VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_frame.commandPool));
+        if (m_frame.commandPool == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkCommandPoolCreation, "Frame");
         }
 
         // allocate the default command buffer that we will use for rendering
-        const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(m_frames[i].commandPool, 1);
+        const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::command_buffer_allocate_info(m_frame.commandPool, 1);
 
-        VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_frames[i].mainCommandBuffer));
-		if (m_frames[i].mainCommandBuffer == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkCommandBufferCreation, "Frame");
-		}
+        VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_frame.mainCommandBuffer));
+        if (m_frame.mainCommandBuffer == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkCommandBufferCreation, "Frame");
+        }
     }
 
     VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_immCommandPool));
@@ -400,8 +402,7 @@ void Engine::initCommands()
 		throw Failure(FailureType::VkCommandBufferCreation, "Immediate");
 	}
 
-    m_mainDeletionQueue.push_function(
-        [this]() { vkDestroyCommandPool(m_device, m_immCommandPool, nullptr); });
+    m_mainDeletionQueue.push_function([this]() -> void { vkDestroyCommandPool(m_device, m_immCommandPool, nullptr); });
 }
 
 void Engine::initSyncStructures()
@@ -415,20 +416,20 @@ void Engine::initSyncStructures()
 	const VkFenceCreateInfo fenceCreateInfo = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 	const VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphore_create_info();
 
-    for (uint i = 0; i < FRAME_OVERLAP; ++i) {
-        VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_frames[i].renderFence));
-        if (m_frames[i].renderFence == VK_NULL_HANDLE) {
+    for (auto &m_frame : m_frames) {
+        VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_frame.renderFence));
+        if (m_frame.renderFence == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkFenceCreation, "Frame");
         }
 
-        VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frames[i].swapchainSemaphore));
-        if (m_frames[i].swapchainSemaphore == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkSwapchainCreation, "Frame");
-		}
-		VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frames[i].renderSemaphore));
-		if (m_frames[i].renderSemaphore == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkSemaphoreCreation, "Frame");
-		}
+        VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frame.swapchainSemaphore));
+        if (m_frame.swapchainSemaphore == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkSwapchainCreation, "Frame");
+        }
+        VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frame.renderSemaphore));
+        if (m_frame.renderSemaphore == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkSemaphoreCreation, "Frame");
+        }
     }
 
     VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_immFence));
@@ -436,7 +437,7 @@ void Engine::initSyncStructures()
         throw Failure(FailureType::VkFenceCreation, "Immediate");
     }
 
-    m_mainDeletionQueue.push_function([this]() { vkDestroyFence(m_device, m_immFence, nullptr); });
+    m_mainDeletionQueue.push_function([this]() -> void { vkDestroyFence(m_device, m_immFence, nullptr); });
 }
 
 void Engine::initDescriptors()
@@ -444,47 +445,46 @@ void Engine::initDescriptors()
 	LOGFN();
 
 	//create a descriptor pool that will hold 10 sets with 1 image each
-	constexpr DescriptorAllocatorGrowable::PoolSizeRatio sizes[] {
-		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1},
-	};
+    constexpr std::array<DescriptorAllocatorGrowable::PoolSizeRatio, 2> sizes = {{
+        {.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .ratio = 1.f},
+        {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .ratio = 1.f},
+    }};
 
-	m_globalDescriptorAllocator.init(m_device, 10, sizes);
+    m_globalDescriptorAllocator.init(m_device, initialSetCount, sizes);
 
-	//make the descriptor set layout for our compute draw
-	{
-		DescriptorLayoutBuilder builder {};
-		builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-		m_drawImageDescriptorLayout = builder.build(m_device, VK_SHADER_STAGE_COMPUTE_BIT);
-		if (m_drawImageDescriptorLayout == VK_NULL_HANDLE) {
-			throw Failure(FailureType::VkDescriptorCreation, "Draw");
-		}
-	}
+    //make the descriptor set layout for our compute draw
+    {
+        DescriptorLayoutBuilder builder{};
+        builder.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        m_drawImageDescriptorLayout = builder.build(m_device, VK_SHADER_STAGE_COMPUTE_BIT);
+        if (m_drawImageDescriptorLayout == VK_NULL_HANDLE) {
+            throw Failure(FailureType::VkDescriptorCreation, "Draw");
+        }
+    }
 
-	//allocate a descriptor set for our draw image
-	m_drawImageDescriptors = m_globalDescriptorAllocator.allocate(m_device, m_drawImageDescriptorLayout);
+    //allocate a descriptor set for our draw image
+    m_drawImageDescriptors = m_globalDescriptorAllocator.allocate(m_device, m_drawImageDescriptorLayout);
 
-	DescriptorWriter writer {};
-	writer.writeImage(0, m_drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-	writer.updateSet(m_device, m_drawImageDescriptors);
-	if (m_drawImageDescriptors == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkDescriptorUpdate, "Draw");
-	}
+    DescriptorWriter writer{};
+    writer.writeImage(0, m_drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+    writer.updateSet(m_device, m_drawImageDescriptors);
+    if (m_drawImageDescriptors == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkDescriptorUpdate, "Draw");
+    }
 
-    for (uint i = 0; i < FRAME_OVERLAP; ++i) {
+    for (auto &frame : m_frames) {
         // create a descriptor pool
-        constexpr DescriptorAllocatorGrowable::PoolSizeRatio frame_sizes[] = {
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
-        };
+        constexpr std::array<DescriptorAllocatorGrowable::PoolSizeRatio, 4> frame_sizes = {{
+            {.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .ratio = 3.f},
+            {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .ratio = 3.f},
+            {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .ratio = 3.f},
+            {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .ratio = 4.f},
+        }};
 
-        m_frames[i].frameDescriptors = DescriptorAllocatorGrowable();
-		m_frames[i].frameDescriptors.init(m_device, 1000, frame_sizes);
+        frame.frameDescriptors = DescriptorAllocatorGrowable();
+        frame.frameDescriptors.init(m_device, frameInitialSetCount, frame_sizes);
 
-        m_mainDeletionQueue.push_function(
-            [this, i]() { m_frames[i].frameDescriptors.destroyPools(m_device); });
+        m_mainDeletionQueue.push_function([this, &frame]() -> void { frame.frameDescriptors.destroyPools(m_device); });
     }
 
     {
@@ -507,7 +507,7 @@ void Engine::initDescriptors()
     }
 
     //make sure both the descriptor allocator and the new layout get cleaned up properly
-    m_mainDeletionQueue.push_function([this]() {
+    m_mainDeletionQueue.push_function([this]() -> void {
         m_globalDescriptorAllocator.destroyPools(m_device);
 
         vkDestroyDescriptorSetLayout(m_device, m_drawImageDescriptorLayout, nullptr);
@@ -742,7 +742,7 @@ void Engine::initMeshPipeline()
     vkDestroyShaderModule(m_device, pointFragShader, nullptr);
     vkDestroyShaderModule(m_device, pointVertexShader, nullptr);
 
-    m_mainDeletionQueue.push_function([&]() {
+    m_mainDeletionQueue.push_function([&]() -> void {
         vkDestroyPipelineLayout(m_device, m_meshPipelineLayout, nullptr);
         vkDestroyPipeline(m_device, m_meshPipeline, nullptr);
 
@@ -806,7 +806,7 @@ void Engine::initBackgroundPipelines()
 
 	vkDestroyShaderModule(m_device, computeDrawShader, nullptr);
 
-    m_mainDeletionQueue.push_function([this]() {
+    m_mainDeletionQueue.push_function([this]() -> void {
         vkDestroyPipelineLayout(m_device, m_gradientPipelineLayout, nullptr);
         vkDestroyPipeline(m_device, m_gradientPipeline, nullptr);
     });
@@ -819,49 +819,47 @@ void Engine::initImgui()
 	// 1: create descriptor pool for IMGUI
 	//  the size of the pool is very oversize, but it's copied from imgui demo
 	//  itself.
-	constexpr VkDescriptorPoolSize pool_sizes[] {
-		{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
-		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
-		{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
-		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
-		{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}
-	};
+    constexpr std::array<VkDescriptorPoolSize, 11> pool_sizes = {{{.type = VK_DESCRIPTOR_TYPE_SAMPLER, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, .descriptorCount = 1000},
+                                                                  {.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 1000}}};
 
-	const VkDescriptorPoolCreateInfo pool_info {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		.maxSets = 1000,
-		.poolSizeCount = static_cast<uint32_t>(std::size(pool_sizes)),
-		.pPoolSizes = pool_sizes,
-	};
+    const VkDescriptorPoolCreateInfo pool_info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 1000,
+        .poolSizeCount = static_cast<uint32_t>(pool_sizes.size()),
+        .pPoolSizes = pool_sizes.data(),
+    };
 
-	VkDescriptorPool imguiPool = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &imguiPool));
-	if (imguiPool == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkDescriptorPoolCreation);
-	}
+    VkDescriptorPool imguiPool = VK_NULL_HANDLE;
+    VK_CHECK(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &imguiPool));
+    if (imguiPool == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkDescriptorPoolCreation);
+    }
 
-	// 2: initialize imgui library
+    // 2: initialize imgui library
 
-	// this initializes the core structures of imgui
-	const auto igCtx = ImGui::CreateContext();
-	if (igCtx == nullptr) {
-		throw Failure(FailureType::ImguiContext);
-	}
+    // this initializes the core structures of imgui
+    const auto igCtx = ImGui::CreateContext();
+    if (igCtx == nullptr) {
+        throw Failure(FailureType::ImguiContext);
+    }
 
-	// this initializes imgui for SDL
-	const bool igS3VkInited = ImGui_ImplSDL3_InitForVulkan(m_window);
-	if (!igS3VkInited) {
-		throw Failure(FailureType::ImguiInitialisation);
-	}
+    // this initializes imgui for SDL
+    const bool igS3VkInited = ImGui_ImplSDL3_InitForVulkan(m_window);
+    if (!igS3VkInited) {
+        throw Failure(FailureType::ImguiInitialisation);
+    }
 
-	// this initializes imgui for Vulkan
+    // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info {
 		.Instance = m_instance,
 		.PhysicalDevice = m_chosenGPU,
@@ -892,7 +890,7 @@ void Engine::initImgui()
 	}
 
 	// add the destroy the imgui created structures
-    m_mainDeletionQueue.push_function([this, imguiPool]() {
+    m_mainDeletionQueue.push_function([this, imguiPool]() -> void {
         ImGui_ImplVulkan_Shutdown();
         vkDestroyDescriptorPool(m_device, imguiPool, nullptr);
     });
@@ -925,7 +923,7 @@ void Engine::immediate_submit(const std::function<void(VkCommandBuffer cmd)> &fu
 	//  _renderFence will now block until the graphic commands finish execution
 	VK_CHECK(vkQueueSubmit2(m_graphicsQueue, 1, &submit, m_immFence));
 
-	VK_CHECK(vkWaitForFences(m_device, 1, &m_immFence, true, 9999999999));
+    VK_CHECK(vkWaitForFences(m_device, 1, &m_immFence, true, standardInfiniteVkTimeout));
 }
 
 void Engine::cleanup()
@@ -938,16 +936,16 @@ void Engine::cleanup()
 
 		// we can destroy the command pools.
 		// It may crash the app otherwise.
-        for (uint i = 0; i < FRAME_OVERLAP; ++i) {
-            vkDestroyCommandPool(m_device, m_frames[i].commandPool, nullptr);
+        for (auto &frame : m_frames) {
+            vkDestroyCommandPool(m_device, frame.commandPool, nullptr);
         }
-        for (uint i = 0; i < FRAME_OVERLAP; ++i) {
+        for (auto &frame : m_frames) {
             //destroy sync objects
-            vkDestroyFence(m_device, m_frames[i].renderFence, nullptr);
-			vkDestroySemaphore(m_device, m_frames[i].renderSemaphore, nullptr);
-			vkDestroySemaphore(m_device, m_frames[i].swapchainSemaphore, nullptr);
+            vkDestroyFence(m_device, frame.renderFence, nullptr);
+            vkDestroySemaphore(m_device, frame.renderSemaphore, nullptr);
+            vkDestroySemaphore(m_device, frame.swapchainSemaphore, nullptr);
 
-			m_frames[i].deletionQueue.flush();
+            frame.deletionQueue.flush();
         }
 
         //flush the global deletion queue
@@ -991,18 +989,15 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
     while (!(commands & CommandStates::Stop)) {
         const auto currentTime = std::chrono::system_clock::now();
         const auto delta = currentTime - prevChrono;
-        m_deltaMS = static_cast<double>(
-                      std::chrono::duration_cast<std::chrono::milliseconds>(delta).count())
-                  / 1000.0;
+        m_deltaMS = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count()) / msRelSec;
 
         //convert to microseconds (integer), and then come back to miliseconds
-        const auto frametime = std::chrono::duration_cast<std::chrono::microseconds>(delta).count()
-                               / 1000.f;
+        const auto frametime = static_cast<float>(static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(delta).count()) / usRelMs);
 
         //do not draw if we are minimized
         if (commands & CommandStates::PauseRendering) {
             //throttle the speed to avoid the endless spinning
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(throttleMs));
             continue;
         }
 
@@ -1030,7 +1025,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
 
         ImGui::Begin("Stats");
         ImGui::Text("frametime %f ms", frametime);
-        ImGui::Text("Switches ratio %f", float(m_objCount) / float(m_switchesCount));
+        ImGui::Text("Switches ratio %f", static_cast<float>(m_objCount) / static_cast<float>(m_switchesCount));
         ImGui::End();
 
         ImGui::Render();
@@ -1060,9 +1055,10 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
 
 void Engine::updateAnimations2(World::Scene &scene)
 {
+    const auto dms = static_cast<float>(m_deltaMS);
     for (auto &chunk : scene.view2) {
         for (auto &obj : chunk.objects) {
-            obj.animationTime += m_deltaMS;
+            obj.animationTime += dms;
         }
     }
 }
@@ -1079,7 +1075,7 @@ void Engine::draw()
     assert(currFrame.renderFence != VK_NULL_HANDLE);
     // wait until the gpu has finished rendering the last frame. Timeout of 1
     // second
-    VK_CHECK(vkWaitForFences(m_device, 1, &currFrame.renderFence, true, 1000000000));
+    VK_CHECK(vkWaitForFences(m_device, 1, &currFrame.renderFence, true, standardVkTimeout));
     currFrame.deletionQueue.flush();
     currFrame.frameDescriptors.clearPools(m_device);
 
@@ -1089,12 +1085,8 @@ void Engine::draw()
     //request image from the swapchain
 
     uint32_t swapchainImageIndex = -1;
-    const VkResult acquireResult = vkAcquireNextImageKHR(m_device,
-                                                         m_swapchain,
-                                                         1000000000,
-                                                         currFrame.swapchainSemaphore,
-                                                         nullptr,
-                                                         &swapchainImageIndex);
+    const VkResult acquireResult
+        = vkAcquireNextImageKHR(m_device, m_swapchain, standardVkTimeout, currFrame.swapchainSemaphore, nullptr, &swapchainImageIndex);
     if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
         m_resizeRequested = true;
         return;
@@ -1227,7 +1219,7 @@ public:
     static inline void drawChunkGeometry2(Engine &engine, const Graphics::Chunk2 &chunk, GPUDrawPushConstants2 &push_constants, VkCommandBuffer cmd)
         __attribute__((always_inline))
     {
-        int prevImgId = -1;
+        uint prevImgId = -1;
 
         for (const auto &refs : chunk.references) {
             const auto currImgId = engine.m_scene->res2->groupedImagesMapping[engine.m_scene->res2->animations[refs.front().animationId].imageId];
@@ -1262,8 +1254,7 @@ public:
             vkCmdPushConstants(cmd, engine.m_meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants2), &push_constants);
             vkCmdBindIndexBuffer(cmd, engine.m_scene->res2->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-            // SEGFAULT: (Vulkan) vkCmdDrawIndexed > (Vulkan Validation Layers) vulkan_layer_chassis::CmdDrawIndexed > vvl::dispatch::Device::CmdDrawIndexed > (MESA) gfx9_CmdDrawIndexed > cmd_buffer_flush_gfx_state > gfx9_cmd_buffer_flush_descriptor_sets > emit_samplers
-            vkCmdDrawIndexed(cmd, 6, refs.size(), 0, 0, static_cast<uint32_t>(engine.m_objCount));
+            vkCmdDrawIndexed(cmd, Engine::standardIndexCount, refs.size(), 0, 0, static_cast<uint32_t>(engine.m_objCount));
 
             engine.m_objCount += refs.size();
         }
@@ -1529,9 +1520,9 @@ GPUMeshBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
     // copy vertex buffer
     std::memcpy(data, vertices.data(), vertexBufferSize);
     // copy index buffer
-    std::memcpy(reinterpret_cast<char *>(data) + vertexBufferSize, indices.data(), indexBufferSize);
+    std::memcpy(&static_cast<std::byte *>(data)[vertexBufferSize], indices.data(), indexBufferSize);
 
-    immediate_submit([&](VkCommandBuffer cmd) {
+    immediate_submit([&](VkCommandBuffer cmd) -> void {
         const VkBufferCopy vertexCopy{
             .srcOffset = 0,
             .dstOffset = 0,
@@ -1561,9 +1552,10 @@ void Engine::uploadObjectDataForDrawing()
     }
 
     const size_t elementsCount = m_scene->movings2.objects.size()
-                                 + std::accumulate(m_scene->chunks2.cbegin(), m_scene->chunks2.cend(), 0, [](const int prev, const auto &src) {
-                                       return src.objects.size() + prev;
-                                   });
+                                 + std::accumulate(m_scene->chunks2.cbegin(),
+                                                   m_scene->chunks2.cend(),
+                                                   0,
+                                                   [](const int prev, const auto &src) -> size_t { return src.objects.size() + prev; });
 
     const size_t dataSize = elementsCount * sizeof(Graphics::ObjectData);
 
@@ -1575,20 +1567,20 @@ void Engine::uploadObjectDataForDrawing()
     for (const auto &chunk : m_scene->view2) {
         for (const auto &ref : chunk.references) {
             const auto s = ref.size() * sizeof(Graphics::ObjectData);
-            std::memcpy(reinterpret_cast<unsigned char *>(staging.info.pMappedData) + offset, ref.data(), s);
+            std::memcpy(&static_cast<std::byte *>(staging.info.pMappedData)[offset], ref.data(), s);
             offset += s;
         }
     }
     {
         for (const auto &ref : m_scene->movings2.references) {
             const auto s = ref.size() * sizeof(Graphics::ObjectData);
-            std::memcpy(reinterpret_cast<unsigned char *>(staging.info.pMappedData) + offset, ref.data(), s);
+            std::memcpy(&static_cast<std::byte *>(staging.info.pMappedData)[offset], ref.data(), s);
             offset += s;
         }
     }
 
     // Submit a copy command
-    immediate_submit([&](VkCommandBuffer cmd) {
+    immediate_submit([&](VkCommandBuffer cmd) -> void {
         const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = dataSize};
         vkCmdCopyBuffer(cmd, staging.buffer, m_objectDataBuffer.buffer.buffer, 1, &copy);
     });
@@ -1611,7 +1603,7 @@ void Engine::uploadObjectData(const std::span<Graphics::ObjectData> &objectData)
     std::memcpy(staging.info.pMappedData, objectData.data(), dataSize);
 
     // Submit a copy command
-    immediate_submit([&](VkCommandBuffer cmd) {
+    immediate_submit([&](VkCommandBuffer cmd) -> void {
         const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = dataSize};
         vkCmdCopyBuffer(cmd, staging.buffer, m_objectDataBuffer.buffer.buffer, 1, &copy);
     });
@@ -1667,7 +1659,7 @@ GPUAnimationBuffers Engine::uploadMesh(const std::span<const AnimationData> &ani
 
     std::memcpy(data, animations.data(), animationBufferSize);
 
-    immediate_submit([&](VkCommandBuffer cmd) {
+    immediate_submit([&](VkCommandBuffer cmd) -> void {
         const VkBufferCopy vertexCopy{
             .srcOffset = 0,
             .dstOffset = 0,
@@ -1713,9 +1705,9 @@ GPULineBuffers Engine::uploadMesh(const std::span<const uint32_t> &indices, cons
     // copy vertex buffer
     std::memcpy(data, vertices.data(), vertexBufferSize);
     // copy index buffer
-    std::memcpy(reinterpret_cast<char *>(data) + vertexBufferSize, indices.data(), indexBufferSize);
+    std::memcpy(&static_cast<std::byte *>(data)[vertexBufferSize], indices.data(), indexBufferSize);
 
-    immediate_submit([&](VkCommandBuffer cmd) {
+    immediate_submit([&](VkCommandBuffer cmd) -> void {
         const VkBufferCopy vertexCopy{
             .srcOffset = 0,
             .dstOffset = 0,
@@ -1745,17 +1737,18 @@ void Engine::initDefaultData()
     //3 default textures, white, grey, black. 1 pixel each
     const uint32_t white = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
     const uint32_t black = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
-    m_whiteImage = createImage(reinterpret_cast<const void *>(&white), VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+    m_whiteImage = createImage(static_cast<const void *>(&white), VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
     //checkerboard image
     const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
-    std::array<uint32_t, static_cast<size_t>(16 * 16)> pixels; //for 16x16 checkerboard texture
-    for (int x = 0; x < 16; ++x) {
-        for (int y = 0; y < 16; ++y) {
-            pixels[y * 16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+    constexpr int imgSize = 16;
+    std::array<uint32_t, static_cast<size_t>(imgSize * imgSize)> pixels; //for 16x16 checkerboard texture
+    for (int x = 0; x < imgSize; ++x) {
+        for (int y = 0; y < imgSize; ++y) {
+            pixels[y * imgSize + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
         }
     }
-    m_errorCheckerboardImage = createImage(pixels.data(), VkExtent3D{16, 16, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+    m_errorCheckerboardImage = createImage(pixels.data(), VkExtent3D{imgSize, imgSize, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
     VkSamplerCreateInfo sampl = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -1775,7 +1768,7 @@ void Engine::initDefaultData()
         throw Failure(FailureType::VkSamplerCreation, "Linear");
     }
 
-    m_mainDeletionQueue.push_function([this]() {
+    m_mainDeletionQueue.push_function([this]() -> void {
         vkDestroySampler(m_device, m_defaultSamplerNearest, nullptr);
         vkDestroySampler(m_device, m_defaultSamplerLinear, nullptr);
 
@@ -1803,7 +1796,7 @@ void Engine::initObjectDataBuffer()
 
     m_objectDataBuffer.deviceAddress = vkGetBufferDeviceAddress(m_device, &deviceAddressInfo);
 
-    m_mainDeletionQueue.push_function([this]() { destroyBuffer(m_objectDataBuffer.buffer); });
+    m_mainDeletionQueue.push_function([this]() -> void { destroyBuffer(m_objectDataBuffer.buffer); });
 }
 
 void Engine::initImageDescriptors(const uint32_t imageCount)
@@ -1942,7 +1935,7 @@ AllocatedImage Engine::createImage(const void *data, const VkExtent3D &size, con
 
     AllocatedImage new_image = createImage(size, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
 
-    immediate_submit([&](VkCommandBuffer cmd) {
+    immediate_submit([&](VkCommandBuffer cmd) -> void {
         vkutil::transition_image(cmd, new_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
         const VkBufferImageCopy copyRegion = {

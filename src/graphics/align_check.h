@@ -11,17 +11,15 @@
 #define GPU_EXPOSED(Type, Name) alignas(GPUChecks::std430_compliant<Type>()) Type Name
 
 // Vulkan
-typedef uint64_t VkDeviceAddress;
+using VkDeviceAddress = uint64_t;
 
 namespace GPUChecks {
-
-using uchar = unsigned char;
 
 template<size_t S>
 struct Padding
 {
 private:
-    uchar __reserved[S];
+    std::byte __reserved[S];
 } __attribute__((packed));
 
 template<size_t CurrentOffset, size_t RequiredAlign>
@@ -213,7 +211,7 @@ constexpr bool validate_struct_members()
 {
     bool valid = true;
     size_t current_offset = Offset;
-    boost::pfr::for_each_field(S{}, [&]<size_t I>(auto& field) {
+    boost::pfr::for_each_field(S{}, [&]<size_t I>(auto& field) -> void {
         using FieldType = std::remove_cvref_t<decltype(field)>;
         // align current_offset, then validate
         current_offset += padding_needed<current_offset, std430_compliant<FieldType>()>();

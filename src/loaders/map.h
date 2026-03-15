@@ -27,7 +27,7 @@ struct JsonMap;
 class Map
 {
 public:
-	explicit Map(const std::string &path);
+    explicit Map(std::string path);
 
     /**
 	 * @brief Loads the map & associated resources from path provided to ctor.

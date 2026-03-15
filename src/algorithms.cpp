@@ -24,8 +24,8 @@ namespace algorithms
 ImageVectorizer::ImageVectorizer()
     : m_params(potrace_param_default())
 {
-	m_params->turdsize = 10; // ignore small regions
-	m_params->alphamax = 1.0; // corner threshold
+    m_params->turdsize = turdSize;
+    m_params->alphamax = alphaMax;
 }
 
 ImageVectorizer::~ImageVectorizer()
@@ -43,8 +43,9 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
     // If we have only 3 channels, this means that there is no alpha channel, so the border's just the image.
     if (channelsCount == 3) {
-        normals.resize(4);
-        points.resize(5);
+        constexpr int normalsCount = 4;
+        normals.resize(normalsCount);
+        points.resize(normalsCount + 1);
 
         // Up, right, down, left.
         normals[0] = glm::vec2{-1.f, 0.f};
@@ -87,7 +88,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 			const auto val = img[y*size_t(image.height()) + x*4 +3];
 
 			// Set to 1 or 0 depending on the transparency.
-            if (val > 100) {
+            if (val > transparencyLimit) {
                 m_memory[wi] |= 1 << bi;
             } else {
                 m_memory[wi] &= ~(1 << bi);
@@ -100,8 +101,9 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
     // If we have no curve, it means that all the image is non-transparent.
     if (!st->plist) {
-        normals.resize(4);
-        points.resize(5);
+        constexpr int normalsCount = 4;
+        normals.resize(normalsCount);
+        points.resize(normalsCount + 1);
 
         // Up, right, down, left.
         normals[0] = glm::vec2{-1.f, 0.f};
@@ -156,15 +158,6 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         normals.reserve(pointsCount);
     }
 
-    /* Determine the points */ {
-        const potrace_path_t *path = st->plist;
-        // Track how many distinct points were added for each path so we can
-        // correctly compute normals per-path (potrace curve.n does not match
-        // the number of points we actually push when converting CURVETO->2 pts).
-        // Move declaration to function scope: declare here but outside the inner
-        // block so the normals block can access it. We'll reuse the same name.
-    }
-
     // per-path distinct point counts and signs (visible to the normals computation below)
     std::vector<int> pathPointCounts;
     std::vector<int> pathSigns;
@@ -182,11 +175,11 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
             int countThisPath = 0;
             for (auto i = 0; i < curve.n; i++) {
                 if (curve.tag[i] == POTRACE_CORNER) {
-                    points.push_back(glm::vec2{curve.c[i][1].x, curve.c[i][1].y});
+                    points.emplace_back(curve.c[i][1].x, curve.c[i][1].y);
                     countThisPath += 1;
                 } else if (curve.tag[i] == POTRACE_CURVETO) {
-                    points.push_back(glm::vec2{curve.c[i][0].x, curve.c[i][0].y});
-                    points.push_back(glm::vec2{curve.c[i][1].x, curve.c[i][1].y});
+                    points.emplace_back(curve.c[i][0].x, curve.c[i][0].y);
+                    points.emplace_back(curve.c[i][1].x, curve.c[i][1].y);
                     countThisPath += 2;
                 }
             }
@@ -218,15 +211,15 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     // Keep pathPointCounts available for that phase.
 
     // Normalize the points within the image.
-    const float width = static_cast<float>(imgRealWidth);
+    const auto width = static_cast<float>(imgRealWidth);
     for (auto &p : points) {
         p.x /= width;
     }
 
-    const float height = static_cast<float>(image.height());
-	for (auto &p : points) {
-		p.y /= height;
-	}
+    const auto height = static_cast<float>(image.height());
+    for (auto &p : points) {
+        p.y /= height;
+    }
 
     // Recompute normals in final (normalized) coordinate system using our per-path counts.
     {
@@ -311,5 +304,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     potrace_state_free(st);
 }
 
+;
+;
 
-}
+} // namespace algorithms

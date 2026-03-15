@@ -42,7 +42,7 @@ public:
     {}
 };
 
-enum EventType {
+enum class EventType {
     Up,
     Down,
     Left,

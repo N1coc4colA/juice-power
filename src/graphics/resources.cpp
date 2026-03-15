@@ -1,5 +1,6 @@
 #include "resources.h"
 
+#include <algorithm>
 #include <span>
 
 #include "engine.h"
@@ -14,7 +15,7 @@ void Resources2::build(Engine &engine)
 
     /* Upload edges */ {
         std::vector<uint32_t> indices{};
-        indices.reserve((size / 4) * 6);
+        indices.reserve((size / 4) * Engine::standardIndexCount);
 
         // Fill in the indices.
         for (size_t i = 0; i < size; i += 4) {
@@ -46,7 +47,7 @@ void Resources2::build(Engine &engine)
         for (const auto &v : borders) {
             borderOffsets.push_back(i);
 
-            std::transform(v.cbegin(), v.cend(), gpuBorders.begin() + i, [](const auto &p) { return LineVertex{p}; });
+            std::ranges::transform(v, gpuBorders.begin() + i, [](const auto &p) -> LineVertex { return LineVertex{p}; });
 
             assert(!v.empty());
 

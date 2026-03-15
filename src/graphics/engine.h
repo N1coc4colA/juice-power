@@ -16,6 +16,7 @@
 #include "structs.h"
 #include "types.h"
 
+#include "src/keywords.h"
 
 struct SDL_Window;
 
@@ -49,7 +50,18 @@ constexpr unsigned int FRAME_OVERLAP = 2;
 class Engine
 {
 public:
-	/// @brief Returns the global engine instance.
+    static constexpr int initialSetCount = 10;
+    static constexpr int frameInitialSetCount = 1000;
+    static constexpr int standardIndexCount = 6;
+    static constexpr double msRelSec = 1000.0;
+    static constexpr double usRelMs = 1000.0;
+    static constexpr int throttleMs = 10;
+    static constexpr uint64_t standardVkTimeout = 1000000000;
+    static constexpr uint64_t standardInfiniteVkTimeout = 9999999999;
+    static constexpr int windowWidth = 1700;
+    static constexpr int windowHeight = 900;
+
+    /// @brief Returns the global engine instance.
 	static Engine &get();
 
 	/// @brief Inits the engine & related libs
@@ -67,19 +79,19 @@ public:
 	 * @param vertices Vertex data span (must match Vertex struct layout)
 	 * @return GPUMeshBuffers containing uploaded GPU resources
 	 */
-    GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
+    _nodiscard GPUMeshBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const Vertex> &vertices);
 
-    GPULineBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const LineVertex> &vertices);
+    _nodiscard GPULineBuffers uploadMesh(const std::span<const uint32_t> &indices, const std::span<const LineVertex> &vertices);
 
-    GPUAnimationBuffers uploadMesh(const std::span<const AnimationData> &animations);
+    _nodiscard GPUAnimationBuffers uploadMesh(const std::span<const AnimationData> &animations);
 
     void uploadObjectDataForDrawing();
     void uploadObjectData(const std::span<Graphics::ObjectData> &objectData);
 
     inline World::Scene *scene() { return m_scene; }
-    inline const World::Scene *scene() const { return m_scene; }
+    _nodiscard inline const World::Scene *scene() const { return m_scene; }
 
-    uint64_t getDeviceMaxImageSize() const;
+    _nodiscard uint64_t getDeviceMaxImageSize() const;
 
 protected:
 	void initSDL();
@@ -116,7 +128,7 @@ protected:
 
 private:
     inline FrameData &getCurrentFrame() { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
-    inline const FrameData &getCurrentFrame() const { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    _nodiscard inline const FrameData &getCurrentFrame() const { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
 
     /**
 	 * @brief Creates an empty GPU image
@@ -199,7 +211,7 @@ private:
 
     /* Windowing */
 
-    VkExtent2D m_windowExtent = {1700, 900};
+    VkExtent2D m_windowExtent = {windowWidth, windowHeight};
     struct SDL_Window *m_window = nullptr;
 
     /* Vulkan */
@@ -211,7 +223,7 @@ private:
     VkPhysicalDevice m_chosenGPU = VK_NULL_HANDLE;
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;
     uint32_t m_graphicsQueueFamily = 0;
-    FrameData m_frames[FRAME_OVERLAP]{};
+    std::array<FrameData, FRAME_OVERLAP> m_frames{};
     VmaAllocator m_allocator = VK_NULL_HANDLE;
 
     /* Swapchain */
@@ -264,7 +276,7 @@ private:
     VkCommandBuffer m_immCommandBuffer = VK_NULL_HANDLE;
     VkCommandPool m_immCommandPool = VK_NULL_HANDLE;
 
-    glm::mat4 worldMatrix;
+    glm::mat4 worldMatrix{};
 
     /* Images */
 
@@ -282,7 +294,7 @@ private:
 
     /* Stats data */
 
-    int m_objCount = 0;
+    size_t m_objCount = 0;
     int m_switchesCount = 0;
 
     /* Objects */
@@ -299,8 +311,6 @@ private:
     friend class Resources2;
     friend class DrawingFuncs;
 };
-
-
 }
 
 

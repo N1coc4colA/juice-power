@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-enum CommandStates : uint64_t {
+enum CommandStates : uint8_t {
     PrepareDrawing = 0b1,
     DrawingPrepared = 0b10,
     Stop = 0b100,
