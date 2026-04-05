@@ -2,6 +2,7 @@
 #define ORCHESTRATOR_H
 
 #include <atomic>
+#include <memory>
 #include <string>
 
 #include "loaders/enums.h"
@@ -39,17 +40,17 @@ public:
     void run();
     void cleanup();
 
-    auto loadMap(World::Scene &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>;
-    void setScene(World::Scene &scene);
+    auto loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>;
+    void setScene(const std::shared_ptr<World::Scene> &scene);
 
-    inline auto graphicsEngine() -> Graphics::Engine & { return *m_graphicsEngine; }
-    inline auto physicsEngine() -> Physics::Engine & { return *m_physicsEngine; }
-    inline auto inputEngine() -> Input::Engine & { return *m_inputEngine; }
+    inline auto graphicsEngine() -> std::shared_ptr<Graphics::Engine> { return m_graphicsEngine; }
+    inline auto physicsEngine() -> std::shared_ptr<Physics::Engine> { return m_physicsEngine; }
+    inline auto inputEngine() -> std::shared_ptr<Input::Engine> { return m_inputEngine; }
 
 private:
-    Graphics::Engine *m_graphicsEngine = nullptr;
-    Physics::Engine *m_physicsEngine = nullptr;
-    Input::Engine *m_inputEngine = nullptr;
+    std::shared_ptr<Graphics::Engine> m_graphicsEngine = nullptr;
+    std::shared_ptr<Physics::Engine> m_physicsEngine = nullptr;
+    std::shared_ptr<Input::Engine> m_inputEngine = nullptr;
 
     std::atomic<uint64_t> m_commands = 0;
 

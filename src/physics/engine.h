@@ -19,7 +19,7 @@ public:
 
     Engine();
 
-	void setScene(World::Scene &scene);
+    void setScene(const std::shared_ptr<World::Scene> &scene);
     void setInputState(Input::InnerState &state);
     void prepare();
     void compute();
@@ -31,7 +31,7 @@ protected:
     void resolveCollisions(std::vector<Physics::Entity> &en1, Physics::Entity &e);
 
 private:
-    World::Scene *m_scene = nullptr;
+    std::shared_ptr<World::Scene> m_scene = nullptr;
     Input::InnerState *m_inputState = nullptr;
 
     void dump() const;

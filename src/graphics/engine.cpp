@@ -33,10 +33,17 @@
 #include "utils.h"
 #include "vma.h"
 
+#ifdef INSTRUMENT
 #define LOGFN() \
     { \
         std::cout << __func__ << '\n'; \
     }
+#else
+#define LOGFN() \
+    { \
+    }
+
+#endif
 
 namespace {
 
@@ -70,6 +77,16 @@ constexpr auto createOrthographicProjection(const float left, const float right,
 auto Engine::get() -> Engine &
 {
 	return *loadedEngine;
+}
+
+Engine::~Engine()
+{
+    // Just empty the pending events.
+    SDL_Event e{};
+    while (SDL_PollEvent(&e)) {
+    }
+
+    deinitSDL();
 }
 
 auto Engine::createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage) -> AllocatedBuffer
@@ -139,10 +156,10 @@ void Engine::initSDL()
 	LOGFN();
 
 	// We initialize SDL and create a window with it.
-	const bool sdlInitd = SDL_Init(SDL_INIT_VIDEO);
-	if (!sdlInitd) {
-		throw Failure(FailureType::SDLInitialisation);
-	}
+    const bool sdlInitd = SDL_InitSubSystem(SDL_INIT_VIDEO);
+    if (!sdlInitd) {
+        throw Failure(FailureType::SDLInitialisation);
+    }
 
     constexpr SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
 
@@ -151,6 +168,12 @@ void Engine::initSDL()
     if (m_window == nullptr) {
         throw Failure(FailureType::SDLWindowCreation);
     }
+}
+
+void Engine::deinitSDL()
+{
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    SDL_Quit();
 }
 
 void enumerateDevices(VkInstance inst)
@@ -957,7 +980,7 @@ void Engine::cleanup()
         destroySwapchain();
 
         vkDestroyDevice(m_device, nullptr);
-        vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
+        SDL_Vulkan_DestroySurface(m_instance, m_surface, nullptr);
         vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
         vkDestroyInstance(m_instance, nullptr);
         SDL_DestroyWindow(m_window);
@@ -1038,7 +1061,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
         commands &= ~CommandStates::DrawingPrepared;
 
         //updateAnimations(*m_scene);
-        updateAnimations2(*m_scene);
+        updateAnimations2(m_scene);
         draw();
 
         if (m_resizeRequested) {
@@ -1046,13 +1069,15 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
         }
 
         prevChrono = currentTime;
+
+        commands |= CommandStates::Stop;
     }
 }
 
-void Engine::updateAnimations2(World::Scene &scene)
+void Engine::updateAnimations2(const std::shared_ptr<World::Scene> &scene)
 {
     const auto dms = static_cast<float>(m_deltaMS);
-    for (auto &chunk : scene.view2) {
+    for (auto &chunk : scene->view2) {
         for (auto &obj : chunk.objects) {
             obj.animationTime += dms;
         }
@@ -1267,11 +1292,6 @@ public:
             for (const auto &obj : refs) {
                 push_constants.color = chunk.entities[obj.objId].has_collision ? glm::vec3(1.f, 0.f, 0.f) : glm::vec3(0.f, 1.f, 0.f);
                 push_constants.worldMatrix = glm::translate(engine.worldMatrix, glm::vec3(obj.position.x, obj.position.y, 0.0f));
-                if (chunk.entities[obj.objId].has_collision) {
-                    std::cout << "Drawing collision of " << chunk.entities[obj.objId].id << '\n';
-                } else {
-                    std::cout << "Drawing non-collision of " << chunk.entities[obj.objId].id << '\n';
-                }
 
                 vkCmdPushConstants(cmd, engine.m_linePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawLinePushConstants), &push_constants);
                 vkCmdBindIndexBuffer(cmd, engine.m_scene->res2->linesBuffer.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -1978,9 +1998,9 @@ void Engine::destroyImage(const CachedImage &img)
     destroyImage(img.image);
 }
 
-void Engine::setScene(World::Scene &scene)
+void Engine::setScene(const std::shared_ptr<World::Scene> &scene)
 {
-    m_scene = &scene;
+    m_scene = scene;
 }
 
 } // namespace Graphics

@@ -10,7 +10,10 @@
 
 #include <cstddef>
 
+#include "aligned_vector.h"
+
 using potrace_param_t = struct potrace_param_s;
+using potrace_word = unsigned long;
 
 namespace algorithms
 {
@@ -108,7 +111,7 @@ private:
 	 * This is used to store data for Potrace, and is re-used through the different
 	 * calls to @fn determineImageBorders.
 	 */
-    std::vector<unsigned char> m_memory{};
+    TypeAlignedVector<unsigned char, potrace_word> m_memory{};
 
     std::vector<glm::vec2> points{};
     std::vector<glm::vec2> normals{};

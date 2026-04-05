@@ -1,6 +1,7 @@
 #ifndef GRAPHICS_RESOURCES_H
 #define GRAPHICS_RESOURCES_H
 
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -67,8 +68,8 @@ public:
     /// @brief To draw element root point.
     GPUPointBuffers pointsBuffer{};
 
-    void build(Engine &engine);
-    void cleanup(Engine &engine);
+    void build(const std::shared_ptr<Graphics::Engine> &engine);
+    void cleanup(const std::shared_ptr<Graphics::Engine> &engine);
 };
 }
 

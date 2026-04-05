@@ -28,7 +28,7 @@ public:
     /**
      * @brief Resources associated to this scene.
      */
-    gsl::owner<Graphics::Resources2 *> res2 = nullptr;
+    std::shared_ptr<Graphics::Resources2> res2 = nullptr;
     /**
      * @brief Chunks composing the scene.
      */

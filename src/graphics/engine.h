@@ -63,6 +63,8 @@ public:
     static constexpr float orthographicHorizontalOffset = 80.f;
     static constexpr float orthographicVerticalOffset = 50.f;
 
+    ~Engine();
+
     /// @brief Returns the global engine instance.
     static auto get() -> Engine &;
 
@@ -73,9 +75,9 @@ public:
     /// @brief Stops the engine, cleans the resources & notifies related libs.
     void cleanup();
 
-	void setScene(World::Scene &scene);
+    void setScene(const std::shared_ptr<World::Scene> &scene);
 
-	/**
+    /**
 	 * @brief Uploads mesh data to GPU memory
 	 * @param indices Index data span
 	 * @param vertices Vertex data span (must match Vertex struct layout)
@@ -88,16 +90,17 @@ public:
     void uploadObjectDataForDrawing();
     void uploadObjectData(const std::span<Graphics::ObjectData> &objectData);
 
-    _nodiscard inline auto scene() -> World::Scene * { return m_scene; }
-    _nodiscard inline auto scene() const -> const World::Scene * { return m_scene; }
+    _nodiscard inline auto scene() -> std::shared_ptr<World::Scene> { return m_scene; }
+    _nodiscard inline auto scene() const -> const std::shared_ptr<World::Scene> { return m_scene; }
 
     _nodiscard auto getDeviceMaxImageSize() const -> uint64_t;
 
 protected:
-	void initSDL();
-	void initVulkan();
-	void initVMA();
-	void initSwapchain();
+    void initSDL();
+    void deinitSDL();
+    void initVulkan();
+    void initVMA();
+    void initSwapchain();
 	void initCommands();
 	void initSyncStructures();
 	void initDescriptors();
@@ -124,7 +127,7 @@ protected:
     void resizeSwapchain();
 
     //void updateAnimations(World::Scene &scene);
-    void updateAnimations2(World::Scene &scene);
+    void updateAnimations2(const std::shared_ptr<World::Scene> &scene);
 
 private:
     _nodiscard inline auto getCurrentFrame() -> FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
@@ -277,7 +280,7 @@ private:
 
     /* Scene */
 
-    World::Scene *m_scene = nullptr;
+    std::shared_ptr<World::Scene> m_scene = nullptr;
     DescriptorAllocatorFreeable m_imageDescriptorAllocator{};
 
     /* Animation */

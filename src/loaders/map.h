@@ -1,7 +1,7 @@
 #ifndef LOADERS_MAP_H
 #define LOADERS_MAP_H
 
-#include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -33,13 +33,13 @@ public:
 	 * @brief Loads the map & associated resources from path provided to ctor.
 	 * @return The error status (Status::Ok if no error happened).
 	 */
-    auto load2(Graphics::Engine &engine, World::Scene &m_scene) -> std::tuple<Status, std::string>;
+    auto load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shared_ptr<World::Scene> &m_scene) -> std::tuple<Status, std::string>;
 
 protected:
     static auto buildResources(const std::unordered_map<std::string, int> &imagesMap,
                                const std::string &m_assets,
-                               Graphics::Resources2 &res2,
-                               Graphics::Engine &engine,
+                               const std::shared_ptr<Graphics::Resources2> &res2,
+                               const std::shared_ptr<Graphics::Engine> &engine,
                                const JsonMap &map) -> std::tuple<Status, std::string>;
 
 private:

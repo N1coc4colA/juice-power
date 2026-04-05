@@ -24,13 +24,11 @@ inline constexpr auto epsiloned(const auto &t)
 namespace Physics
 {
 
-Engine::Engine()
-{
-}
+Engine::Engine() = default;
 
-void Engine::setScene(World::Scene &scene)
+void Engine::setScene(const std::shared_ptr<World::Scene> &scene)
 {
-	m_scene = &scene;
+    m_scene = scene;
 }
 
 void Engine::setInputState(Input::InnerState &state)

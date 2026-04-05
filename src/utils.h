@@ -114,7 +114,7 @@ inline constexpr auto accumulate(InputIterator0 first0, InputIterator0 last0, In
 
 // @4
 template<std::ranges::range Container, typename T, auto Operation = std::plus<>()>
-inline constexpr auto accumulate(Container &&container, T init) -> T
+inline constexpr auto accumulate(const Container &container, T init) -> T
 {
 	// Should target @0.
 	return accumulate<T, Operation>(
@@ -126,7 +126,7 @@ inline constexpr auto accumulate(Container &&container, T init) -> T
 // @5
 template<typename Path, std::ranges::range Container, typename T, auto Operation = std::plus<>()>
     requires IsAccess<Path>::value
-inline constexpr auto accumulate(Container &&container, T init) -> T
+inline constexpr auto accumulate(const Container &container, T init) -> T
 {
 	// Should target @1.
 	return accumulate<Path, T, Operation>(
@@ -138,7 +138,7 @@ inline constexpr auto accumulate(Container &&container, T init) -> T
 //@6
 template<typename Path0, typename Path1, std::ranges::range Container, typename T, auto Operation = std::plus<>(), auto Composer = std::plus<>()>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
-inline constexpr auto accumulate(Container &&container, T init) -> T
+inline constexpr auto accumulate(const Container &container, T init) -> T
 {
 	// Should target @2.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
@@ -150,7 +150,7 @@ inline constexpr auto accumulate(Container &&container, T init) -> T
 //@7
 template<typename Path0, typename Path1, auto Composer = std::plus<>(), auto Operation = std::plus<>(), typename T, std::ranges::range Container>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
-inline constexpr auto accumulate(Container &&container, T init) -> T
+inline constexpr auto accumulate(const Container &container, T init) -> T
 {
 	// Should target @2.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
@@ -168,7 +168,7 @@ template<typename Path0,
          auto Composer = std::plus<>(),
          auto Operation = std::plus<>()>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
-inline constexpr auto accumulate(Container0 &&container0, Container1 &&container1, T init) -> T
+inline constexpr auto accumulate(const Container0 &container0, const Container1 &container1, T init) -> T
 {
 	// Should be @3.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
@@ -187,7 +187,7 @@ template<typename Path0,
          std::ranges::range Container0,
          std::ranges::range Container1>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
-inline constexpr auto accumulate(Container0 &&container0, Container1 &&container1, T init) -> T
+inline constexpr auto accumulate(const Container0 &container0, const Container1 &container1, T init) -> T
 {
 	// Should be @3.
 	return accumulate<Path0, Path1, T, Operation, Composer>(

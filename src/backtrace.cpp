@@ -11,6 +11,8 @@
 
 #include <gsl-lite/gsl-lite.hpp>
 
+#include "pointer.h"
+
 void BackTrace::easyPrint(const uint maxFrames)
 {
 	assert(maxFrames != 0);
@@ -27,11 +29,10 @@ void BackTrace::easyPrint(const uint maxFrames)
     }
 
     // Get symbolic names for the frames
-    auto symbollist_ = gsl::owner<char **>(backtrace_symbols(addrlist.data(), num_frames));
+    AutoFreePtr symbollist_ = gsl::owner<char **>(backtrace_symbols(addrlist.data(), num_frames));
     std::span symbollist(symbollist_, num_frames);
 
     for (int i = 1; i < num_frames; i++) { // Skip the first frame as it is this function itself
-        gsl::owner<char *> func_name = nullptr;
         char *begin_name = nullptr;
         char *begin_offset = nullptr;
         char *end_offset = nullptr;
@@ -55,24 +56,19 @@ void BackTrace::easyPrint(const uint maxFrames)
 
             // Demangle the function name
             int status = -4;
-            func_name = gsl::owner<char *>(abi::__cxa_demangle(begin_name, nullptr, nullptr, &status));
+            AutoFreePtr func_name = gsl::owner<char *>(abi::__cxa_demangle(begin_name, nullptr, nullptr, &status));
 
             if (!status) {
-                fmt::print("[{}] {} : {}+{}\n", i, symbollist[i], func_name, begin_offset);
+                fmt::print("[{}] {} : {}+{}\n", i, symbollist[i], func_name.get(), begin_offset);
             } else {
                 // If demangling failed, print the mangled function name
                 fmt::print("[{}] {} : {}+{}\n", i, symbollist[i], begin_name, begin_offset);
             }
-
-            free(func_name);
         } else {
             // Print the whole line if no parentheses or + sign found
             fmt::print("[{}] {}\n", i, symbollist[i]);
         }
     }
-
-    // From the docs, no need to free the elements pointed-to within the array.
-    free(symbollist_);
 }
 
 auto backtraceEntries(const uint max_frames) -> std::span<BackTraceEntry>
@@ -92,13 +88,12 @@ auto backtraceEntries(const uint max_frames) -> std::span<BackTraceEntry>
     }
 
     // Get symbolic names for the frames
-    auto symbollist_ = gsl::owner<char **>(backtrace_symbols(addrlist.data(), num_frames));
-    std::span symbollist(symbollist_, num_frames);
+    AutoFreePtr<char *> symbollist_(backtrace_symbols(addrlist.data(), num_frames));
+    std::span<char *> symbollist(symbollist_, num_frames);
 
     const auto entries = std::span<BackTraceEntry>(new BackTraceEntry[num_frames], num_frames);
 
     for (int i = 1; i < num_frames; i++) { // Skip the first frame as it is this function itself
-        gsl::owner<char *> func_name = nullptr;
         char *begin_name = nullptr;
         char *begin_offset = nullptr;
         char *end_offset = nullptr;
@@ -126,7 +121,7 @@ auto backtraceEntries(const uint max_frames) -> std::span<BackTraceEntry>
 
             // Demangle the function name
             int status = -4;
-            func_name = gsl::owner<char *>(abi::__cxa_demangle(begin_name, nullptr, nullptr, &status));
+            auto func_name = AutoFreePtr(abi::__cxa_demangle(begin_name, nullptr, nullptr, &status));
 
             entries[j].offset = std::stoll(begin_offset);
 
@@ -140,8 +135,6 @@ auto backtraceEntries(const uint max_frames) -> std::span<BackTraceEntry>
 
                 entries[j].symbol = begin_name;
             }
-
-            free(func_name);
         } else {
             // Print the whole line if no parentheses or + sign found
             //printf("[%d] %s\n", i, symbollist[i]);
@@ -149,29 +142,26 @@ auto backtraceEntries(const uint max_frames) -> std::span<BackTraceEntry>
         }
     }
 
-    // From the docs, no need to free the elements pointed-to within the array.
-    free(symbollist_);
-
     return entries;
 }
 
 BackTrace::BackTrace(const uint maxFrames)
-    : entries(backtraceEntries(maxFrames))
-    , m_bt(entries.data(), [](gsl::owner<BackTraceEntry *> d) -> void { delete[] d; })
+    : m_entries(backtraceEntries(maxFrames))
+    , m_bt(m_entries.data(), [](gsl::owner<BackTraceEntry *> d) -> void { delete[] d; })
 {
 	assert(maxFrames != 0);
 }
 
 BackTrace::BackTrace(BackTrace &&other) noexcept
-	: entries(other.entries)
-	, m_bt(std::move(other.m_bt))
+    : m_entries(other.m_entries)
+    , m_bt(std::move(other.m_bt))
 {}
 
 void BackTrace::print() const
 {
-	for (const auto &e : entries) {
-		std::cout << '[' << e.frame << "] " << e.source << " : " << e.symbol << std::hex << std::showpos << std::showbase << e.offset << '\n';
-	}
+    for (const auto &e : m_entries) {
+        std::cout << '[' << e.frame << "] " << e.source << " : " << e.symbol << std::hex << std::showpos << std::showbase << e.offset << '\n';
+    }
 }
 
 auto BackTrace::operator=(const BackTrace &other) -> BackTrace &
@@ -180,8 +170,8 @@ auto BackTrace::operator=(const BackTrace &other) -> BackTrace &
 		return *this;
 	}
 
-	entries = other.entries;
-	m_bt = other.m_bt;
+    m_entries = other.m_entries;
+    m_bt = other.m_bt;
 
 	return *this;
 }
@@ -192,8 +182,8 @@ auto BackTrace::operator=(BackTrace &&other) noexcept -> BackTrace &
 		return *this;
 	}
 
-	entries = other.entries;
-	m_bt = std::move(other.m_bt);
+    m_entries = other.m_entries;
+    m_bt = std::move(other.m_bt);
 
 	return *this;
 }

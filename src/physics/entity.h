@@ -127,6 +127,8 @@ public:
     /// @brief Tells if the object is affected by gravity or not.
 	bool isNotFixed = true;
 
+    const bool debug = getenv("JUICE_DEBUG_COLLISIONS") != nullptr;
+
     _nodiscard constexpr auto nextPosition(const float timeDelta) const noexcept { return position + velocity * timeDelta; }
 
     _nodiscard constexpr auto nextVelocity(const float timeDelta) const noexcept { return velocity + acceleration * timeDelta; }
@@ -178,7 +180,6 @@ public:
         float minOverlap = std::numeric_limits<float>::max();
         glm::vec2 smallestAxis{};
 
-        const bool debug = getenv("JUICE_DEBUG_COLLISIONS") != nullptr;
         if (debug) {
             std::cout << "--- COLLISION CHECK: this id=" << id << " other id=" << other.id << "\n";
             std::cout << "this pos=" << position.x << "," << position.y << " center=" << center().x << "," << center().y << "\n";

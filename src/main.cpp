@@ -6,7 +6,6 @@
 #include "orchestrator.h"
 
 #include "graphics/engine.h"
-#include "graphics/resources.h"
 #include "loaders/map.h"
 #include "world/scene.h"
 
@@ -16,7 +15,7 @@ auto main(int argc, char **argv) -> int
 	UNUSED(argc);
 
     std::vector<Graphics::Chunk2> chunks{};
-    World::Scene scene(chunks);
+    auto scene = std::make_shared<World::Scene>(chunks);
     Orchestrator orchestrator{};
 
     {
@@ -31,7 +30,7 @@ auto main(int argc, char **argv) -> int
 
     orchestrator.run();
 
-    scene.res2->cleanup(orchestrator.graphicsEngine());
+    scene->res2->cleanup(orchestrator.graphicsEngine());
     orchestrator.cleanup();
 
     return 0;

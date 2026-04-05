@@ -14,16 +14,10 @@ Orchestrator *Orchestrator::m_instance = nullptr;
 using ET = Input::EventType;
 
 Orchestrator::Orchestrator()
-    : m_graphicsEngine(new Graphics::Engine())
-    , m_physicsEngine(new Physics::Engine())
-    , m_inputEngine(new Input::Engine({
-          {SDLK_Z, ET::Up},
-          {SDLK_S, ET::Down},
-          {SDLK_Q, ET::Left},
-          {SDLK_D, ET::Right},
-          {SDLK_SPACE, ET::Jump},
-          {SDLK_E, ET::Attack},
-      }))
+    : m_graphicsEngine(std::make_shared<Graphics::Engine>())
+    , m_physicsEngine(std::make_shared<Physics::Engine>())
+    , m_inputEngine(std::make_shared<Input::Engine>(std::unordered_map<uint32_t, Input::EventType>{
+          {SDLK_Z, ET::Up}, {SDLK_S, ET::Down}, {SDLK_Q, ET::Left}, {SDLK_D, ET::Right}, {SDLK_SPACE, ET::Jump}, {SDLK_E, ET::Attack}}))
 {
     assert(m_instance == nullptr);
 
@@ -32,12 +26,7 @@ Orchestrator::Orchestrator()
     init();
 }
 
-Orchestrator::~Orchestrator()
-{
-    delete m_inputEngine;
-    delete m_graphicsEngine;
-    delete m_physicsEngine;
-}
+Orchestrator::~Orchestrator() = default;
 
 auto Orchestrator::get() -> Orchestrator &
 {
@@ -65,14 +54,14 @@ void Orchestrator::cleanup()
     m_graphicsEngine->cleanup();
 }
 
-void Orchestrator::setScene(World::Scene &scene)
+void Orchestrator::setScene(const std::shared_ptr<World::Scene> &scene)
 {
     m_graphicsEngine->setScene(scene);
     m_physicsEngine->setScene(scene);
 }
 
-auto Orchestrator::loadMap(World::Scene &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>
+auto Orchestrator::loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>
 {
     Loaders::Map mapLoader(path);
-    return mapLoader.load2(*m_graphicsEngine, scene);
+    return mapLoader.load2(m_graphicsEngine, scene);
 }

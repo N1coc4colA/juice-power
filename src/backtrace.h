@@ -9,13 +9,13 @@
 struct BackTraceEntry
 {
 	/// @brief ID of the frame from the bt, i.e.: 0, 1, 2...
-	int frame;
-	/// @brief Source of the function, i.e.: /usr/lib/mylib.so.7
-	std::string source;
-	/// @brief The symbol corresponding to the call, may be empty or mangled.
-	std::string symbol;
-	/// @brief offset from the stack.
-	int64_t offset;
+    int frame = -1;
+    /// @brief Source of the function, i.e.: /usr/lib/mylib.so.7
+    std::string source;
+    /// @brief The symbol corresponding to the call, may be empty or mangled.
+    std::string symbol;
+    /// @brief offset from the stack.
+    int64_t offset = -1;
 };
 
 /**
@@ -31,17 +31,18 @@ public:
     BackTrace(BackTrace &&other) noexcept;
     ~BackTrace() = default;
 
-    std::span<BackTraceEntry> entries;
-
-	void print() const;
+    void print() const;
 
     auto operator=(const BackTrace &other) -> BackTrace &;
     auto operator=(BackTrace &&other) noexcept -> BackTrace &;
 
     static void easyPrint(const uint maxFrames);
 
+    inline auto getEntries() -> std::span<BackTraceEntry> { return m_entries; }
+
 private:
     std::shared_ptr<BackTraceEntry> m_bt;
+    std::span<BackTraceEntry> m_entries;
 };
 
 

@@ -9,7 +9,7 @@
 namespace Graphics
 {
 
-void Resources2::build(Engine &engine)
+void Resources2::build(const std::shared_ptr<Engine> &engine)
 {
     const auto size = vertices.size();
 
@@ -27,7 +27,7 @@ void Resources2::build(Engine &engine)
             indices.push_back(i + 2);
         }
 
-        meshBuffers = engine.uploadMesh(indices, vertices);
+        meshBuffers = engine->uploadMesh(indices, vertices);
     }
 
     /* Upload borders */ {
@@ -64,30 +64,30 @@ void Resources2::build(Engine &engine)
             indices.push_back(j);
         }
 
-        linesBuffer = engine.uploadMesh(indices, gpuBorders);
+        linesBuffer = engine->uploadMesh(indices, gpuBorders);
     }
 
-    animationsBuffer = engine.uploadMesh(animations);
+    animationsBuffer = engine->uploadMesh(animations);
 
-    engine.initImageDescriptors(static_cast<uint32_t>(images.size()));
+    engine->initImageDescriptors(static_cast<uint32_t>(images.size()));
 }
 
-void Resources2::cleanup(Engine &engine)
+void Resources2::cleanup(const std::shared_ptr<Graphics::Engine> &engine)
 {
-    engine.destroyBuffer(meshBuffers.indexBuffer);
-    engine.destroyBuffer(meshBuffers.vertexBuffer);
-    engine.destroyBuffer(linesBuffer.indexBuffer);
-    engine.destroyBuffer(linesBuffer.vertexBuffer);
-    engine.destroyBuffer(pointsBuffer.indexBuffer);
-    engine.destroyBuffer(pointsBuffer.vertexBuffer);
-    engine.destroyBuffer(animationsBuffer.animationBuffer);
+    engine->destroyBuffer(meshBuffers.indexBuffer);
+    engine->destroyBuffer(meshBuffers.vertexBuffer);
+    engine->destroyBuffer(linesBuffer.indexBuffer);
+    engine->destroyBuffer(linesBuffer.vertexBuffer);
+    engine->destroyBuffer(pointsBuffer.indexBuffer);
+    engine->destroyBuffer(pointsBuffer.vertexBuffer);
+    engine->destroyBuffer(animationsBuffer.animationBuffer);
 
     meshBuffers = {};
 
     for (const auto &img : images) {
-        engine.destroyImage(img);
+        engine->destroyImage(img);
     }
-    engine.deinitImageDescriptors();
+    engine->deinitImageDescriptors();
 
     images.clear();
     vertices.clear();
