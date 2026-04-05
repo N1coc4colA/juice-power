@@ -1,8 +1,7 @@
 #ifndef VMA_H
 #define VMA_H
 
-#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
-
+using VmaAllocation = struct VmaAllocation_T *;
 
 namespace Graphics
 {
@@ -11,8 +10,14 @@ namespace Graphics
 // I don't get why they made a whole bunch of opaque types when they could have
 // just separated definitions and declarations instead of putting it all stuck
 // together in only one ....... header using a macro.
-auto getMappedData(VmaAllocation alloc) -> void *;
+auto getMappedData(const VmaAllocation alloc) -> void *;
 
+/**
+ * @brief Get currently remaining allocations.
+ * If VMA_USE_DEBUG_LOG is defined, the allocations are counted,
+ * otherwise they are not tracked and will return 0.
+ * @return number of VMA allocations.
+ */
 auto getAllocationsCount() -> int;
 }
 

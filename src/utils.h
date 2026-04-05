@@ -13,18 +13,25 @@
 namespace utils
 {
 
+/// @brief Returns 2D cross product z-component.
 inline constexpr auto cross(const glm::vec2 &a, const glm::vec2 &b) noexcept -> float
 {
     return (a.x * b.y) - (b.x * a.y);
 }
 
+/// @brief Re-export of std::accumulate.
 using std::accumulate;
 
+/**
+ * @brief Resolves nested member access path.
+ */
 template<auto Member, auto... Members>
 struct Access
 {
+    /// @brief Type of the final accessed member.
     using type = typename Access<Members...>::type;
 
+    /// @brief Returns nested member reference from an instance.
     template<typename I>
     static inline constexpr auto get(I &&instance) -> auto &&
     {
@@ -32,11 +39,16 @@ struct Access
     }
 };
 
+/**
+ * @brief Base case for one-level member access path.
+ */
 template<auto Member>
 struct Access<Member>
 {
+	/// @brief Type of the accessed member pointer.
 	using type = typename std::remove_reference_t<decltype(Member)>;
 
+    /// @brief Returns direct member reference from an instance.
     template<typename I>
     static inline constexpr auto get(I &instance) -> auto &
     {
@@ -44,14 +56,17 @@ struct Access<Member>
     }
 };
 
+/// @brief Trait indicating if a type is an Access path.
 template<typename T>
 struct IsAccess : std::false_type
 {};
 
+/// @brief Specialization marking Access paths.
 template<auto... Args>
 struct IsAccess<Access<Args...>> : std::true_type
 {};
 
+/// @brief Returns whether V is invocable with A and B.
 template<typename A, typename B>
 constexpr auto isCallable(auto V) -> bool
 {
@@ -59,7 +74,7 @@ constexpr auto isCallable(auto V) -> bool
 }
 
 
-// @0
+/// @brief Accumulates raw iterator values with an operation.
 template<typename T, auto Operation = std::plus<>(), class InputIterator>
 inline constexpr auto accumulate(InputIterator first, InputIterator last, T init) -> T
 {
@@ -76,7 +91,7 @@ inline constexpr auto accumulate(InputIterator first, InputIterator last, T init
 	return init;
 }
 
-// @1
+/// @brief Accumulates projected values from one member path.
 template<typename Path, typename T, auto Operation = std::plus<>(), class InputIterator>
     requires IsAccess<Path>::value
 inline constexpr auto accumulate(InputIterator first, InputIterator last, T init) -> T
@@ -88,7 +103,7 @@ inline constexpr auto accumulate(InputIterator first, InputIterator last, T init
 	return init;
 }
 
-//@2
+/// @brief Accumulates values composed of two member paths on one range.
 template<typename Path0, typename Path1, typename T, auto Operation = std::plus<>(), auto Composer = std::plus<>(), class InputIterator>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
 inline constexpr auto accumulate(InputIterator first, InputIterator last, T init) -> T
@@ -100,7 +115,7 @@ inline constexpr auto accumulate(InputIterator first, InputIterator last, T init
 	return init;
 }
 
-// @3
+/// @brief Accumulates values composed of two ranges.
 template<typename Path0, typename Path1, typename T, auto Operation = std::plus<>(), auto Composer = std::plus<>(), class InputIterator0, class InputIterator1>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
 inline constexpr auto accumulate(InputIterator0 first0, InputIterator0 last0, InputIterator1 first1, InputIterator1 last1, T init) -> T
@@ -112,54 +127,50 @@ inline constexpr auto accumulate(InputIterator0 first0, InputIterator0 last0, In
 	return init;
 }
 
-// @4
+/// @brief Range overload delegating to iterator accumulate.
 template<std::ranges::range Container, typename T, auto Operation = std::plus<>()>
 inline constexpr auto accumulate(const Container &container, T init) -> T
 {
-	// Should target @0.
 	return accumulate<T, Operation>(
 		std::begin(container), std::end(container),
 		init
 	);
 }
 
-// @5
+/// @brief Range overload accumulating projected values by one path.
 template<typename Path, std::ranges::range Container, typename T, auto Operation = std::plus<>()>
     requires IsAccess<Path>::value
 inline constexpr auto accumulate(const Container &container, T init) -> T
 {
-	// Should target @1.
 	return accumulate<Path, T, Operation>(
 		std::begin(container), std::end(container),
 		init
 	);
 }
 
-//@6
+/// @brief Range overload accumulating composed values by two paths.
 template<typename Path0, typename Path1, std::ranges::range Container, typename T, auto Operation = std::plus<>(), auto Composer = std::plus<>()>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
 inline constexpr auto accumulate(const Container &container, T init) -> T
 {
-	// Should target @2.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
 		std::begin(container), std::end(container),
 		init
 	);
 }
 
-//@7
+/// @brief Alternate template-parameter order for two-path range accumulate.
 template<typename Path0, typename Path1, auto Composer = std::plus<>(), auto Operation = std::plus<>(), typename T, std::ranges::range Container>
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
 inline constexpr auto accumulate(const Container &container, T init) -> T
 {
-	// Should target @2.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
 		std::begin(container), std::end(container),
 		init
 	);
 }
 
-// @8
+/// @brief Two-range overload accumulating composed projected values.
 template<typename Path0,
          typename Path1,
          std::ranges::range Container0,
@@ -170,7 +181,6 @@ template<typename Path0,
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
 inline constexpr auto accumulate(const Container0 &container0, const Container1 &container1, T init) -> T
 {
-	// Should be @3.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
 		std::begin(container0), std::end(container0),
 		std::begin(container1), std::end(container1),
@@ -178,7 +188,7 @@ inline constexpr auto accumulate(const Container0 &container0, const Container1 
 	);
 }
 
-// @9
+/// @brief Alternate template-parameter order for two-range accumulate.
 template<typename Path0,
          typename Path1,
          auto Composer = std::plus<>(),
@@ -189,7 +199,6 @@ template<typename Path0,
     requires IsAccess<Path0>::value && IsAccess<Path1>::value
 inline constexpr auto accumulate(const Container0 &container0, const Container1 &container1, T init) -> T
 {
-	// Should be @3.
 	return accumulate<Path0, Path1, T, Operation, Composer>(
 		std::begin(container0), std::end(container0),
 		std::begin(container1), std::end(container1),
@@ -197,6 +206,6 @@ inline constexpr auto accumulate(const Container0 &container0, const Container1 
 	);
 }
 
-}
+} // namespace utils
 
 #endif // UTILS_H

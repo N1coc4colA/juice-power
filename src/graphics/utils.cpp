@@ -10,7 +10,7 @@
 #include "initializers.h"
 
 
-namespace Graphics::vkutil
+namespace Graphics::Utils
 {
 
 void transitionImage(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout)
@@ -36,7 +36,7 @@ void transitionImage(VkCommandBuffer cmd, VkImage image, const VkImageLayout cur
         .srcQueueFamilyIndex = 0,
         .dstQueueFamilyIndex = 0,
         .image = image,
-        .subresourceRange = vkinit::imageSubresourceRange(aspectMask),
+        .subresourceRange = Init::imageSubresourceRange(aspectMask),
     };
 
     const VkDependencyInfo depInfo{
@@ -169,7 +169,7 @@ void generateMipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
 
 		const VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-        auto subresourceRange = vkinit::imageSubresourceRange(aspectMask);
+        auto subresourceRange = Init::imageSubresourceRange(aspectMask);
         subresourceRange.levelCount = 1;
         subresourceRange.baseMipLevel = mip;
 

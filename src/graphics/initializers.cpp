@@ -6,7 +6,7 @@
 namespace Graphics
 {
 
-auto vkinit::commandPoolCreateInfo(const VkCommandPoolCreateFlags flags) -> VkCommandPoolCreateInfo
+auto Init::commandPoolCreateInfo(const VkCommandPoolCreateFlags flags) -> VkCommandPoolCreateInfo
 {
 	assert(flags != VK_COMMAND_POOL_CREATE_FLAG_BITS_MAX_ENUM);
 
@@ -19,7 +19,7 @@ auto vkinit::commandPoolCreateInfo(const VkCommandPoolCreateFlags flags) -> VkCo
 	return info;
 }
 
-auto vkinit::commandBufferAllocateInfo(VkCommandPool pool, const uint32_t count) -> VkCommandBufferAllocateInfo
+auto Init::commandBufferAllocateInfo(VkCommandPool pool, const uint32_t count) -> VkCommandBufferAllocateInfo
 {
 	assert(pool != VK_NULL_HANDLE);
 	assert(count != 0);
@@ -35,7 +35,7 @@ auto vkinit::commandBufferAllocateInfo(VkCommandPool pool, const uint32_t count)
 	return info;
 }
 
-auto vkinit::commandBufferBeginInfo(const VkCommandBufferUsageFlags flags) -> VkCommandBufferBeginInfo
+auto Init::commandBufferBeginInfo(const VkCommandBufferUsageFlags flags) -> VkCommandBufferBeginInfo
 {
 	assert(flags != VK_COMMAND_BUFFER_USAGE_FLAG_BITS_MAX_ENUM);
 
@@ -49,7 +49,7 @@ auto vkinit::commandBufferBeginInfo(const VkCommandBufferUsageFlags flags) -> Vk
 	return info;
 }
 
-auto vkinit::fenceCreateInfo(const VkFenceCreateFlags flags) -> VkFenceCreateInfo
+auto Init::fenceCreateInfo(const VkFenceCreateFlags flags) -> VkFenceCreateInfo
 {
 	assert(flags != VK_FENCE_CREATE_FLAG_BITS_MAX_ENUM);
 
@@ -62,7 +62,7 @@ auto vkinit::fenceCreateInfo(const VkFenceCreateFlags flags) -> VkFenceCreateInf
 	return info;
 }
 
-auto vkinit::semaphoreCreateInfo(const VkSemaphoreCreateFlags flags) -> VkSemaphoreCreateInfo
+auto Init::semaphoreCreateInfo(const VkSemaphoreCreateFlags flags) -> VkSemaphoreCreateInfo
 {
 	assert(flags != VK_FENCE_CREATE_FLAG_BITS_MAX_ENUM);
 
@@ -75,7 +75,7 @@ auto vkinit::semaphoreCreateInfo(const VkSemaphoreCreateFlags flags) -> VkSemaph
 	return info;
 }
 
-auto vkinit::semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore) -> VkSemaphoreSubmitInfo
+auto Init::semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore) -> VkSemaphoreSubmitInfo
 {
 	assert(stageMask != VK_PIPELINE_STAGE_2_NONE);
 	assert(semaphore != VK_NULL_HANDLE);
@@ -92,7 +92,7 @@ auto vkinit::semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, VkSemaph
 	return submitInfo;
 }
 
-auto vkinit::commandBufferSubmitInfo(VkCommandBuffer cmd) -> VkCommandBufferSubmitInfo
+auto Init::commandBufferSubmitInfo(VkCommandBuffer cmd) -> VkCommandBufferSubmitInfo
 {
 	assert(cmd != VK_NULL_HANDLE);
 
@@ -106,7 +106,7 @@ auto vkinit::commandBufferSubmitInfo(VkCommandBuffer cmd) -> VkCommandBufferSubm
 	return info;
 }
 
-auto vkinit::submitInfo(const VkCommandBufferSubmitInfo &cmd,
+auto Init::submitInfo(const VkCommandBufferSubmitInfo &cmd,
                         const VkSemaphoreSubmitInfo *signalSemaphoreInfo,
                         const VkSemaphoreSubmitInfo *waitSemaphoreInfo) -> VkSubmitInfo2
 {
@@ -124,7 +124,7 @@ auto vkinit::submitInfo(const VkCommandBufferSubmitInfo &cmd,
 	return info;
 }
 
-auto vkinit::attachmentInfo(VkImageView view, const VkClearValue *clear, const VkImageLayout layout) -> VkRenderingAttachmentInfo
+auto Init::attachmentInfo(VkImageView view, const VkClearValue *clear, const VkImageLayout layout) -> VkRenderingAttachmentInfo
 {
 	assert(view != VK_NULL_HANDLE);
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
@@ -146,7 +146,7 @@ auto vkinit::attachmentInfo(VkImageView view, const VkClearValue *clear, const V
 	return colorAttachment;
 }
 
-auto vkinit::depthAttachmentInfo(VkImageView view, const VkImageLayout layout) -> VkRenderingAttachmentInfo
+auto Init::depthAttachmentInfo(VkImageView view, const VkImageLayout layout) -> VkRenderingAttachmentInfo
 {
 	assert(view != VK_NULL_HANDLE);
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
@@ -168,7 +168,7 @@ auto vkinit::depthAttachmentInfo(VkImageView view, const VkImageLayout layout) -
 	return depthAttachment;
 }
 
-auto vkinit::renderingInfo(const VkExtent2D &renderExtent,
+auto Init::renderingInfo(const VkExtent2D &renderExtent,
                            const VkRenderingAttachmentInfo *colorAttachment,
                            const VkRenderingAttachmentInfo *depthAttachment) -> VkRenderingInfo
 {
@@ -187,7 +187,7 @@ auto vkinit::renderingInfo(const VkExtent2D &renderExtent,
 	return renderInfo;
 }
 
-auto vkinit::imageSubresourceRange(VkImageAspectFlags aspectMask) -> VkImageSubresourceRange
+auto Init::imageSubresourceRange(VkImageAspectFlags aspectMask) -> VkImageSubresourceRange
 {
 	assert(aspectMask != VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM);
 
@@ -202,7 +202,7 @@ auto vkinit::imageSubresourceRange(VkImageAspectFlags aspectMask) -> VkImageSubr
 	return subImage;
 }
 
-auto vkinit::imageCreateInfo(const VkFormat format, const VkImageUsageFlags usageFlags, const VkExtent3D &extent) -> VkImageCreateInfo
+auto Init::imageCreateInfo(const VkFormat format, const VkImageUsageFlags usageFlags, const VkExtent3D &extent) -> VkImageCreateInfo
 {
 	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(usageFlags != VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM);
@@ -232,7 +232,7 @@ auto vkinit::imageCreateInfo(const VkFormat format, const VkImageUsageFlags usag
     return info;
 }
 
-auto vkinit::imageViewCreateInfo(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags) -> VkImageViewCreateInfo
+auto Init::imageViewCreateInfo(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags) -> VkImageViewCreateInfo
 {
 	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(image != VK_NULL_HANDLE);
@@ -257,7 +257,7 @@ auto vkinit::imageViewCreateInfo(const VkFormat format, VkImage image, const VkI
 	return info;
 }
 
-auto vkinit::pipelineLayoutCreateInfo() -> VkPipelineLayoutCreateInfo
+auto Init::pipelineLayoutCreateInfo() -> VkPipelineLayoutCreateInfo
 {
 	constexpr VkPipelineLayoutCreateInfo info {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -274,7 +274,7 @@ auto vkinit::pipelineLayoutCreateInfo() -> VkPipelineLayoutCreateInfo
 	return info;
 }
 
-auto vkinit::pipelineShaderStageCreateInfo(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry)
+auto Init::pipelineShaderStageCreateInfo(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry)
     -> VkPipelineShaderStageCreateInfo
 {
 	assert(stage != VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);

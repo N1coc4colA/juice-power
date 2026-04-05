@@ -52,13 +52,14 @@ do { \
 #endif
 
 #define VMA_IMPLEMENTATION
+#include "vma.h"
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 
 namespace Graphics
 {
 
-auto getMappedData(VmaAllocation alloc) -> void *
+auto getMappedData(const VmaAllocation alloc) -> void *
 {
 	assert(alloc != VK_NULL_HANDLE);
 

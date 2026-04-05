@@ -20,9 +20,11 @@ namespace Graphics
  */
 struct DeletionQueue
 {
-	std::deque<std::function<void()>> deletors {};
+	/// @brief FIFO list of deferred cleanup callbacks.
+	std::deque<std::function<void()>> deleters {};
 
-    inline void pushFunction(std::function<void()> &&function) { deletors.push_back(std::move(function)); }
+    /// @brief Enqueues a cleanup callback for later execution.
+    inline void pushFunction(std::function<void()> &&function) { deleters.push_back(std::move(function)); }
 
     /// @brief Executes all queued cleanup operations
 	void flush();

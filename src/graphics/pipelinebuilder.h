@@ -46,6 +46,7 @@ public:
 	/// @brief Color attachment format
 	VkFormat colorAttachmentformat = VK_FORMAT_MAX_ENUM;
 
+    /// @brief Vertex input layout and bindings state.
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
 
     /// @brief Constructs a new PipelineBuilder with default states
@@ -123,7 +124,9 @@ public:
     void enableBlendingAlphaBlend();
 
 private:
+    /// @brief Enables RGBA color blend with add op.
     void setupBlending();
+    /// @brief Sets up depth testing within [0.0, 1.0].
     void setupDepthTest();
 };
 }

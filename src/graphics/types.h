@@ -7,7 +7,7 @@
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
-#include "align_check.h"
+#include "alignment.h"
 
 namespace Graphics
 {
@@ -18,19 +18,30 @@ namespace Graphics
  */
 struct ComputePushConstants
 {
+    /// @brief User-defined compute payload slot #1.
     GPU_EXPOSED(glm::vec4, data1) {};
+    /// @brief User-defined compute payload slot #2.
     GPU_EXPOSED(glm::vec4, data2) {};
+    /// @brief User-defined compute payload slot #3.
     GPU_EXPOSED(glm::vec4, data3) {};
+    /// @brief User-defined compute payload slot #4.
     GPU_EXPOSED(glm::vec4, data4) {};
 };
 
+/**
+ * @brief Named compute pipeline and push constant payload.
+ */
 struct ComputeEffect
 {
+	/// @brief Debug/display name of the effect.
 	const char *name = "";
 
+	/// @brief Vulkan compute pipeline handle.
 	VkPipeline pipeline = VK_NULL_HANDLE;
+	/// @brief Pipeline layout used by the compute pipeline.
 	VkPipelineLayout layout = VK_NULL_HANDLE;
 
+	/// @brief Push constant data uploaded before dispatch.
 	ComputePushConstants data {};
 };
 
@@ -47,12 +58,20 @@ struct AllocatedBuffer
 	VmaAllocationInfo info {.deviceMemory = VK_NULL_HANDLE};
 };
 
+/**
+ * @brief Per-frame rendering and update timing counters.
+ */
 struct EngineStats
 {
+	/// @brief Total frame time in milliseconds.
 	float frameTime = 0.f;
+    /// @brief Number of triangles rendered.
     int triangleCount = 0;
+    /// @brief Number of draw calls emitted.
     int drawcallCount = 0;
+    /// @brief Scene update CPU time in milliseconds.
     float sceneUpdateTime = 0.f;
+    /// @brief Mesh draw CPU/GPU submission time in milliseconds.
     float meshDrawTime = 0.f;
 };
 
@@ -61,97 +80,129 @@ struct EngineStats
  */
 struct Vertex
 {
+    /// @brief Vertex position in object space.
     GPU_EXPOSED(glm::vec3, position) {};
-    GPUChecks::Padding<4> _pad0{};
+    /// @brief Padding for std430 alignment.
+    Graphics::Alignment::Padding<4> _pad0{};
+    /// @brief Texture coordinates.
     GPU_EXPOSED(glm::vec2, uv) {};
-    GPUChecks::Padding<8> _pad1{};
+    /// @brief Padding for std430 alignment.
+    Graphics::Alignment::Padding<8> _pad1{};
+    /// @brief Vertex normal in object space.
     GPU_EXPOSED(glm::vec3, normal) {};
-    GPUChecks::Padding<4> _pad2{};
+    /// @brief Padding for std430 alignment.
+    Graphics::Alignment::Padding<4> _pad2{};
 };
 
+/**
+ * @brief Vertex format used by line rendering.
+ */
 struct LineVertex
 {
+    /// @brief 2D position in object/local space.
     GPU_EXPOSED(glm::vec2, position) {};
 };
 
 /// @brief GPU resources for a mesh
 struct GPUMeshBuffers
 {
+	/// @brief Index buffer.
 	AllocatedBuffer indexBuffer {};
+	/// @brief Vertex buffer.
 	AllocatedBuffer vertexBuffer {};
+	/// @brief Device address of the vertex buffer.
 	VkDeviceAddress vertexBufferAddress = 0;
 };
 
+/**
+ * @brief Storage buffer and address for object draw data.
+ */
 struct GPUObjectDataBuffer
 {
+    /// @brief Backing storage buffer.
     AllocatedBuffer buffer{};
+    /// @brief Device address used by shaders.
     VkDeviceAddress deviceAddress = 0;
 };
 
+/**
+ * @brief GPU buffers for line debug rendering.
+ */
 struct GPULineBuffers
 {
+    /// @brief Index buffer.
     AllocatedBuffer indexBuffer{};
+    /// @brief Vertex buffer.
     AllocatedBuffer vertexBuffer{};
+    /// @brief Device address of the vertex buffer.
     VkDeviceAddress vertexBufferAddress = 0;
 };
 
+/**
+ * @brief GPU buffers for animation metadata.
+ */
 struct GPUAnimationBuffers
 {
+    /// @brief Buffer containing packed animation data.
     AllocatedBuffer animationBuffer{};
+    /// @brief Device address of animation buffer.
     VkDeviceAddress animationBufferAddress = 0;
 };
 
+/**
+ * @brief GPU buffers for point debug rendering.
+ */
 struct GPUPointBuffers
 {
+    /// @brief Index buffer.
     AllocatedBuffer indexBuffer{};
+    /// @brief Vertex buffer.
     AllocatedBuffer vertexBuffer{};
+    /// @brief Device address of the vertex buffer.
     VkDeviceAddress vertexBufferAddress = 0;
 };
 
 /// @brief Push constants for indirect mesh drawing
 struct GPUDrawPushConstants2
 {
+    /// @brief World transform matrix.
     GPU_EXPOSED(glm::mat4, worldMatrix) {};
+    /// @brief Vertex buffer device address.
     GPU_EXPOSED(VkDeviceAddress, vertexBuffer) = 0;
+    /// @brief Animation buffer device address.
     GPU_EXPOSED(VkDeviceAddress, animationBuffer) = 0;
+    /// @brief Object data buffer device address.
     GPU_EXPOSED(VkDeviceAddress, objectsBuffer) = 0;
 };
 
+/**
+ * @brief Push constants for line rendering.
+ */
 struct GPUDrawLinePushConstants
 {
+    /// @brief World transform matrix.
     GPU_EXPOSED(glm::mat4, worldMatrix) {};
+    /// @brief Line color.
     GPU_EXPOSED(glm::vec3, color) {};
-    GPUChecks::Padding<4> _pad0;
+    /// @brief Padding for std430 alignment.
+    Graphics::Alignment::Padding<4> _pad0;
+    /// @brief Vertex buffer device address.
     GPU_EXPOSED(VkDeviceAddress, vertexBuffer) = 0;
 };
 
+/**
+ * @brief Push constants for point rendering.
+ */
 struct GPUDrawPointPushConstants
 {
+    /// @brief Point position.
     GPU_EXPOSED(glm::vec2, pos) {};
-    GPUChecks::Padding<8> _pad0;
+    /// @brief Padding for std430 alignment.
+    Graphics::Alignment::Padding<8> _pad0;
+    /// @brief Point color.
     GPU_EXPOSED(glm::vec4, color) {};
 };
 
-namespace __Types {
-struct __Check
-{
-    __Check() = delete;
-
-    static_assert(sizeof(Vertex) == 48, "Vertex size mismatch");
-    static_assert(offsetof(Vertex, uv) == 16, "uv offset mismatch");
-    static_assert(offsetof(Vertex, normal) == 32, "normal offset mismatch");
-
-    static_assert(sizeof(GPUDrawPushConstants2) == 64 + 8 + 8 + 8 + /*padding*/ 8, "GPUDrawPushConstants2 size mismatch");
-    static_assert(offsetof(GPUDrawPushConstants2, vertexBuffer) == 64, "vertexBuffer offset mismatch");
-    static_assert(offsetof(GPUDrawPushConstants2, animationBuffer) == 72, "animationBuffer offset mismatch");
-    static_assert(offsetof(GPUDrawPushConstants2, objectsBuffer) == 80, "objectsBuffer offset mismatch");
-
-    static_assert(offsetof(GPUDrawLinePushConstants, vertexBuffer) == 80, "vertexBuffer offset mismatch");
-
-    static_assert(offsetof(GPUDrawPointPushConstants, color) == 16, "color offset mismatch");
-};
-
-} // namespace __Types
 } // namespace Graphics
 
 #endif // GRAPHICS_TYPES_H

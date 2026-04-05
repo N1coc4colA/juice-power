@@ -8,7 +8,7 @@
 #include <glm/glm.hpp>
 
 #include "allocatedimage.h"
-#include "src/world/objectdata.h"
+#include "objectdata.h"
 #include "types.h"
 
 namespace Graphics
@@ -16,6 +16,9 @@ namespace Graphics
 
 class Engine;
 
+/**
+ * @brief Aggregates CPU and GPU resource data used by a loaded scene.
+ */
 class Resources2
 {
 public:
@@ -29,8 +32,10 @@ public:
 
     /// @brief Animations for the whole scene.
     std::vector<Graphics::AnimationData> animations{};
+    /// @brief GPU-side animation buffer pack.
     GPUAnimationBuffers animationsBuffer{};
 
+    /// @brief Mapping from source image id to grouped image id.
     std::unordered_map<uint32_t, uint32_t> groupedImagesMapping{};
 
     /**
@@ -45,6 +50,7 @@ public:
 	 * physics engine.
 	 */
     std::vector<std::vector<glm::vec2>> borders{};
+    /// @brief Prefix offsets for packed border arrays.
     std::vector<uint32_t> borderOffsets{};
 
     /**
@@ -68,7 +74,9 @@ public:
     /// @brief To draw element root point.
     GPUPointBuffers pointsBuffer{};
 
+    /// @brief Uploads CPU-side resources to GPU buffers and images.
     void build(const std::shared_ptr<Graphics::Engine> &engine);
+    /// @brief Releases GPU resources owned by this object.
     void cleanup(const std::shared_ptr<Graphics::Engine> &engine);
 };
 }

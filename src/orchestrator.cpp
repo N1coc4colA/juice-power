@@ -9,8 +9,10 @@
 #include "loaders/map.h"
 #include "physics/engine.h"
 
+/// @brief Singleton storage for the process-wide orchestrator instance.
 Orchestrator *Orchestrator::m_instance = nullptr;
 
+/// @brief Short alias for input event type values used in key map setup.
 using ET = Input::EventType;
 
 Orchestrator::Orchestrator()

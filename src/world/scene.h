@@ -5,17 +5,20 @@
 #include <ranges>
 #include <set>
 
+#include "../graphics/objectdata.h"
 #include "../graphics/resources.h"
-#include "../world/objectdata.h"
 
 namespace World {
 
+/**
+ * @brief Aggregates render and physics data for the active world.
+ */
 class Scene
 {
 public:
     /**
 	 * @brief Scene
-	 * @param v NEVER SET THE VALUE.
+	 * @param v2 NEVER SET THE VALUE.
 	 *
 	 * The argument is used due to the requirement of an std::vector during initialization.
 	 * Passing a custom value as parameter has unknown effects.
@@ -40,10 +43,13 @@ public:
      * the different classic chunks of the scene. A good example would be the player itself.
      */
     Graphics::Chunk2 movings2{};
+    /// @brief Pointer to the main player object data in scene storage.
     Graphics::ObjectData *player2 = nullptr;
 
+    /// @brief Set of currently colliding entity pairs.
     std::set<std::pair<const Physics::Entity *, const Physics::Entity *>> collisions;
 
+    /// @brief View over active chunks used by iteration logic.
     std::ranges::take_view<std::ranges::drop_view<std::ranges::ref_view<std::vector<Graphics::Chunk2>>>> view2;
 };
 

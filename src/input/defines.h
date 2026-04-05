@@ -5,23 +5,39 @@
 
 namespace Input {
 
+/**
+ * @brief One logical input button state.
+ */
 struct StateEntry
 {
+    /// @brief True while key/button is currently pressed.
     bool state = false;
+    /// @brief True while key/button remains held.
     bool hold = false;
 } __attribute__((packed));
 
+/**
+ * @brief Shared input state container using lock-protected fields.
+ */
 struct InnerState
 {
+    /// @brief Alias for synchronized state entry.
     using XS = Exclusive<StateEntry>;
 
+    /// @brief Up action state.
     XS up;
+    /// @brief Down action state.
     XS down;
+    /// @brief Left action state.
     XS left;
+    /// @brief Right action state.
     XS right;
+    /// @brief Jump action state.
     XS jump;
+    /// @brief Attack action state.
     XS attack;
 
+    /// @brief Builds action states bound to one shared mutex.
     explicit InnerState(std::mutex &m_mtx)
         : up(m_mtx)
         , down(m_mtx)
@@ -32,23 +48,31 @@ struct InnerState
     {}
 };
 
+/**
+ * @brief Owning variant of InnerState with embedded mutex.
+ */
 struct State : public InnerState
 {
+    /// @brief Mutex protecting all action entries.
     std::mutex m_mtx;
 
 public:
+    /// @brief Constructs an empty input state.
     inline State()
         : InnerState(m_mtx)
     {}
 };
 
+/**
+ * @brief Logical input actions mapped from platform key codes.
+ */
 enum class EventType : uint8_t {
-    Up,
-    Down,
-    Left,
-    Right,
-    Jump,
-    Attack,
+    Up, ///< Upward movement.
+    Down, ///< Downward movement.
+    Left, ///< Left movement.
+    Right, ///< Right movement.
+    Jump, ///< Jump action.
+    Attack, ///< Attack action.
 };
 
 } // namespace Input

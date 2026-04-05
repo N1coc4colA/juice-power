@@ -50,8 +50,12 @@ struct JsonResourceElement
     float interval = 0.1f;
 };
 
+/**
+ * @brief List wrapper for map resource elements.
+ */
 struct JsonResourcesList
 {
+	/// @brief Collection of declared resources.
 	std::vector<JsonResourceElement> resources {};
 };
 
@@ -61,6 +65,7 @@ struct JsonResourcesList
  */
 struct JsonChunkElement
 {
+	/// @brief Resource type index referenced by this chunk element.
 	uint32_t type {};
 	/**
 	 * @brief Location of the element in the chunk.
@@ -106,24 +111,24 @@ struct JsonMap
 	bool resourcesExternal = false;
 	/**
 	 * @brief Number of chunks in the map.
-	 * @note Must be specified in JSON only if @variable chunksExternal is set to true.
+	 * @note Must be specified in JSON only if chunksExternal is set to true.
 	 * @note The value is never directly used to access in-memory chunk info.
 	 */
 	size_t chunksCount = 0;
 	/**
 	 * @brief Resources used in the map.
-	 * @note Maybe unspecified in JSON (@variable resourcesExternal is false).
+	 * @note Maybe unspecified in JSON when resourcesExternal is false.
 	 * Stores resources' info before loading all related data.
 	 */
 	std::vector<JsonResourceElement> resources {};
 	/**
 	 * @brief Chunks used in the map.
-	 * @note Maybe unspecified in JSON (@variable chunksExternal is false).
+	 * @note Maybe unspecified in JSON when chunksExternal is false.
 	 * Stores chunks' info before loading all related data.
 	 */
 	std::vector<std::vector<JsonChunkElement>> chunks {};
     /**
-     * @brief movable
+     * @brief Movable objects loaded outside chunk grids.
      */
     std::vector<JsonChunkElement> movings{};
 };

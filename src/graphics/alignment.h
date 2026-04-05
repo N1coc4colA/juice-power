@@ -1,5 +1,5 @@
-#ifndef ALIGN_CHECK_H
-#define ALIGN_CHECK_H
+#ifndef ALIGNMENT_H
+#define ALIGNMENT_H
 
 #include <cstdint>
 #include <type_traits>
@@ -8,17 +8,21 @@
 #include <boost/pfr/core.hpp>
 #include <glm/glm.hpp>
 
-#define GPU_EXPOSED(Type, Name) alignas(::GPUChecks::std430Compliant<Type>()) Type Name
+#define GPU_EXPOSED(Type, Name) alignas(::Graphics::Alignment::std430Compliant<Type>()) Type Name
 
 // Vulkan
 using VkDeviceAddress = uint64_t;
 
-namespace GPUChecks {
+namespace Graphics::Alignment {
 
+/**
+ * @brief Byte padding marker used to force std430-compliant field offsets.
+ */
 template<size_t S>
 struct Padding
 {
 private:
+    /// @brief Reserved bytes used only for alignment.
     std::byte __reserved[S];
 } __attribute__((packed));
 
@@ -223,6 +227,6 @@ constexpr auto validateStructMembers()
     return valid;
 }
 
-} // namespace GPUChecks
+} // namespace Graphics::Alignment
 
-#endif // ALIGN_CHECK_H
+#endif // ALIGNMENT_H

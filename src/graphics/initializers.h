@@ -3,9 +3,7 @@
 
 #include <vulkan/vulkan.h>
 
-
-namespace Graphics::vkinit
-{
+namespace Graphics::Init {
 
 auto commandPoolCreateInfo(const VkCommandPoolCreateFlags flags = 0) -> VkCommandPoolCreateInfo;
 auto commandBufferAllocateInfo(VkCommandPool pool, const uint32_t count = 1) -> VkCommandBufferAllocateInfo;
@@ -37,7 +35,6 @@ auto imageViewCreateInfo(const VkFormat format, VkImage image, const VkImageAspe
 auto pipelineLayoutCreateInfo() -> VkPipelineLayoutCreateInfo;
 auto pipelineShaderStageCreateInfo(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry = "main")
     -> VkPipelineShaderStageCreateInfo;
-}
-
+} // namespace Graphics::Init
 
 #endif // GRAPHICS_INITIALIZERS_H

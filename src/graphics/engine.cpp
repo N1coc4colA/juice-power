@@ -111,7 +111,7 @@ auto Engine::createBuffer(const size_t allocSize, const VkBufferUsageFlags usage
 
 	// allocate the buffer
 	AllocatedBuffer newBuffer {};
-	VK_CHECK(vmaCreateBuffer(m_allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
+	vkCheck(vmaCreateBuffer(m_allocator, &bufferInfo, &vmaAllocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
 	if (newBuffer.buffer == VK_NULL_HANDLE) {
 		throw Failure(FailureType::VkBufferAllocation);
 	}
@@ -179,10 +179,10 @@ void Engine::deinitSDL()
 void enumerateDevices(VkInstance inst)
 {
     uint32_t gpuCount = 0;
-    VK_CHECK(vkEnumeratePhysicalDevices(inst, &gpuCount, nullptr));
+    vkCheck(vkEnumeratePhysicalDevices(inst, &gpuCount, nullptr));
 
     std::vector<VkPhysicalDevice> gpus(gpuCount);
-    VK_CHECK(vkEnumeratePhysicalDevices(inst, &gpuCount, gpus.data()));
+    vkCheck(vkEnumeratePhysicalDevices(inst, &gpuCount, gpus.data()));
 
     VkPhysicalDeviceProperties props{};
     for (const auto &gpu : gpus) {
@@ -295,7 +295,7 @@ void Engine::initVMA()
         .vulkanApiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0),
     };
 
-    VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
+    vkCheck(vmaCreateAllocator(&allocatorInfo, &m_allocator));
     if (m_allocator == VK_NULL_HANDLE) {
         throw Failure(FailureType::VMAInitialisation);
     }
@@ -325,7 +325,7 @@ void Engine::initSwapchain()
     constexpr VkImageUsageFlags drawImageUsages = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT
                                                   | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    const VkImageCreateInfo rimg_info = vkinit::imageCreateInfo(m_drawImage.imageFormat, drawImageUsages, drawImageExtent);
+    const VkImageCreateInfo rimg_info = Init::imageCreateInfo(m_drawImage.imageFormat, drawImageUsages, drawImageExtent);
 
     //for the draw image, we want to allocate it from gpu local memory
     const VmaAllocationCreateInfo rimg_allocinfo{
@@ -334,15 +334,15 @@ void Engine::initSwapchain()
     };
 
     //allocate and create the image
-    VK_CHECK(vmaCreateImage(m_allocator, &rimg_info, &rimg_allocinfo, &m_drawImage.image, &m_drawImage.allocation, nullptr));
+    vkCheck(vmaCreateImage(m_allocator, &rimg_info, &rimg_allocinfo, &m_drawImage.image, &m_drawImage.allocation, nullptr));
     if (m_drawImage.image == VK_NULL_HANDLE) {
         throw Failure(FailureType::VMAImageCreation, "Drawing");
     }
 
     //build a image-view for the draw image to use for rendering
-    const VkImageViewCreateInfo rview_info = vkinit::imageViewCreateInfo(m_drawImage.imageFormat, m_drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
+    const VkImageViewCreateInfo rview_info = Init::imageViewCreateInfo(m_drawImage.imageFormat, m_drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    VK_CHECK(vkCreateImageView(m_device, &rview_info, nullptr, &m_drawImage.imageView));
+    vkCheck(vkCreateImageView(m_device, &rview_info, nullptr, &m_drawImage.imageView));
     if (m_drawImage.imageView == VK_NULL_HANDLE) {
         throw Failure(FailureType::VMAImageViewCreation, "Drawing");
     }
@@ -358,10 +358,10 @@ void Engine::initSwapchain()
     m_depthImage.imageExtent = drawImageExtent;
     constexpr VkImageUsageFlags depthImageUsages = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-    const VkImageCreateInfo dimg_info = vkinit::imageCreateInfo(m_depthImage.imageFormat, depthImageUsages, drawImageExtent);
+    const VkImageCreateInfo dimg_info = Init::imageCreateInfo(m_depthImage.imageFormat, depthImageUsages, drawImageExtent);
 
     //allocate and create the image
-    VK_CHECK(vmaCreateImage(m_allocator,
+    vkCheck(vmaCreateImage(m_allocator,
                             &dimg_info,
                             &rimg_allocinfo,
                             &m_depthImage.image,
@@ -372,9 +372,9 @@ void Engine::initSwapchain()
     }
 
     //build a image-view for the draw image to use for rendering
-    const VkImageViewCreateInfo dview_info = vkinit::imageViewCreateInfo(m_depthImage.imageFormat, m_depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+    const VkImageViewCreateInfo dview_info = Init::imageViewCreateInfo(m_depthImage.imageFormat, m_depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-    VK_CHECK(vkCreateImageView(m_device, &dview_info, nullptr, &m_depthImage.imageView));
+    vkCheck(vkCreateImageView(m_device, &dview_info, nullptr, &m_depthImage.imageView));
     if (m_depthImage.imageView == VK_NULL_HANDLE) {
 		throw Failure(FailureType::VMAImageViewCreation, "Depth");
 	}
@@ -391,32 +391,32 @@ void Engine::initCommands()
 
 	//create a command pool for commands submitted to the graphics queue.
 	//we also want the pool to allow for resetting of individual command buffers
-    const VkCommandPoolCreateInfo commandPoolInfo = vkinit::commandPoolCreateInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    const VkCommandPoolCreateInfo commandPoolInfo = Init::commandPoolCreateInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     for (auto &m_frame : m_frames) {
-        VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_frame.commandPool));
+        vkCheck(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_frame.commandPool));
         if (m_frame.commandPool == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkCommandPoolCreation, "Frame");
         }
 
         // allocate the default command buffer that we will use for rendering
-        const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::commandBufferAllocateInfo(m_frame.commandPool, 1);
+        const VkCommandBufferAllocateInfo cmdAllocInfo = Init::commandBufferAllocateInfo(m_frame.commandPool, 1);
 
-        VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_frame.mainCommandBuffer));
+        vkCheck(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_frame.mainCommandBuffer));
         if (m_frame.mainCommandBuffer == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkCommandBufferCreation, "Frame");
         }
     }
 
-    VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_immCommandPool));
+    vkCheck(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &m_immCommandPool));
     if (m_immCommandPool == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkCommandPoolCreation, "Immediate");
     }
 
     // allocate the command buffer for immediate submits
-    const VkCommandBufferAllocateInfo cmdAllocInfo = vkinit::commandBufferAllocateInfo(m_immCommandPool, 1);
+    const VkCommandBufferAllocateInfo cmdAllocInfo = Init::commandBufferAllocateInfo(m_immCommandPool, 1);
 
-    VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_immCommandBuffer));
+    vkCheck(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_immCommandBuffer));
 	if (m_immCommandBuffer == VK_NULL_HANDLE) {
 		throw Failure(FailureType::VkCommandBufferCreation, "Immediate");
 	}
@@ -432,26 +432,26 @@ void Engine::initSyncStructures()
 	//one fence to control when the gpu has finished rendering the frame,
 	//and 2 semaphores to syncronize rendering with swapchain
 	//we want the fence to start signalled so we can wait on it on the first frame
-    const VkFenceCreateInfo fenceCreateInfo = vkinit::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    const VkSemaphoreCreateInfo semaphoreCreateInfo = vkinit::semaphoreCreateInfo();
+    const VkFenceCreateInfo fenceCreateInfo = Init::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    const VkSemaphoreCreateInfo semaphoreCreateInfo = Init::semaphoreCreateInfo();
 
     for (auto &m_frame : m_frames) {
-        VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_frame.renderFence));
+        vkCheck(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_frame.renderFence));
         if (m_frame.renderFence == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkFenceCreation, "Frame");
         }
 
-        VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frame.swapchainSemaphore));
+        vkCheck(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frame.swapchainSemaphore));
         if (m_frame.swapchainSemaphore == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkSwapchainCreation, "Frame");
         }
-        VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frame.renderSemaphore));
+        vkCheck(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_frame.renderSemaphore));
         if (m_frame.renderSemaphore == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkSemaphoreCreation, "Frame");
         }
     }
 
-    VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_immFence));
+    vkCheck(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &m_immFence));
     if (m_immFence == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkFenceCreation, "Immediate");
     }
@@ -549,32 +549,32 @@ void Engine::initMeshPipeline()
 	LOGFN();
 
 	VkShaderModule triangleFragShader = VK_NULL_HANDLE;
-    if (!vkutil::loadShaderModule(COMPILED_SHADERS_DIR "/tex_image.frag.spv", m_device, triangleFragShader)) {
+    if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/tex_image.frag.spv", m_device, triangleFragShader)) {
         throw Failure(FailureType::FragmentShader, "Triangle");
     }
 
     VkShaderModule triangleVertexShader = VK_NULL_HANDLE;
-    if (!vkutil::loadShaderModule(COMPILED_SHADERS_DIR "/colored_triangle_mesh.vert.spv", m_device, triangleVertexShader)) {
+    if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/colored_triangle_mesh.vert.spv", m_device, triangleVertexShader)) {
         throw Failure(FailureType::VertexShader, "Triangle");
     }
 
     VkShaderModule lineFragShader = VK_NULL_HANDLE;
-    if (!vkutil::loadShaderModule(COMPILED_SHADERS_DIR "/line.frag.spv", m_device, lineFragShader)) {
+    if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/line.frag.spv", m_device, lineFragShader)) {
         throw Failure(FailureType::FragmentShader, "Line");
     }
 
     VkShaderModule lineVertexShader = VK_NULL_HANDLE;
-    if (!vkutil::loadShaderModule(COMPILED_SHADERS_DIR "/line.vert.spv", m_device, lineVertexShader)) {
+    if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/line.vert.spv", m_device, lineVertexShader)) {
         throw Failure(FailureType::VertexShader, "Line");
     }
 
     VkShaderModule pointFragShader = VK_NULL_HANDLE;
-    if (!vkutil::loadShaderModule(COMPILED_SHADERS_DIR "/point.frag.spv", m_device, pointFragShader)) {
+    if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/point.frag.spv", m_device, pointFragShader)) {
         throw Failure(FailureType::FragmentShader, "Point");
     }
 
     VkShaderModule pointVertexShader = VK_NULL_HANDLE;
-    if (!vkutil::loadShaderModule(COMPILED_SHADERS_DIR "/point.vert.spv", m_device, pointVertexShader)) {
+    if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/point.vert.spv", m_device, pointVertexShader)) {
         throw Failure(FailureType::VertexShader, "Point");
     }
 
@@ -585,13 +585,13 @@ void Engine::initMeshPipeline()
             .size = sizeof(GPUDrawPushConstants2),
         };
 
-        VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipelineLayoutCreateInfo();
+        VkPipelineLayoutCreateInfo pipeline_layout_info = Init::pipelineLayoutCreateInfo();
         pipeline_layout_info.pPushConstantRanges = &bufferRange;
         pipeline_layout_info.pushConstantRangeCount = 1;
         pipeline_layout_info.pSetLayouts = &m_singleImageDescriptorLayout;
         pipeline_layout_info.setLayoutCount = 1;
 
-        VK_CHECK(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_meshPipelineLayout));
+        vkCheck(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_meshPipelineLayout));
         if (m_meshPipelineLayout == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkPipelineLayoutCreation);
         }
@@ -633,13 +633,13 @@ void Engine::initMeshPipeline()
             .size = sizeof(GPUDrawLinePushConstants),
         };
 
-        VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipelineLayoutCreateInfo();
+        VkPipelineLayoutCreateInfo pipeline_layout_info = Init::pipelineLayoutCreateInfo();
         pipeline_layout_info.pPushConstantRanges = &bufferRange;
         pipeline_layout_info.pushConstantRangeCount = 1;
         pipeline_layout_info.pSetLayouts = nullptr;
         pipeline_layout_info.setLayoutCount = 0;
 
-        VK_CHECK(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_linePipelineLayout));
+        vkCheck(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_linePipelineLayout));
         if (m_linePipelineLayout == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkPipelineLayoutCreation);
         }
@@ -703,13 +703,13 @@ void Engine::initMeshPipeline()
             .size = sizeof(GPUDrawPointPushConstants),
         };
 
-        VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipelineLayoutCreateInfo();
+        VkPipelineLayoutCreateInfo pipeline_layout_info = Init::pipelineLayoutCreateInfo();
         pipeline_layout_info.pPushConstantRanges = &bufferRange;
         pipeline_layout_info.pushConstantRangeCount = 1;
         pipeline_layout_info.pSetLayouts = nullptr;
         pipeline_layout_info.setLayoutCount = 0;
 
-        VK_CHECK(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_pointPipelineLayout));
+        vkCheck(vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &m_pointPipelineLayout));
         if (m_pointPipelineLayout == VK_NULL_HANDLE) {
             throw Failure(FailureType::VkPipelineLayoutCreation);
         }
@@ -792,14 +792,14 @@ void Engine::initBackgroundPipelines()
 		.pPushConstantRanges = &pushConstant,
 	};
 
-	VK_CHECK(vkCreatePipelineLayout(m_device, &computeLayout, nullptr, &m_gradientPipelineLayout));
+	vkCheck(vkCreatePipelineLayout(m_device, &computeLayout, nullptr, &m_gradientPipelineLayout));
 	if (m_gradientPipelineLayout == VK_NULL_HANDLE) {
 		throw Failure(FailureType::VkPipelineLayoutCreation, "Gradient");
 	}
 
 	//layout code
 	VkShaderModule computeDrawShader = VK_NULL_HANDLE;
-    if (!vkutil::loadShaderModule(COMPILED_SHADERS_DIR "/gradient.comp.spv", m_device, computeDrawShader)) {
+    if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/gradient.comp.spv", m_device, computeDrawShader)) {
         throw Failure(FailureType::ComputeShader);
     }
 
@@ -818,7 +818,7 @@ void Engine::initBackgroundPipelines()
         .layout = m_gradientPipelineLayout,
     };
 
-    VK_CHECK(vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &m_gradientPipeline));
+    vkCheck(vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &m_gradientPipeline));
     if (m_gradientPipeline == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkPipelineCreation, "Gradient");
     }
@@ -859,7 +859,7 @@ void Engine::initImgui()
     };
 
     VkDescriptorPool imguiPool = VK_NULL_HANDLE;
-    VK_CHECK(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &imguiPool));
+    vkCheck(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &imguiPool));
     if (imguiPool == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkDescriptorPoolCreation);
     }
@@ -922,27 +922,27 @@ void Engine::immediateSubmit(const std::function<void(VkCommandBuffer cmd)> &fun
 	assert(m_immFence);
 	assert(m_immCommandBuffer);
 
-	VK_CHECK(vkResetFences(m_device, 1, &m_immFence));
-	VK_CHECK(vkResetCommandBuffer(m_immCommandBuffer, 0));
+	vkCheck(vkResetFences(m_device, 1, &m_immFence));
+	vkCheck(vkResetCommandBuffer(m_immCommandBuffer, 0));
 
 	VkCommandBuffer cmd = m_immCommandBuffer;
 
-    const VkCommandBufferBeginInfo cmdBeginInfo = vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    const VkCommandBufferBeginInfo cmdBeginInfo = Init::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+    vkCheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
     function(cmd);
 
-    VK_CHECK(vkEndCommandBuffer(cmd));
+    vkCheck(vkEndCommandBuffer(cmd));
 
-    const VkCommandBufferSubmitInfo cmdinfo = vkinit::commandBufferSubmitInfo(cmd);
-    const VkSubmitInfo2 submit = vkinit::submitInfo(cmdinfo, nullptr, nullptr);
+    const VkCommandBufferSubmitInfo cmdinfo = Init::commandBufferSubmitInfo(cmd);
+    const VkSubmitInfo2 submit = Init::submitInfo(cmdinfo, nullptr, nullptr);
 
     // submit command buffer to the queue and execute it.
     //  _renderFence will now block until the graphic commands finish execution
-    VK_CHECK(vkQueueSubmit2(m_graphicsQueue, 1, &submit, m_immFence));
+    vkCheck(vkQueueSubmit2(m_graphicsQueue, 1, &submit, m_immFence));
 
-    VK_CHECK(vkWaitForFences(m_device, 1, &m_immFence, true, standardInfiniteVkTimeout));
+    vkCheck(vkWaitForFences(m_device, 1, &m_immFence, true, standardInfiniteVkTimeout));
 }
 
 void Engine::cleanup()
@@ -951,7 +951,7 @@ void Engine::cleanup()
 
 	if (m_isInitialized) {
 		// We need to wait fort he GPU to finish until...
-		VK_CHECK(vkDeviceWaitIdle(m_device));
+		vkCheck(vkDeviceWaitIdle(m_device));
 
 		// we can destroy the command pools.
 		// It may crash the app otherwise.
@@ -1069,8 +1069,6 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
         }
 
         prevChrono = currentTime;
-
-        commands |= CommandStates::Stop;
     }
 }
 
@@ -1099,7 +1097,7 @@ void Engine::draw()
     assert(currFrame.renderFence != VK_NULL_HANDLE);
     // wait until the gpu has finished rendering the last frame. Timeout of 1
     // second
-    VK_CHECK(vkWaitForFences(m_device, 1, &currFrame.renderFence, true, standardVkTimeout));
+    vkCheck(vkWaitForFences(m_device, 1, &currFrame.renderFence, true, standardVkTimeout));
     currFrame.deletionQueue.flush();
     currFrame.frameDescriptors.clearPools(m_device);
 
@@ -1117,7 +1115,7 @@ void Engine::draw()
     }
     // [NOTE] Maybe also check if it has been VK_SUBOPTIMAL_KHR for too long.
 
-    VK_CHECK(vkResetFences(m_device, 1, &currFrame.renderFence));
+    vkCheck(vkResetFences(m_device, 1, &currFrame.renderFence));
 
     //naming it cmd for shorter writing
     VkCommandBuffer cmd = currFrame.mainCommandBuffer;
@@ -1125,7 +1123,7 @@ void Engine::draw()
 
     // now that we are sure that the commands finished executing, we can safely
     // reset the command buffer to begin recording again.
-    VK_CHECK(vkResetCommandBuffer(cmd, 0));
+    vkCheck(vkResetCommandBuffer(cmd, 0));
 
     m_drawExtent.height = static_cast<uint32_t>(
         static_cast<float>(std::min(m_swapchainExtent.height, m_drawImage.imageExtent.height))
@@ -1133,55 +1131,55 @@ void Engine::draw()
     m_drawExtent.width = static_cast<uint32_t>(static_cast<float>(std::min(m_swapchainExtent.width, m_drawImage.imageExtent.width)) * m_renderScale);
 
 	//begin the command buffer recording. We will use this command buffer exactly once, so we want to let vulkan know that
-    const VkCommandBufferBeginInfo cmdBeginInfo = vkinit::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    const VkCommandBufferBeginInfo cmdBeginInfo = Init::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+    vkCheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
     // transition our main draw image into general layout so we can write into it
     // we will overwrite it all so we dont care about what was the older layout
-    vkutil::transitionImage(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    Utils::transitionImage(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     drawBackground(cmd);
 
     //transition the draw image and the swapchain image into their correct transfer layouts
-    vkutil::transitionImage(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    vkutil::transitionImage(cmd, m_depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    Utils::transitionImage(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    Utils::transitionImage(cmd, m_depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
     drawGeometry2(cmd);
     drawPhysics2(cmd);
     drawPoints2(cmd);
 
     //transtion the draw image and the swapchain image into their correct transfer layouts
-    vkutil::transitionImage(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    vkutil::transitionImage(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    Utils::transitionImage(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    Utils::transitionImage(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     // execute a copy from the draw image into the swapchain
-    vkutil::copyImageToImage(cmd, m_drawImage.image, m_swapchainImages[swapchainImageIndex], m_drawExtent, m_swapchainExtent);
+    Utils::copyImageToImage(cmd, m_drawImage.image, m_swapchainImages[swapchainImageIndex], m_drawExtent, m_swapchainExtent);
 
     //draw imgui into the swapchain image
     drawImgui(cmd, m_swapchainImageViews[swapchainImageIndex]);
 
     // set swapchain image layout to Present so we can show it on the screen
-    vkutil::transitionImage(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    Utils::transitionImage(cmd, m_swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     //finalize the command buffer (we can no longer add commands, but it can now be executed)
-    VK_CHECK(vkEndCommandBuffer(cmd));
+    vkCheck(vkEndCommandBuffer(cmd));
 
     //prepare the submission to the queue.
     //we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
     //we will signal the _renderSemaphore, to signal that rendering has finished
 
-    const VkCommandBufferSubmitInfo cmdinfo = vkinit::commandBufferSubmitInfo(cmd);
+    const VkCommandBufferSubmitInfo cmdinfo = Init::commandBufferSubmitInfo(cmd);
 
-    const VkSemaphoreSubmitInfo waitInfo = vkinit::semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
+    const VkSemaphoreSubmitInfo waitInfo = Init::semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
                                                                        currFrame.swapchainSemaphore);
-    const VkSemaphoreSubmitInfo signalInfo = vkinit::semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame.renderSemaphore);
+    const VkSemaphoreSubmitInfo signalInfo = Init::semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currFrame.renderSemaphore);
 
-    const VkSubmitInfo2 submit = vkinit::submitInfo(cmdinfo, &signalInfo, &waitInfo);
+    const VkSubmitInfo2 submit = Init::submitInfo(cmdinfo, &signalInfo, &waitInfo);
 
     //submit command buffer to the queue and execute it.
     // _renderFence will now block until the graphic commands finish execution
-    VK_CHECK(vkQueueSubmit2(m_graphicsQueue, 1, &submit, currFrame.renderFence));
+    vkCheck(vkQueueSubmit2(m_graphicsQueue, 1, &submit, currFrame.renderFence));
 
     //prepare present
     // this will put the image we just rendered to into the visible window.
@@ -1215,7 +1213,7 @@ void Engine::drawBackground(VkCommandBuffer cmd)
 	const float flash = std::abs(std::sin(static_cast<float>(m_frameNumber) / 120.f));
 	const VkClearColorValue clearValue { { 0.0f, 0.0f, flash, 1.0f } };
 
-    const VkImageSubresourceRange clearRange = vkinit::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+    const VkImageSubresourceRange clearRange = Init::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
 
     //clear image
     vkCmdClearColorImage(cmd, m_drawImage.image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
@@ -1226,8 +1224,8 @@ void Engine::drawImgui(VkCommandBuffer cmd, VkImageView targetImageView)
 	assert(cmd != VK_NULL_HANDLE);
 	assert(targetImageView != VK_NULL_HANDLE);
 
-    VkRenderingAttachmentInfo colorAttachment = vkinit::attachmentInfo(targetImageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    const VkRenderingInfo renderInfo = vkinit::renderingInfo(m_swapchainExtent, &colorAttachment, nullptr);
+    VkRenderingAttachmentInfo colorAttachment = Init::attachmentInfo(targetImageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingInfo renderInfo = Init::renderingInfo(m_swapchainExtent, &colorAttachment, nullptr);
 
     vkCmdBeginRendering(cmd, &renderInfo);
 
@@ -1236,9 +1234,13 @@ void Engine::drawImgui(VkCommandBuffer cmd, VkImageView targetImageView)
     vkCmdEndRendering(cmd);
 }
 
+/**
+ * @brief Internal helper hosting chunk drawing routines.
+ */
 class DrawingFuncs
 {
 public:
+    /// @brief Draws chunk geometry batches.
     static inline void drawChunkGeometry2(Engine &engine, const Graphics::Chunk2 &chunk, GPUDrawPushConstants2 &push_constants, VkCommandBuffer cmd)
         __attribute__((always_inline))
     {
@@ -1283,6 +1285,7 @@ public:
         }
     }
 
+    /// @brief Draws chunk border/physics debug lines.
     static inline void drawChunkPhysics2(Engine &engine, const Graphics::Chunk2 &chunk, GPUDrawLinePushConstants &push_constants, VkCommandBuffer cmd)
         __attribute__((always_inline))
     {
@@ -1306,6 +1309,7 @@ public:
         }
     }
 
+    /// @brief Draws chunk debug points.
     static inline void drawChunkPoints2(Engine &engine, const Graphics::Chunk2 &chunk, GPUDrawPointPushConstants &push_constants, VkCommandBuffer cmd)
         __attribute__((always_inline))
     {
@@ -1340,10 +1344,10 @@ void Engine::drawGeometry2(VkCommandBuffer cmd)
     }
 
     //begin a render pass  connected to our draw image
-    const VkRenderingAttachmentInfo colorAttachment = vkinit::attachmentInfo(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    const VkRenderingAttachmentInfo depthAttachment = vkinit::depthAttachmentInfo(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo colorAttachment = Init::attachmentInfo(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo depthAttachment = Init::depthAttachmentInfo(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    const VkRenderingInfo renderInfo = vkinit::renderingInfo(m_windowExtent, &colorAttachment, &depthAttachment);
+    const VkRenderingInfo renderInfo = Init::renderingInfo(m_windowExtent, &colorAttachment, &depthAttachment);
 
     //set dynamic viewport and scissor
     const VkViewport viewport{
@@ -1404,10 +1408,10 @@ void Engine::drawPhysics2(VkCommandBuffer cmd)
     }
 
     //begin a render pass  connected to our draw image
-    const VkRenderingAttachmentInfo colorAttachment = vkinit::attachmentInfo(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    const VkRenderingAttachmentInfo depthAttachment = vkinit::depthAttachmentInfo(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo colorAttachment = Init::attachmentInfo(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo depthAttachment = Init::depthAttachmentInfo(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    const VkRenderingInfo renderInfo = vkinit::renderingInfo(m_windowExtent, &colorAttachment, &depthAttachment);
+    const VkRenderingInfo renderInfo = Init::renderingInfo(m_windowExtent, &colorAttachment, &depthAttachment);
 
     //set dynamic viewport and scissor
     const VkViewport viewport{
@@ -1459,10 +1463,10 @@ void Engine::drawPoints2(VkCommandBuffer cmd)
     }
 
     //begin a render pass  connected to our draw image
-    const VkRenderingAttachmentInfo colorAttachment = vkinit::attachmentInfo(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    const VkRenderingAttachmentInfo depthAttachment = vkinit::depthAttachmentInfo(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo colorAttachment = Init::attachmentInfo(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo depthAttachment = Init::depthAttachmentInfo(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    const VkRenderingInfo renderInfo = vkinit::renderingInfo(m_windowExtent, &colorAttachment, &depthAttachment);
+    const VkRenderingInfo renderInfo = Init::renderingInfo(m_windowExtent, &colorAttachment, &depthAttachment);
 
     //set dynamic viewport and scissor
     const VkViewport viewport{
@@ -1768,14 +1772,14 @@ void Engine::initDefaultData()
         .minFilter = VK_FILTER_NEAREST,
     };
 
-    VK_CHECK(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerNearest));
+    vkCheck(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerNearest));
     if (m_defaultSamplerNearest == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkSamplerCreation, "Nearest");
     }
 
     sampl.magFilter = VK_FILTER_LINEAR;
     sampl.minFilter = VK_FILTER_LINEAR;
-    VK_CHECK(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerLinear));
+    vkCheck(vkCreateSampler(m_device, &sampl, nullptr, &m_defaultSamplerLinear));
     if (m_defaultSamplerLinear == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkSamplerCreation, "Linear");
     }
@@ -1873,7 +1877,7 @@ void Engine::resizeSwapchain()
 {
     LOGFN();
 
-    VK_CHECK(vkDeviceWaitIdle(m_device));
+    vkCheck(vkDeviceWaitIdle(m_device));
 
     destroySwapchain();
 
@@ -1899,7 +1903,7 @@ auto Engine::createImage(const VkExtent3D &size, const VkFormat format, const Vk
         .imageFormat = format,
     };
 
-    VkImageCreateInfo img_info = vkinit::imageCreateInfo(format, usage, size);
+    VkImageCreateInfo img_info = Init::imageCreateInfo(format, usage, size);
     if (mipmapped) {
         img_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(size.width, size.height)))) + 1;
     }
@@ -1911,7 +1915,7 @@ auto Engine::createImage(const VkExtent3D &size, const VkFormat format, const Vk
     };
 
     // allocate and create the image
-    VK_CHECK(vmaCreateImage(m_allocator, &img_info, &allocinfo, &newImage.image, &newImage.allocation, nullptr));
+    vkCheck(vmaCreateImage(m_allocator, &img_info, &allocinfo, &newImage.image, &newImage.allocation, nullptr));
     if (newImage.image == VK_NULL_HANDLE) {
         throw Failure(FailureType::VMAImageCreation);
     }
@@ -1921,10 +1925,10 @@ auto Engine::createImage(const VkExtent3D &size, const VkFormat format, const Vk
     const VkImageAspectFlags aspectFlag = format != VK_FORMAT_D32_SFLOAT ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
 
     // build a image-view for the image
-    VkImageViewCreateInfo view_info = vkinit::imageViewCreateInfo(format, newImage.image, aspectFlag);
+    VkImageViewCreateInfo view_info = Init::imageViewCreateInfo(format, newImage.image, aspectFlag);
     view_info.subresourceRange.levelCount = img_info.mipLevels;
 
-    VK_CHECK(vkCreateImageView(m_device, &view_info, nullptr, &newImage.imageView));
+    vkCheck(vkCreateImageView(m_device, &view_info, nullptr, &newImage.imageView));
     if (newImage.imageView == VK_NULL_HANDLE) {
         throw Failure(FailureType::VMAImageViewCreation);
     }
@@ -1949,7 +1953,7 @@ auto Engine::createImage(const void *data, const VkExtent3D &size, const VkForma
     AllocatedImage new_image = createImage(size, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, mipmapped);
 
     immediateSubmit([&](VkCommandBuffer cmd) -> void {
-        vkutil::transitionImage(cmd, new_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        Utils::transitionImage(cmd, new_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
         const VkBufferImageCopy copyRegion = {
 			.bufferOffset = 0,
@@ -1968,9 +1972,9 @@ auto Engine::createImage(const void *data, const VkExtent3D &size, const VkForma
         vkCmdCopyBufferToImage(cmd, uploadbuffer.buffer, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
         if (mipmapped) {
-            vkutil::generateMipmaps(cmd, new_image.image, VkExtent2D{new_image.imageExtent.width, new_image.imageExtent.height});
+            Utils::generateMipmaps(cmd, new_image.image, VkExtent2D{new_image.imageExtent.width, new_image.imageExtent.height});
         } else {
-            vkutil::transitionImage(cmd, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            Utils::transitionImage(cmd, new_image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         }
     });
 

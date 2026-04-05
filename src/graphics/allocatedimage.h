@@ -39,10 +39,21 @@ struct AllocatedImage
 	VkFormat imageFormat = VK_FORMAT_MAX_ENUM;
 };
 
+/**
+ * @brief Represents an images that stays on the GPU between calls.
+ * For performance reasons, leaving the image on the GPU instead of re-uploading
+ * it every time is good although it adds memory pressure on it. An image that's
+ * used a lot can be cached to avoid time wastes.
+ */
 struct CachedImage
 {
+    /**
+     * @brief Source image data.
+     */
     AllocatedImage image = {};
-    // pre-baked, persistent
+    /**
+     * @brief Descriptor set of the image on the device.
+     */
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 };
 }

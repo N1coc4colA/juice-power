@@ -22,11 +22,16 @@ class Scene;
 namespace Loaders
 {
 
+/// @brief Parsed map JSON representation.
 struct JsonMap;
 
+/**
+ * @brief Loads scene and resources from map files on disk.
+ */
 class Map
 {
 public:
+    /// @brief Constructs loader from map root path.
     explicit Map(std::string path);
 
     /**
@@ -36,6 +41,7 @@ public:
     auto load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shared_ptr<World::Scene> &m_scene) -> std::tuple<Status, std::string>;
 
 protected:
+    /// @brief Builds graphics and physics resources from parsed map content.
     static auto buildResources(const std::unordered_map<std::string, int> &imagesMap,
                                const std::string &m_assets,
                                const std::shared_ptr<Graphics::Resources2> &res2,
@@ -43,6 +49,7 @@ protected:
                                const JsonMap &map) -> std::tuple<Status, std::string>;
 
 private:
+    /// @brief Filesystem path to the map directory.
     std::string m_path;
 };
 

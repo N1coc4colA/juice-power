@@ -111,8 +111,8 @@ void PipelineBuilder::setShaders(VkShaderModule vertexShader, VkShaderModule fra
 
 	shaderStages.clear();
 
-    shaderStages.push_back(vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
-    shaderStages.push_back(vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
+    shaderStages.push_back(Init::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
+    shaderStages.push_back(Init::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
 }
 
 void PipelineBuilder::setInputTopology(const VkPrimitiveTopology topology)

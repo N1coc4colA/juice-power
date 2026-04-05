@@ -7,15 +7,16 @@
 
 #include "../physics/entity.h"
 
-#include "objectdata.h"
-
 namespace World
 {
 
+/**
+ * @brief Logical container for entities and render instances inside one scene region.
+ */
 class Chunk
 {
 public:
-	/* Objects' Informations */
+	/* Objects' Information */
 
 	/**
 	 * @brief Objects descriptions
@@ -36,6 +37,7 @@ public:
 	 */
 	std::vector<glm::mat4> transforms {};
 
+    /// @brief Physics entities for this chunk.
 	std::vector<Physics::Entity> entities {};
 
     /// @brief Current animation frame

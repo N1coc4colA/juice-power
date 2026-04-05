@@ -45,7 +45,7 @@ auto DescriptorLayoutBuilder::build(VkDevice device, const VkShaderStageFlags sh
     };
 
     VkDescriptorSetLayout set = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
+	vkCheck(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
 
 	return set;
 }
@@ -71,7 +71,7 @@ auto DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLayout layout
 	};
 
 	VkDescriptorSet ds = VK_NULL_HANDLE;
-	VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &ds));
+	vkCheck(vkAllocateDescriptorSets(device, &allocInfo, &ds));
 
 	return ds;
 }
@@ -158,10 +158,10 @@ void DescriptorAllocatorGrowable::clearPools(VkDevice device)
 	assert(device != VK_NULL_HANDLE);
 
 	for (const auto &p : m_readyPools) {
-		VK_CHECK(vkResetDescriptorPool(device, p, 0));
+		vkCheck(vkResetDescriptorPool(device, p, 0));
 	}
 	for (const auto &p : m_fullPools) {
-		VK_CHECK(vkResetDescriptorPool(device, p, 0));
+		vkCheck(vkResetDescriptorPool(device, p, 0));
 		m_readyPools.push_back(p);
 	}
 
@@ -227,7 +227,7 @@ auto DescriptorAllocatorGrowable::createPool(VkDevice device, const uint32_t set
     };
 
     VkDescriptorPool newPool = VK_NULL_HANDLE;
-    VK_CHECK(vkCreateDescriptorPool(device, &pool_info, nullptr, &newPool));
+    vkCheck(vkCreateDescriptorPool(device, &pool_info, nullptr, &newPool));
 
 	return newPool;
 }
@@ -260,7 +260,7 @@ auto DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayou
 		poolToUse = getPool(device);
 		allocInfo.descriptorPool = poolToUse;
 
-		VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &ds));
+		vkCheck(vkAllocateDescriptorSets(device, &allocInfo, &ds));
 	}
 
 	m_readyPools.push_back(poolToUse);
@@ -285,7 +285,7 @@ void DescriptorAllocatorFreeable::init(VkDevice device, const uint32_t maxSets, 
         .pPoolSizes = &poolSize,
     };
 
-    VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &m_pool));
+    vkCheck(vkCreateDescriptorPool(device, &poolInfo, nullptr, &m_pool));
 }
 
 void DescriptorAllocatorFreeable::destroyPool(VkDevice device)
@@ -310,7 +310,7 @@ auto DescriptorAllocatorFreeable::allocate(VkDevice device, const VkDescriptorSe
     };
 
     VkDescriptorSet ds = VK_NULL_HANDLE;
-    VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &ds));
+    vkCheck(vkAllocateDescriptorSets(device, &allocInfo, &ds));
 
     return ds;
 }

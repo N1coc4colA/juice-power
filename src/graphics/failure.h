@@ -21,12 +21,18 @@ class Failure
 	: public std::exception
 {
 public:
+	/// @brief Builds a failure with the default message for the given type.
 	explicit Failure(FailureType type);
+	/// @brief Builds a failure with a custom detail message.
 	Failure(FailureType type, const std::string &message);
 
+    /// @brief Returns the formatted error message.
     _nodiscard auto what() const noexcept -> const char * override;
 
 private:
+    /**
+     * @brief Failure message of the exception.
+     */
     std::string m_msg{};
 };
 

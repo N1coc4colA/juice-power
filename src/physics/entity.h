@@ -16,11 +16,17 @@
 namespace Physics
 {
 
+/**
+ * @brief Axis-aligned bounding box used for broad-phase overlap checks.
+ */
 struct AABB
 {
+	/// @brief Minimum corner.
 	glm::vec2 min {};
+	/// @brief Maximum corner.
 	glm::vec2 max {};
 
+    /// @brief Returns true when two AABBs overlap.
     _nodiscard constexpr auto intersects(const AABB &other) const
     {
         if (max.x < other.min.x || min.x > other.max.x) {
@@ -35,14 +41,24 @@ struct AABB
     }
 };
 
+/**
+ * @brief Min/max scalar projection interval along a test axis.
+ */
 struct Projection
 {
+	/// @brief Minimum projection value.
 	float minProj = 0.f;
+	/// @brief Maximum projection value.
 	float maxProj = 0.f;
+	/// @brief Vertex index producing minimum projection.
 	size_t minIndex = -1;
+	/// @brief Vertex index producing maximum projection.
 	size_t maxIndex = -1;
 };
 
+/**
+ * @brief Contact information returned by narrow-phase collision tests.
+ */
 struct CollisionInfo
 {
 	/// @brief The collision's normal
@@ -53,9 +69,14 @@ struct CollisionInfo
 	float depth = 0.f;
 };
 
+/**
+ * @brief Aggregated linear and angular force result.
+ */
 struct Forces
 {
+	/// @brief Resulting linear force vector.
 	glm::vec2 forces {};
+	/// @brief Resulting angular velocity change.
 	double angularVelocity = 0.;
 };
 
@@ -74,9 +95,14 @@ struct Friction
 	std::vector<int> surfaces {};
 };
 
+/**
+ * @brief Force applied at a specific point to create torque.
+ */
 struct Thrust
 {
+	/// @brief Force vector in world space.
 	glm::vec3 vector;
+	/// @brief Application point in world space.
 	glm::vec3 point;
 };
 
@@ -87,12 +113,16 @@ struct Thrust
 class Entity
 {
 public:
+    /// @brief State vector used by Runge-Kutta integration.
     using state_type = std::array<double, 3>;
 
+    /// @brief Stable unique entity identifier.
     size_t id = std::numeric_limits<size_t>::max();
 
+    /// @brief Indicates whether this entity has collision geometry.
     bool has_collision = false;
 
+    /// @brief Broad-phase bounding box.
     AABB boundingBox {};
 
 	/// @brief Vectors representing the bounds of the entity.
@@ -101,46 +131,65 @@ public:
 	std::vector<glm::vec2> normals {};
 	/// @brief Frictions associated to this entity.
     float friction{};
+    /// @brief Base friction value before transient updates.
     float baseFriction{};
 
+    /// @brief Active thrust forces to apply this frame.
     std::vector<Thrust> thrusts {};
+	/// @brief Active torques to apply this frame.
 	std::vector<float> torques {};
 
+	/// @brief Current world position.
 	glm::vec2 position {};
+	/// @brief Current linear velocity.
 	glm::vec2 velocity {};
+	/// @brief Current linear acceleration.
 	glm::vec2 acceleration {};
 
+	/// @brief Temporary velocity adjustments from collision solving.
 	glm::vec2 temporaryVelocities {};
+	/// @brief Temporary angular velocity adjustment from collision solving.
 	float temporaryAngularVelocities = 0.f;
 
 	/// @brief Mass of the entity
 	float mass = 8.f;
+	/// @brief Orientation angle in radians.
 	float angle = 0.f;
+	/// @brief Angular velocity in radians per second.
 	float angularVelocity = 0.f;
+    /// @brief Coefficient of restitution.
     float elasticity = 0.f;
     /// @brief Moment of Inertia.
     float MoI = 1.f;
 
     /// @brief Tells if other objects have an impact on the entity.
-	/// @value true means the object will not be affected by other entity's interactions.
+	/// @value true means the object will not be affected by other entity interactions.
     bool canCollide = true;
     /// @brief Tells if the object is affected by gravity or not.
 	bool isNotFixed = true;
 
+    /// @brief Enables verbose collision logs through environment variable.
     const bool debug = getenv("JUICE_DEBUG_COLLISIONS") != nullptr;
 
+    /// @brief Predicts next position for a given delta.
     _nodiscard constexpr auto nextPosition(const float timeDelta) const noexcept { return position + velocity * timeDelta; }
 
+    /// @brief Predicts next velocity for a given delta.
     _nodiscard constexpr auto nextVelocity(const float timeDelta) const noexcept { return velocity + acceleration * timeDelta; }
 
     // Used for integration of forces. Here it's not King Kunta but King Kutta !!
+    /// @brief Computes RK derivative for translational/rotational state.
     void KingKutta(
         const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
+    /// @brief Aggregates all active forces over the given timestep.
     _nodiscard auto resultOfForces(const double timeStep) const -> Forces;
+    /// @brief Advances simulation state to next frame.
     void compute(const double timeDelta);
 
+    /// @brief Returns geometric center from position and bounding box extents.
     _nodiscard inline constexpr auto center() const noexcept { return position + (boundingBox.min + boundingBox.max) * 0.5f; }
 
+    /// @brief Projects polygon borders onto an axis and returns min/max interval.
     _nodiscard constexpr auto getMinMax(const std::span<const glm::vec2> &borders, const glm::vec2 &axis) const noexcept
     {
         float minProj = glm::dot(position + borders[0], axis);
@@ -169,6 +218,7 @@ public:
         };
     }
 
+    /// @brief SAT collision test against another entity.
     _nodiscard auto collides(const Entity &other, CollisionInfo &info) const noexcept
     {
         // t: this, o: other, b: borders, n: normals

@@ -19,16 +19,23 @@ namespace Graphics
  */
 struct DescriptorLayoutBuilder
 {
-	std::vector<VkDescriptorSetLayoutBinding> bindings {};
+    /**
+	 * @brief Registered layout bindings of the builder.
+	 */
+    std::vector<VkDescriptorSetLayoutBinding> bindings{};
 
-	void addBinding(const uint32_t binding, const VkDescriptorType type);
+    /**
+     * @brief Adds one binding entry to the descriptor layout builder.
+     * Builds a VkDescriptorSetLayoutBinding from the parameters.
+     */
+    void addBinding(const uint32_t binding, const VkDescriptorType type);
 
-	/**
+    /**
 	 * @brief Clears all bindings from the builder
 	 */
-	void clear();
+    void clear();
 
-	/**
+    /**
 	 * @brief Constructs a VkDescriptorSetLayout from the current bindings
 	 * @param device The Vulkan device to create the layout on
 	 * @param shaderStages Shader stages that will use these descriptors
@@ -46,8 +53,11 @@ struct DescriptorLayoutBuilder
  */
 struct DescriptorWriter
 {
+	/// @brief Queued image descriptor payloads.
 	std::deque<VkDescriptorImageInfo> imageInfos {};
+	/// @brief Queued buffer descriptor payloads.
 	std::deque<VkDescriptorBufferInfo> bufferInfos {};
+	/// @brief Pending write operations.
 	std::vector<VkWriteDescriptorSet> writes {};
 
 	/**
@@ -96,10 +106,13 @@ struct DescriptorAllocator
 	 */
 	struct PoolSizeRatio
 	{
+		/// @brief Descriptor type.
 		VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+		/// @brief Ratio of descriptors per set.
 		float ratio = 0.f;
 	};
 
+	/// @brief Backing Vulkan descriptor pool.
 	VkDescriptorPool pool = VK_NULL_HANDLE;
 
 	/**
@@ -126,7 +139,9 @@ struct DescriptorAllocator
 struct DescriptorAllocatorGrowable
 {
 public:
+    /// @brief Pool size growth multiplier.
     static constexpr float growthSize = 1.5f;
+    /// @brief Upper bound of sets per pool.
     static constexpr uint32_t maxSetsPerPool = 4092;
 
     /**
@@ -134,7 +149,9 @@ public:
 	 */
 	struct PoolSizeRatio
 	{
+		/// @brief Descriptor type.
 		VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+		/// @brief Ratio of descriptors per set.
 		float ratio = 0.f;
 	};
 
@@ -183,9 +200,13 @@ private:
 	 */
     auto createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool;
 
+    /// @brief Ratios used to create new pools.
     std::vector<PoolSizeRatio> m_ratios{};
+    /// @brief Pools that are currently exhausted.
     std::vector<VkDescriptorPool> m_fullPools{};
+    /// @brief Pools ready for new allocations.
     std::vector<VkDescriptorPool> m_readyPools{};
+    /// @brief Current set count target per pool.
     uint32_t m_setsPerPool = -1;
 };
 
@@ -197,13 +218,18 @@ private:
  */
 struct DescriptorAllocatorFreeable
 {
+    /// @brief Creates the freeable descriptor pool.
     void init(VkDevice device, const uint32_t maxSets, const VkDescriptorType type);
+    /// @brief Destroys the freeable descriptor pool.
     void destroyPool(VkDevice device);
 
+    /// @brief Allocates one descriptor set.
     auto allocate(VkDevice device, const VkDescriptorSetLayout layout) -> VkDescriptorSet;
+    /// @brief Frees one descriptor set.
     void free(VkDevice device, const VkDescriptorSet set);
 
 private:
+    /// @brief Backing Vulkan descriptor pool.
     VkDescriptorPool m_pool = VK_NULL_HANDLE;
 };
 }
