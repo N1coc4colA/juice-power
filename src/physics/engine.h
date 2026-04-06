@@ -3,7 +3,7 @@
 
 #include <atomic>
 
-#include "../world/scene.h"
+#include "src/world/scene.h"
 
 namespace Input {
 struct InnerState;
@@ -18,9 +18,6 @@ namespace Physics
 class Engine
 {
 public:
-    /// @brief Numerical epsilon used in collision/math comparisons.
-    static constexpr float epsilon = 0.00001f;
-
     /// @brief Constructs an empty physics engine.
     Engine();
 
@@ -37,11 +34,11 @@ public:
 
 protected:
 	/// @brief Resolves contact between two entities.
-	void resolveCollision(Physics::Entity &a, Physics::Entity &b, const CollisionInfo &info);
+    static void resolveCollision(Entity &a, Entity &b, const CollisionInfo &info);
     /// @brief Resolves all currently detected collisions.
     void resolveAllCollisions();
     /// @brief Resolves collisions for one entity against a set.
-    void resolveCollisions(std::vector<Physics::Entity> &en1, Physics::Entity &e);
+    void resolveCollisions(std::vector<Entity> &en1, Entity &e);
 
 private:
     /// @brief Scene currently simulated.

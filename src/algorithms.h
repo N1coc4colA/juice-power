@@ -1,16 +1,13 @@
 #ifndef JP_ALGORITHMS_H
 #define JP_ALGORITHMS_H
 
-#include "keywords.h"
+#include <glm/vec2.hpp>
 
 #include <vector>
 #include <span>
 
-#include <glm/vec2.hpp>
-
-#include <cstddef>
-
-#include "aligned_vector.h"
+#include "src/aligned_vector.h"
+#include "src/keywords.h"
 
 /// @brief Opaque Potrace parameter type forward declaration alias.
 using potrace_param_t = struct potrace_param_s;
@@ -29,59 +26,57 @@ class MatrixView
 {
 public:
 	/// @brief Creates a matrix view over a contiguous buffer.
-	constexpr
-	MatrixView(T *data, size_t width, size_t height)
-		: _data(data)
-		, _width(width)
-		, _height(height)
-	{
-	}
+    constexpr MatrixView(T *data, const size_t width, const size_t height)
+        : m_data(data)
+        , m_width(width)
+        , m_height(height)
+    {}
 
     /// @brief Returns element value at row h and column w.
-    constexpr inline auto get(const size_t h, const size_t w)
+    constexpr auto get(const size_t h, const size_t w)
     {
-        assert(h <= _height);
-        assert(w < _width);
+        assert(h <= m_height);
+        assert(w < m_width);
 
-        return _data[h * _width + w];
+        return m_data[h * m_width + w];
     }
 
     /// @brief Returns mutable span for one row.
-    constexpr inline auto operator[](const size_t h)
+    constexpr auto operator[](const size_t h)
     {
-        assert(h <= _height);
-        return std::span<T>(&_data[h * _width], _width);
+        assert(h <= m_height);
+        return std::span<T>(&m_data[h * m_width], m_width);
     }
 
     /// @brief Returns const span for one row.
-    constexpr inline auto operator[](const size_t h) const
+    constexpr auto operator[](const size_t h) const
     {
-        assert(h <= _height);
-        return std::span<const T>(&_data[h * _width], _width);
+        assert(h <= m_height);
+        return std::span<const T>(&m_data[h * m_width], m_width);
     }
 
     /// @brief Returns raw mutable data pointer.
-    _nodiscard constexpr inline auto data() { return _data; }
+    _nodiscard constexpr auto data() { return m_data; }
     /// @brief Returns raw const data pointer.
-    _nodiscard constexpr inline auto data() const { return _data; }
+    _nodiscard constexpr auto data() const { return m_data; }
 
     /// @brief Returns mutable flattened view over all cells.
-    _nodiscard constexpr inline auto flattened() { return std::span<T>(_data, _width * _height); }
+    _nodiscard constexpr auto flattened() { return std::span<T>(m_data, m_width * m_height); }
     /// @brief Returns const flattened view over all cells.
-    _nodiscard constexpr inline auto flattened() const { return std::span<const T>(_data, _width * _height); }
+    _nodiscard constexpr auto flattened() const { return std::span<const T>(m_data, m_width * m_height); }
 
     /// @brief Matrix width in elements.
-    _nodiscard constexpr inline auto width() const -> size_t { return _width; }
+    _nodiscard constexpr auto width() const -> size_t { return m_width; }
     /// @brief Matrix height in elements.
-    _nodiscard constexpr inline auto height() const -> size_t { return _height; }
+    _nodiscard constexpr auto height() const -> size_t { return m_height; }
 
 private:
 	/// @brief Backing storage pointer.
-	T *_data = nullptr;
-	/// @brief Number of columns.
-	size_t _width = 0;
-	/// @brief Number of rows.
-	size_t _height = 0;
+    T *m_data = nullptr;
+    /// @brief Number of columns.
+    size_t m_width = 0;
+    /// @brief Number of rows.
+    size_t m_height = 0;
 };
 
 
@@ -114,27 +109,28 @@ public:
 
     /**
 	 * @brief determineImageBorders
-	 * @param image
+	 * @param image The image's data buffer, stored a W*H*(R,B,B[,A])
+	 * @param channelsCount Number of channels as in R,G,B,A, most likely 3 or 4.
 	 * Data layout is RBGA, each channel with 8 bits, in pixel order, row-major order.
 	 * This means that if your image is WxH, the input image must be (W*4)xH
 	 */
-    void determineImageBorders(const MatrixView<unsigned char> &image, const int channelsCount);
+    void determineImageBorders(const MatrixView<unsigned char> &image, int channelsCount);
 
     /**
 	 *  @brief Resulting delimitation of the previous @fn determineImageBorders call.
-	 *  Vector for the points delimiting the object.
+	 *  Vector for the m_points delimiting the object.
 	 *  Every point's location is normalized in the image's range.
 	 *  As every point is just following in order, but we may have 2 groups,
-	 *  when points switch from one group to another, the normal is null.
+	 *  when m_points switch from one group to another, the normal is null.
 	 */
-    _nodiscard inline auto getPoints() const -> const std::vector<glm::vec2> & { return points; }
+    _nodiscard auto getPoints() const -> const std::vector<glm::vec2> & { return m_points; }
     /// @brief Resulting normals of the previous @fn determineImageBorders call.
-    _nodiscard inline auto getNormals() const -> const std::vector<glm::vec2> & { return normals; }
+    _nodiscard auto getNormals() const -> const std::vector<glm::vec2> & { return normals; }
 
     /// @brief Returns minimum border coordinate.
-    _nodiscard inline auto getMin() const { return min; }
+    _nodiscard auto getMin() const { return m_min; }
     /// @brief Returns maximum border coordinate.
-    _nodiscard inline auto getMax() const { return max; }
+    _nodiscard auto getMax() const { return m_max; }
 
 private:
     /// @brief Potrace parameter block.
@@ -147,15 +143,15 @@ private:
 	 */
     TypeAlignedVector<unsigned char, potrace_word> m_memory{};
 
-    /// @brief Extracted border points.
-    std::vector<glm::vec2> points{};
+    /// @brief Extracted border m_points.
+    std::vector<glm::vec2> m_points{};
     /// @brief Extracted normals associated to points.
     std::vector<glm::vec2> normals{};
 
     /// @brief Minimum coordinate among extracted points.
-    glm::vec2 min{};
+    glm::vec2 m_min{};
     /// @brief Maximum coordinate among extracted points.
-    glm::vec2 max{};
+    glm::vec2 m_max{};
 };
 
 

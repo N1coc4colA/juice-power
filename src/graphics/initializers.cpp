@@ -1,4 +1,4 @@
-#include "initializers.h"
+#include "src/graphics/initializers.h"
 
 #include <cassert>
 
@@ -19,7 +19,7 @@ auto Init::commandPoolCreateInfo(const VkCommandPoolCreateFlags flags) -> VkComm
 	return info;
 }
 
-auto Init::commandBufferAllocateInfo(VkCommandPool pool, const uint32_t count) -> VkCommandBufferAllocateInfo
+auto Init::commandBufferAllocateInfo(const VkCommandPool pool, const uint32_t count) -> VkCommandBufferAllocateInfo
 {
 	assert(pool != VK_NULL_HANDLE);
 	assert(count != 0);
@@ -75,7 +75,7 @@ auto Init::semaphoreCreateInfo(const VkSemaphoreCreateFlags flags) -> VkSemaphor
 	return info;
 }
 
-auto Init::semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore) -> VkSemaphoreSubmitInfo
+auto Init::semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, const VkSemaphore semaphore) -> VkSemaphoreSubmitInfo
 {
 	assert(stageMask != VK_PIPELINE_STAGE_2_NONE);
 	assert(semaphore != VK_NULL_HANDLE);
@@ -92,7 +92,7 @@ auto Init::semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, VkSemaphor
 	return submitInfo;
 }
 
-auto Init::commandBufferSubmitInfo(VkCommandBuffer cmd) -> VkCommandBufferSubmitInfo
+auto Init::commandBufferSubmitInfo(const VkCommandBuffer cmd) -> VkCommandBufferSubmitInfo
 {
 	assert(cmd != VK_NULL_HANDLE);
 
@@ -124,7 +124,7 @@ auto Init::submitInfo(const VkCommandBufferSubmitInfo &cmd,
 	return info;
 }
 
-auto Init::attachmentInfo(VkImageView view, const VkClearValue *clear, const VkImageLayout layout) -> VkRenderingAttachmentInfo
+auto Init::attachmentInfo(const VkImageView view, const VkClearValue *clear, const VkImageLayout layout) -> VkRenderingAttachmentInfo
 {
 	assert(view != VK_NULL_HANDLE);
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
@@ -146,7 +146,7 @@ auto Init::attachmentInfo(VkImageView view, const VkClearValue *clear, const VkI
 	return colorAttachment;
 }
 
-auto Init::depthAttachmentInfo(VkImageView view, const VkImageLayout layout) -> VkRenderingAttachmentInfo
+auto Init::depthAttachmentInfo(const VkImageView view, const VkImageLayout layout) -> VkRenderingAttachmentInfo
 {
 	assert(view != VK_NULL_HANDLE);
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
@@ -176,7 +176,7 @@ auto Init::renderingInfo(const VkExtent2D &renderExtent,
 		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
 		.pNext = nullptr,
 
-		.renderArea = VkRect2D{VkOffset2D{0, 0}, renderExtent},
+		.renderArea = {.offset = VkOffset2D{.x = 0, .y = 0}, .extent = renderExtent},
 		.layerCount = 1,
 		.colorAttachmentCount = 1,
 		.pColorAttachments = colorAttachment,
@@ -187,7 +187,7 @@ auto Init::renderingInfo(const VkExtent2D &renderExtent,
 	return renderInfo;
 }
 
-auto Init::imageSubresourceRange(VkImageAspectFlags aspectMask) -> VkImageSubresourceRange
+auto Init::imageSubresourceRange(const VkImageAspectFlags aspectMask) -> VkImageSubresourceRange
 {
 	assert(aspectMask != VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM);
 
@@ -232,7 +232,7 @@ auto Init::imageCreateInfo(const VkFormat format, const VkImageUsageFlags usageF
     return info;
 }
 
-auto Init::imageViewCreateInfo(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags) -> VkImageViewCreateInfo
+auto Init::imageViewCreateInfo(const VkFormat format, const VkImage image, const VkImageAspectFlags aspectFlags) -> VkImageViewCreateInfo
 {
 	assert(format != VK_FORMAT_MAX_ENUM);
 	assert(image != VK_NULL_HANDLE);
@@ -274,7 +274,7 @@ auto Init::pipelineLayoutCreateInfo() -> VkPipelineLayoutCreateInfo
 	return info;
 }
 
-auto Init::pipelineShaderStageCreateInfo(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry)
+auto Init::pipelineShaderStageCreateInfo(const VkShaderStageFlagBits stage, const VkShaderModule shaderModule, const char *entry)
     -> VkPipelineShaderStageCreateInfo
 {
 	assert(stage != VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);

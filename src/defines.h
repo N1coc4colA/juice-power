@@ -5,7 +5,7 @@
  * @brief Silences unused variable warnings.
  */
 template<typename T>
-inline constexpr void UNUSED(T)
+constexpr void unused(T)
 {}
 
 #include <functional>

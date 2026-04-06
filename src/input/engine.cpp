@@ -1,12 +1,13 @@
-#include "engine.h"
+#include "src/input/engine.h"
 
 #include <SDL3/SDL.h>
 
+#include <iostream>
+#include <ranges>
+
 #include <imgui/backends/imgui_impl_sdl3.h>
 
-#include "../states.h"
-
-#include <iostream>
+#include "src/states.h"
 
 namespace Input {
 
@@ -20,44 +21,45 @@ Engine::Engine(const std::unordered_map<uint32_t, EventType> &corresps)
                       {EventType::Jump, &State::jump},
                       {EventType::Attack, &State::attack}})
 {
-    for (const auto &pair : corresps) {
-        m_registeredKeys.insert(pair.first);
+    for (const auto &key : corresps | std::views::keys) {
+        m_registeredKeys.insert(key);
     }
 }
 
 void Engine::run(std::atomic<uint64_t> &commands)
 {
-    SDL_Event e{};
+    SDL_Event event{};
 
-    while (!(commands & CommandStates::Stop)) {
+    while (!(commands & Stop)) {
         // Handle events on queue
-        while (SDL_PollEvent(&e) != 0) {
-            switch (e.type) {
+        while (SDL_PollEvent(&event) != 0) {
+            switch (event.type) {
             case SDL_EVENT_KEY_DOWN: {
-                std::cout << e.key.key << '\n';
-                m_state.*(m_eventToEntry[m_keyToEvent[e.key.key]]) = {.state = true, .hold = e.key.repeat};
+                std::cout << event.key.key << '\n';
+                m_state.*m_eventToEntry[m_keyToEvent[event.key.key]] = {.state = true, .hold = event.key.repeat};
                 break;
             }
             case SDL_EVENT_KEY_UP: {
-                m_state.*(m_eventToEntry[m_keyToEvent[e.key.key]]) = {.state = false, .hold = e.key.repeat};
+                m_state.*m_eventToEntry[m_keyToEvent[event.key.key]] = {.state = false, .hold = event.key.repeat};
                 break;
             }
             case SDL_EVENT_QUIT: {
                 // close the window when user alt-f4s or clicks the X button
-                commands |= CommandStates::Stop;
+                commands |= Stop;
                 break;
             }
             case SDL_EVENT_WINDOW_MINIMIZED: {
-                commands |= CommandStates::PauseRendering;
+                commands |= PauseRendering;
                 break;
             }
             case SDL_EVENT_WINDOW_RESTORED: {
-                commands &= ~CommandStates::PauseRendering;
+                commands &= ~PauseRendering;
                 break;
             }
+            default: break;
             }
 
-            ImGui_ImplSDL3_ProcessEvent(&e);
+            ImGui_ImplSDL3_ProcessEvent(&event);
         }
     }
 }

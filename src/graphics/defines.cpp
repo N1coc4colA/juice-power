@@ -1,14 +1,15 @@
-#include "defines.h"
+#include "src/graphics/defines.h"
 
 #include <fmt/ostream.h>
+
 #include <magic_enum.hpp>
 
 namespace Graphics {
 
-void vkCheck(const VkResult err)
+void vkCheck(const VkResult error)
 {
-    if (err != VK_SUCCESS) {
-        fmt::print("Detected Vulkan error: {}", magic_enum::enum_name(err));
+    if (error != VK_SUCCESS) {
+        fmt::print("Detected Vulkan error: {}", magic_enum::enum_name(error));
         abort();
     }
 }

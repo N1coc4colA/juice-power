@@ -4,7 +4,9 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <vector>
 
+#include "src/keywords.h"
 
 /**
  * @brief Decoded information for one stack frame.
@@ -30,7 +32,7 @@ class BackTrace
 {
 public:
     /// @brief Captures up to maxFrames stack frames starting from parent caller.
-    explicit BackTrace(const uint maxFrames);
+    explicit BackTrace(uint maxFrames);
     /// @brief Copy constructor.
     BackTrace(const BackTrace &other) = default;
     /// @brief Move constructor.
@@ -47,16 +49,16 @@ public:
     auto operator=(BackTrace &&other) noexcept -> BackTrace &;
 
     /// @brief Captures and prints a backtrace in a single call.
-    static void easyPrint(const uint maxFrames);
+    static void easyPrint(uint maxFrames);
 
     /// @brief Returns the captured backtrace entries.
-    inline auto getEntries() const -> std::span<BackTraceEntry> { return m_entries; }
+    _nodiscard auto getEntries() const -> std::span<const BackTraceEntry> { return m_entries; }
 
 private:
+    /// @brief View over the captured entries.
+    std::vector<BackTraceEntry> m_entries;
     /// @brief Owning storage for captured entries.
     std::shared_ptr<BackTraceEntry> m_bt;
-    /// @brief View over the captured entries.
-    std::span<BackTraceEntry> m_entries;
 };
 
 

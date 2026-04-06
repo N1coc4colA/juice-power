@@ -32,7 +32,7 @@ struct AllocatedImage
 
 	/// @brief Dimensions of the image in pixels
 	/// @note For 2D images, depth is the layer.
-	VkExtent3D imageExtent = {0, 0, 0};
+	VkExtent3D imageExtent {.width = 0, .height = 0, .depth = 0};
 
 	/// @brief Pixel format of the image
 	/// @note Must match the format used when creating the image.

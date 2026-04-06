@@ -1,21 +1,20 @@
-#include "resources.h"
+#include "src/graphics/resources.h"
 
 #include <algorithm>
 #include <span>
 
-#include "engine.h"
-
+#include "src/graphics/engine.h"
 
 namespace Graphics
 {
 
-void Resources2::build(const std::shared_ptr<Engine> &engine)
+void Resources::build(const std::shared_ptr<Engine> &engine)
 {
     const auto size = vertices.size();
 
     /* Upload edges */ {
         std::vector<uint32_t> indices{};
-        indices.reserve((size / 4) * Engine::standardIndexCount);
+        indices.reserve(Engine::standardIndexCount * size / 4);
 
         // Fill in the indices.
         for (size_t i = 0; i < size; i += 4) {
@@ -35,8 +34,7 @@ void Resources2::build(const std::shared_ptr<Engine> &engine)
 
         size_t bordersMaxPoints = 0;
         for (const auto &v : borders) {
-            const auto s = v.size();
-            if (bordersMaxPoints < s) {
+            if (const auto s = v.size(); bordersMaxPoints < s) {
                 bordersMaxPoints = s;
             }
         }
@@ -55,12 +53,12 @@ void Resources2::build(const std::shared_ptr<Engine> &engine)
         }
 
         gpuBorders.shrink_to_fit();
-        const auto bsize = gpuBorders.size();
-        assert(bsize != 0);
+        const auto bordersCount = gpuBorders.size();
+        assert(bordersCount != 0);
 
         std::vector<uint32_t> indices{};
-        indices.reserve(bsize);
-        for (uint32_t j = 0; j < bsize; ++j) {
+        indices.reserve(bordersCount);
+        for (uint32_t j = 0; j < bordersCount; ++j) {
             indices.push_back(j);
         }
 
@@ -72,7 +70,7 @@ void Resources2::build(const std::shared_ptr<Engine> &engine)
     engine->initImageDescriptors(static_cast<uint32_t>(images.size()));
 }
 
-void Resources2::cleanup(const std::shared_ptr<Graphics::Engine> &engine)
+void Resources::cleanup(const std::shared_ptr<Engine> &engine)
 {
     engine->destroyBuffer(meshBuffers.indexBuffer);
     engine->destroyBuffer(meshBuffers.vertexBuffer);

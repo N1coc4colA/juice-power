@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "./defines.h"
+#include "src/input/defines.h"
 
 namespace Input {
 
@@ -25,9 +25,9 @@ public:
     void run(std::atomic<uint64_t> &commands);
 
     /// @brief Returns mutable logical state.
-    inline auto state() -> State & { return m_state; }
+    auto state() -> State & { return m_state; }
     /// @brief Returns const logical state.
-    inline auto state() const -> const State & { return m_state; }
+    auto state() const -> const State & { return m_state; }
 
 protected:
     /// @brief Current input state snapshot.

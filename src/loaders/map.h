@@ -5,12 +5,12 @@
 #include <string>
 #include <unordered_map>
 
-#include "enums.h"
+#include "src/loaders/enums.h"
 
 namespace Graphics
 {
 //class Resources;
-class Resources2;
+class Resources;
 class Engine;
 }
 
@@ -32,19 +32,19 @@ class Map
 {
 public:
     /// @brief Constructs loader from map root path.
-    explicit Map(std::string path);
+    explicit Map(const std::string &path);
 
     /**
 	 * @brief Loads the map & associated resources from path provided to ctor.
 	 * @return The error status (Status::Ok if no error happened).
 	 */
-    auto load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shared_ptr<World::Scene> &m_scene) -> std::tuple<Status, std::string>;
+    auto load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shared_ptr<World::Scene> &scene) -> std::tuple<Status, std::string>;
 
 protected:
     /// @brief Builds graphics and physics resources from parsed map content.
     static auto buildResources(const std::unordered_map<std::string, int> &imagesMap,
-                               const std::string &m_assets,
-                               const std::shared_ptr<Graphics::Resources2> &res2,
+                               const std::string &assetsDir,
+                               const std::shared_ptr<Graphics::Resources> &resources,
                                const std::shared_ptr<Graphics::Engine> &engine,
                                const JsonMap &map) -> std::tuple<Status, std::string>;
 

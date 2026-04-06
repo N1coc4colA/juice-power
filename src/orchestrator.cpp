@@ -1,13 +1,13 @@
-#include "orchestrator.h"
+#include "src/orchestrator.h"
 
 #include <SDL3/SDL.h>
 
 #include <thread>
 
-#include "graphics/engine.h"
-#include "input/engine.h"
-#include "loaders/map.h"
-#include "physics/engine.h"
+#include "src/graphics/engine.h"
+#include "src/input/engine.h"
+#include "src/loaders/map.h"
+#include "src/physics/engine.h"
 
 /// @brief Singleton storage for the process-wide orchestrator instance.
 Orchestrator *Orchestrator::m_instance = nullptr;
@@ -62,7 +62,7 @@ void Orchestrator::setScene(const std::shared_ptr<World::Scene> &scene)
     m_physicsEngine->setScene(scene);
 }
 
-auto Orchestrator::loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>
+auto Orchestrator::loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) const -> std::tuple<Loaders::Status, std::string>
 {
     Loaders::Map mapLoader(path);
     return mapLoader.load2(m_graphicsEngine, scene);

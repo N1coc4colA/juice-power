@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "src/graphics/utils.h"
 
 #include <stb_image.h>
 
@@ -7,20 +7,19 @@
 #include <fstream>
 #include <vector>
 
-#include "initializers.h"
-
+#include "src/graphics/initializers.h"
 
 namespace Graphics::Utils
 {
 
-void transitionImage(VkCommandBuffer cmd, VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout)
+void transitionImage(const VkCommandBuffer cmd, const VkImage image, const VkImageLayout currentLayout, const VkImageLayout newLayout)
 {
 	assert(cmd != VK_NULL_HANDLE);
 	assert(image != VK_NULL_HANDLE);
 	assert(currentLayout != VK_IMAGE_LAYOUT_MAX_ENUM);
 	assert(newLayout != VK_IMAGE_LAYOUT_MAX_ENUM);
 
-	const VkImageAspectFlags aspectMask = (newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+	const VkImageAspectFlags aspectMask = newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
 			? VK_IMAGE_ASPECT_DEPTH_BIT
 			: VK_IMAGE_ASPECT_COLOR_BIT;
 
@@ -54,7 +53,7 @@ void transitionImage(VkCommandBuffer cmd, VkImage image, const VkImageLayout cur
     vkCmdPipelineBarrier2(cmd, &depInfo);
 }
 
-void copyImageToImage(VkCommandBuffer cmd, VkImage source, VkImage destination, const VkExtent2D &srcSize, const VkExtent2D &dstSize)
+void copyImageToImage(const VkCommandBuffer cmd, const VkImage source, const VkImage destination, const VkExtent2D &srcSize, const VkExtent2D &dstSize)
 {
 	assert(cmd != VK_NULL_HANDLE);
 	assert(source != VK_NULL_HANDLE);
@@ -158,16 +157,16 @@ auto loadShaderModule(const char *filePath, VkDevice device, VkShaderModule &out
 	return true;
 }
 
-void generateMipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize)
+void generateMipmaps(const VkCommandBuffer cmd, const VkImage image, VkExtent2D imageSize)
 {
-	const int mipLevels = int(std::floor(std::log2(std::max(imageSize.width, imageSize.height)))) + 1;
+	const int mipLevels = static_cast<int>(std::floor(std::log2(std::max(imageSize.width, imageSize.height)))) + 1;
 
 	for (int mip = 0; mip < mipLevels; mip++) {
 		VkExtent2D halfSize = imageSize;
 		halfSize.width /= 2;
 		halfSize.height /= 2;
 
-		const VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		constexpr VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
         auto subresourceRange = Init::imageSubresourceRange(aspectMask);
         subresourceRange.levelCount = 1;

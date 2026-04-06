@@ -10,7 +10,7 @@ namespace Graphics
 // I don't get why they made a whole bunch of opaque types when they could have
 // just separated definitions and declarations instead of putting it all stuck
 // together in only one ....... header using a macro.
-auto getMappedData(const VmaAllocation alloc) -> void *;
+auto getMappedData(VmaAllocation allocation) -> void *;
 
 /**
  * @brief Get currently remaining allocations.

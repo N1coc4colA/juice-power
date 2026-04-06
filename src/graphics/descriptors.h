@@ -1,12 +1,11 @@
 #ifndef GRAPHICS_DESCRIPTORS_H
 #define GRAPHICS_DESCRIPTORS_H
 
-#include <deque>
-#include <vector>
-#include <span>
-
 #include <vulkan/vulkan.h>
 
+#include <deque>
+#include <span>
+#include <vector>
 
 namespace Graphics
 {
@@ -28,7 +27,7 @@ struct DescriptorLayoutBuilder
      * @brief Adds one binding entry to the descriptor layout builder.
      * Builds a VkDescriptorSetLayoutBinding from the parameters.
      */
-    void addBinding(const uint32_t binding, const VkDescriptorType type);
+    void addBinding(uint32_t binding, VkDescriptorType type);
 
     /**
 	 * @brief Clears all bindings from the builder
@@ -41,7 +40,7 @@ struct DescriptorLayoutBuilder
 	 * @param shaderStages Shader stages that will use these descriptors
 	 * @return The created descriptor set layout
 	 */
-    auto build(VkDevice device, const VkShaderStageFlags shaderStages) -> VkDescriptorSetLayout;
+    auto build(VkDevice device, VkShaderStageFlags shaderStages) -> VkDescriptorSetLayout;
 };
 
 
@@ -68,7 +67,7 @@ struct DescriptorWriter
 	 * @param layout The current layout of the image
 	 * @param type The descriptor type being written
 	 */
-	void writeImage(const int binding, VkImageView image, VkSampler sampler, const VkImageLayout layout, const VkDescriptorType type);
+	void writeImage(int binding, VkImageView image, VkSampler sampler, VkImageLayout layout, VkDescriptorType type);
 
 	/**
 	 * @brief Queues a buffer descriptor write
@@ -78,7 +77,7 @@ struct DescriptorWriter
 	 * @param offset The offset into the buffer
 	 * @param type The descriptor type being written
 	 */
-	void writeBuffer(const int binding, VkBuffer buffer, const size_t size, const size_t offset, const VkDescriptorType type);
+	void writeBuffer(int binding, VkBuffer buffer, size_t size, size_t offset, VkDescriptorType type);
 
 	/**
 	 * @brief Clears all pending writes and associated info
@@ -138,7 +137,6 @@ struct DescriptorAllocator
  */
 struct DescriptorAllocatorGrowable
 {
-public:
     /// @brief Pool size growth multiplier.
     static constexpr float growthSize = 1.5f;
     /// @brief Upper bound of sets per pool.
@@ -198,7 +196,7 @@ private:
 	 * @param poolRatios Ratios of descriptor types
 	 * @return The created descriptor pool
 	 */
-    auto createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool;
+    static auto createPool(VkDevice device, uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool;
 
     /// @brief Ratios used to create new pools.
     std::vector<PoolSizeRatio> m_ratios{};
@@ -219,14 +217,14 @@ private:
 struct DescriptorAllocatorFreeable
 {
     /// @brief Creates the freeable descriptor pool.
-    void init(VkDevice device, const uint32_t maxSets, const VkDescriptorType type);
+    void init(VkDevice device, uint32_t maxSets, VkDescriptorType type);
     /// @brief Destroys the freeable descriptor pool.
     void destroyPool(VkDevice device);
 
     /// @brief Allocates one descriptor set.
-    auto allocate(VkDevice device, const VkDescriptorSetLayout layout) -> VkDescriptorSet;
+    auto allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet;
     /// @brief Frees one descriptor set.
-    void free(VkDevice device, const VkDescriptorSet set);
+    void free(VkDevice device, VkDescriptorSet set);
 
 private:
     /// @brief Backing Vulkan descriptor pool.

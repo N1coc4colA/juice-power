@@ -1,11 +1,13 @@
 #ifndef ALIGNED_VECTOR_H
 #define ALIGNED_VECTOR_H
 
-#include <cstddef>
 #include <gsl/gsl-lite.hpp>
+
+#include <cstddef>
 #include <limits>
-#include <memory>
 #include <vector>
+
+#include "src/keywords.h"
 
 /**
  * @brief STL-compatible allocator using std::aligned_alloc.
@@ -45,11 +47,16 @@ public:
     constexpr AlignedAllocator(const AlignedAllocator&) noexcept = default;
     /// @brief Converting copy constructor.
     template<typename U>
-    constexpr AlignedAllocator(const AlignedAllocator<U, RequiredAlign>&) noexcept
+    explicit constexpr AlignedAllocator(const AlignedAllocator<U, RequiredAlign>&) noexcept
     {}
+    AlignedAllocator(AlignedAllocator &&) noexcept {}
+    ~AlignedAllocator() = default;
+
+    auto operator=(const AlignedAllocator &) noexcept -> AlignedAllocator & = default;
+    auto operator=(AlignedAllocator &&) noexcept -> AlignedAllocator & { return *this; };
 
     /// @brief Allocates memory for n elements.
-    [[nodiscard]] auto allocate(std::size_t n) -> T *
+    _nodiscard static auto allocate(const std::size_t n) -> T *
     {
         if (n > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
             throw std::bad_array_new_length{};
@@ -64,7 +71,7 @@ public:
     }
 
     /// @brief Frees memory allocated by allocate().
-    void deallocate(gsl::owner<T *> p, std::size_t) noexcept { std::free(p); }
+    static void deallocate(const gsl::owner<T *> p, std::size_t) noexcept { std::free(p); }
 
     /// @brief Allocator equality by alignment value.
     template<typename U, std::size_t A>

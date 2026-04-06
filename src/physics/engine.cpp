@@ -1,22 +1,22 @@
-#include "engine.h"
+#include "src/physics/engine.h"
 
 #include <chrono>
 #include <iostream>
 
+#include "src/config.h"
 #include "src/input/defines.h"
-
-//#include "src/helpers.h"
 #include "src/states.h"
 
 namespace
 {
 
-static auto prevChrono = std::chrono::system_clock::now();
+auto prevChrono = std::chrono::system_clock::now();
+/// @brief Constant value of 3/4 of Pi.
 constexpr double pi3_4 = M_PI_2 + M_PI;
 
 }
 
-inline constexpr auto epsiloned(const auto &t)
+constexpr auto epsiloned(const auto &t)
 {
     return t;
 }
@@ -43,14 +43,14 @@ void Engine::prepare()
 
 void Engine::dump() const
 {
-    const auto csize = m_scene->chunks2.size();
+    const auto csize = m_scene->chunks.size();
 
     for (size_t i = 0; i < csize; i++) {
-        const auto &c = m_scene->chunks2[i];
+        const auto &chunk = m_scene->chunks[i];
 
-        const auto esize = c.entities.size();
+        const auto esize = chunk.entities.size();
         for (size_t j = 0; j < esize; j++) {
-            const auto &e = c.entities[j];
+            const auto &e = chunk.entities[j];
 
             const auto center = e.center();
 
@@ -68,12 +68,12 @@ void Engine::dump() const
     }
 }
 
-inline constexpr auto rotate(const glm::vec2 &v) noexcept -> glm::vec2
+constexpr auto rotate(const glm::vec2 &v) noexcept -> glm::vec2
 {
 	return glm::vec2{-v.y, v.x};
 }
 
-inline constexpr auto rotate(const glm::vec2 &v, const double angle) -> glm::vec2
+constexpr auto rotate(const glm::vec2 &v, const double angle) -> glm::vec2
 {
 	const auto c = glm::cos(angle);
 	const auto s = glm::sin(angle);
@@ -81,9 +81,9 @@ inline constexpr auto rotate(const glm::vec2 &v, const double angle) -> glm::vec
 	return glm::vec2 {v.x * c - v.y * s, v.x * s + v.y * c};
 }
 
-void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const CollisionInfo &info)
+void Engine::resolveCollision(Entity &a, Entity &b, const CollisionInfo &info)
 {
-    if (info.depth < epsilon) {
+    if (info.depth < Config::physicsEpsilon) {
         return;
     }
 
@@ -94,7 +94,7 @@ void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const Coll
     const float velAlongNormal = glm::dot(relVel, info.normal);
 
     // If separating and no penetration, skip
-    if (velAlongNormal > epsilon && info.depth <= epsilon) {
+    if (velAlongNormal > Config::physicsEpsilon && info.depth <= Config::physicsEpsilon) {
         return;
     }
 
@@ -115,7 +115,6 @@ void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const Coll
 
     const glm::vec2 impulse = j * info.normal;
 
-    const int choice = (1 << a.canCollide) + (2 << b.canCollide);
     /*
         a b choice
         0 0 1+2 = 3 // Don't care.
@@ -123,7 +122,7 @@ void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const Coll
         1 0 2+2 = 4
         1 1 2+4 = 6
     */
-    switch (choice) {
+    switch ((1 << a.canCollide) + (2 << b.canCollide)) {
     case 4: {
         const auto v = epsiloned(impulse * invMassA);
 
@@ -139,16 +138,8 @@ void Engine::resolveCollision(Physics::Entity &a, Physics::Entity &b, const Coll
         break;
     }
     case 6: {
-        {
-            const auto v = epsiloned(impulse * invMassA);
-
-            a.velocity += v;
-        }
-        {
-            const auto v = epsiloned(impulse * invMassB);
-
-            b.velocity -= v;
-        }
+        a.velocity += epsiloned(impulse * invMassA);
+        b.velocity -= epsiloned(impulse * invMassB);
         break;
     }
     case 3: {
@@ -174,12 +165,12 @@ void Engine::compute()
     /* Resolve collisions */ {
         m_scene->collisions.clear();
 
-        for (auto &c : m_scene->view2) {
+        for (auto &c : m_scene->view) {
             for (auto &e : c.entities) {
                 e.has_collision = false;
             }
         }
-        for (auto &e : m_scene->movings2.entities) {
+        for (auto &e : m_scene->movings.entities) {
             e.has_collision = false;
         }
 
@@ -187,23 +178,23 @@ void Engine::compute()
     }
 
     /* Cleaning up */ {
-        for (auto &c : m_scene->view2) {
-            for (auto &obj : c.entities) {
+        for (auto &chunk : m_scene->view) {
+            for (auto &obj : chunk.entities) {
                 obj.cleanup();
             }
         }
-        for (auto &obj : m_scene->movings2.entities) {
+        for (auto &obj : m_scene->movings.entities) {
             obj.cleanup();
         }
     }
 
     /* Position update */ {
-        for (auto &c : m_scene->view2) {
-            for (auto &obj : c.entities) {
+        for (auto &chunk : m_scene->view) {
+            for (auto &obj : chunk.entities) {
                 obj.compute(delta);
             }
         }
-        for (auto &obj : m_scene->movings2.entities) {
+        for (auto &obj : m_scene->movings.entities) {
             obj.compute(delta);
         }
 
@@ -213,19 +204,15 @@ void Engine::compute()
     prevChrono = currentTime;
 }
 
-void Engine::resolveCollisions(std::vector<Physics::Entity> &en1, Physics::Entity &e)
+void Engine::resolveCollisions(std::vector<Entity> &en1, Entity &e)
 {
     for (auto &e2 : en1) {
-        CollisionInfo info{};
-
         // If both elements are not the same, we can check for collision.
         const std::pair m = {std::min(&e, &e2), std::max(&e, &e2)};
         if (&e != &e2) {
-            [[likely]];
-
             if (!m_scene->collisions.contains(m) && (e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
                 // We need to resolve the collision.
-                if (e.collides(e2, info)) {
+                if (CollisionInfo info{}; e.collides(e2, info)) {
                     //std::cout << "Detected collision between entities " << e.id << " and " << e2.id << " normal=(" << info.normal.x << "," << info.normal.y << ") depth=" << info.depth << "\n";
                     resolveCollision(e, e2, info);
 
@@ -241,32 +228,30 @@ void Engine::resolveCollisions(std::vector<Physics::Entity> &en1, Physics::Entit
 
 void Engine::resolveAllCollisions()
 {
-    {
-        const auto size = static_cast<int64_t>(m_scene->view2.size());
+    const auto size = static_cast<int64_t>(m_scene->view.size());
 
-        for (int64_t i = 0; i < size; i++) {
-            // For every entity in the current chunk, we check the entities in the current AND next chunk.
-            // Previous chunks' entities have already been checked against.
-            for (auto &e : m_scene->view2[i].entities) {
-                for (int64_t j = i; j < size; j++) {
-                    resolveCollisions(m_scene->view2[j].entities, e);
-                }
+    for (int64_t i = 0; i < size; i++) {
+        // For every entity in the current chunk, we check the entities in the current AND next chunk.
+        // Previous chunks' entities have already been checked against.
+        for (auto &entity : m_scene->view[i].entities) {
+            for (int64_t j = i; j < size; j++) {
+                resolveCollisions(m_scene->view[j].entities, entity);
             }
         }
+    }
 
-        for (auto &c : m_scene->view2) {
-            for (auto &e : c.entities) {
-                resolveCollisions(m_scene->movings2.entities, e);
-            }
+    for (auto &chunk : m_scene->view) {
+        for (auto &entity : chunk.entities) {
+            resolveCollisions(m_scene->movings.entities, entity);
         }
+    }
 
-        for (auto &e : m_scene->movings2.entities) {
-            resolveCollisions(m_scene->movings2.entities, e);
-        }
+    for (auto &entity : m_scene->movings.entities) {
+        resolveCollisions(m_scene->movings.entities, entity);
     }
 }
 
-void copyPositions2(Graphics::Chunk2 &c)
+void copyPositions2(Graphics::Chunk &c)
 {
     for (auto &&[obj, entity] : std::views::zip(c.objects, c.entities)) {
         obj.position = glm::vec4(entity.position, 0.f, 1.f);
@@ -275,18 +260,18 @@ void copyPositions2(Graphics::Chunk2 &c)
 
 void Engine::run(std::atomic<uint64_t> &commands)
 {
-    while (!(commands & CommandStates::Stop)) {
+    while (!(commands & Stop)) {
         compute();
 
-        if (commands & CommandStates::PrepareDrawing) {
-            copyPositions2(m_scene->movings2);
-            for (auto &chunk : m_scene->view2) {
+        if (commands & PrepareDrawing) {
+            copyPositions2(m_scene->movings);
+            for (auto &chunk : m_scene->view) {
                 copyPositions2(chunk);
             }
 
             // Update states.
-            commands &= ~CommandStates::PrepareDrawing;
-            commands |= CommandStates::DrawingPrepared;
+            commands &= ~PrepareDrawing;
+            commands |= DrawingPrepared;
         }
     }
 }
@@ -299,20 +284,20 @@ void Engine::updateMainPosition()
     if (m_inputState->left.unsafeGet().state) {
         std::cout << "left\n";
         //m_scene->movings.entities[0].velocity.x += horVel;
-        m_scene->movings2.entities[0].thrusts.push_back(Thrust{.vector = {horVel, 0.f, 0.f}});
+        m_scene->movings.entities[0].thrusts.push_back(Thrust{.vector = {horVel, 0.f, 0.f}});
     }
     if (m_inputState->right.unsafeGet().state) {
         std::cout << "right\n";
         //m_scene->movings.entities[0].velocity.x += horVel;
-        m_scene->movings2.entities[0].thrusts.push_back(Thrust{.vector = {-horVel, 0.f, 0.f}});
+        m_scene->movings.entities[0].thrusts.push_back(Thrust{.vector = {-horVel, 0.f, 0.f}});
     }
     if (m_inputState->down.unsafeGet().state) {
         std::cout << "down\n";
-        m_scene->movings2.entities[0].velocity.x -= vertVel;
+        m_scene->movings.entities[0].velocity.x -= vertVel;
     }
     if (m_inputState->up.unsafeGet().state && !m_inputState->up.unsafeGet().hold) {
         std::cout << "up\n";
-        m_scene->movings2.entities[0].velocity.x += vertVel;
+        m_scene->movings.entities[0].velocity.x += vertVel;
     }
 }
 }

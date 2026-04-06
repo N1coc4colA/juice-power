@@ -13,21 +13,21 @@ using stbi_uc = unsigned char;
 struct ImageInfo
 {
     /// @brief Source image width in pixels.
-    int width;
+    int width = -1;
     /// @brief Source image height in pixels.
-    int height;
+    int height = -1;
     /// @brief Target frame index after packing.
-    int frame_id;
+    int frameId = -1;
     /// @brief Top-left X placement in frame in pixels.
-    int x;
+    int x = -1;
     /// @brief Top-left Y placement in frame in pixels.
-    int y;
+    int y = -1;
     /// @brief Packing status flag.
-    int packed;
+    int packed = -1;
     /// @brief Pointer to raw image data.
     stbi_uc *imgData = nullptr;
     /// @brief Application image identifier.
-    int id;
+    int id = -1;
 };
 
 /**
@@ -36,17 +36,17 @@ struct ImageInfo
 struct Frame
 {
     /// @brief Frame width in pixels.
-    int w;
+    int w = -1;
     /// @brief Frame height in pixels.
-    int h;
+    int h = -1;
     /// @brief Number of images placed in this frame.
-    int num_images;
+    int imagesCount = -1;
 };
 
 /**
  * @brief Packs images into one or more frames constrained by max area.
  * @return Number of generated frames or negative error code.
  */
-auto packImagesMultiFrame(std::vector<ImageInfo> &images, uint64_t max_area, std::vector<Frame> &frames) -> int;
+auto packImagesMultiFrame(std::vector<ImageInfo> &images, uint64_t maxArea, std::vector<Frame> &frames) -> int;
 
 #endif // PACKING_H

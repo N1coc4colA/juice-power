@@ -1,19 +1,20 @@
 #ifndef POINTER_H
 #define POINTER_H
 
-#include "keywords.h"
+#include "src/keywords.h"
+
+#include <gsl/gsl-lite.hpp>
 
 #include <cstdlib>
-#include <gsl/gsl-lite.hpp>
 #include <iterator>
 
-namespace _priv {
+namespace Private {
 /// @brief Signature used by pointer cleanup callbacks.
 using Deleter = void(void *);
 
 template<typename T>
 /// @brief Default deleter that calls C++ delete.
-void typeDelete(gsl::owner<T *> ptr)
+void typeDelete(const gsl::owner<T *> ptr)
 {
     delete ptr;
 }
@@ -22,14 +23,14 @@ template<typename T>
 /// @brief Raw pointer type helper alias.
 using PointerType = T *;
 
-} // namespace _priv
+} // namespace Private
 
 /**
  * @brief Iterator-like owning pointer wrapper with customizable deleter.
  * @tparam T Pointed element type.
  * @tparam Fn Cleanup function called in destructor.
  */
-template<typename T, _priv::Deleter Fn>
+template<typename T, Private::Deleter Fn>
 class AutoCleanPtr
 {
 public:
@@ -51,7 +52,7 @@ public:
         : m_ptr(nullptr)
     {}
     /// @brief Wraps a raw pointer.
-    AutoCleanPtr(T *ptr)
+    explicit AutoCleanPtr(T *ptr)
         : m_ptr(ptr)
     {}
     /// @brief Copies wrapped pointer value.
@@ -63,7 +64,7 @@ public:
         : m_ptr(std::move(other.m_ptr))
     {}
     /// @brief Releases owned pointer with the configured deleter.
-    ~AutoCleanPtr() { Fn(m_ptr); }
+    ~AutoCleanPtr() { Fn(gsl::owner<T *>(m_ptr)); }
 
     /// @brief Copy assignment.
     auto operator=(const AutoCleanPtr &other) -> AutoCleanPtr & = default;
@@ -158,6 +159,6 @@ template<typename T>
 using AutoFreePtr = AutoCleanPtr<T, std::free>;
 template<typename T>
 /// @brief Pointer wrapper that releases memory with delete.
-using AutoDeletePtr = AutoCleanPtr<T, _priv::typeDelete<T>>;
+using AutoDeletePtr = AutoCleanPtr<T, Private::typeDelete<T>>;
 
 #endif // POINTER_H

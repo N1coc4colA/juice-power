@@ -1,15 +1,13 @@
 #ifndef GRAPHICS_RESOURCES_H
 #define GRAPHICS_RESOURCES_H
 
-#include <memory>
-#include <set>
-#include <vector>
-
 #include <glm/glm.hpp>
 
-#include "allocatedimage.h"
-#include "objectdata.h"
-#include "types.h"
+#include <memory>
+#include <vector>
+
+#include "src/graphics/allocatedimage.h"
+#include "src/graphics/types.h"
 
 namespace Graphics
 {
@@ -19,7 +17,7 @@ class Engine;
 /**
  * @brief Aggregates CPU and GPU resource data used by a loaded scene.
  */
-class Resources2
+class Resources
 {
 public:
     /* Objects' Descriptions */
@@ -31,7 +29,7 @@ public:
     std::vector<CachedImage> images{};
 
     /// @brief Animations for the whole scene.
-    std::vector<Graphics::AnimationData> animations{};
+    std::vector<AnimationData> animations{};
     /// @brief GPU-side animation buffer pack.
     GPUAnimationBuffers animationsBuffer{};
 
@@ -75,9 +73,9 @@ public:
     GPUPointBuffers pointsBuffer{};
 
     /// @brief Uploads CPU-side resources to GPU buffers and images.
-    void build(const std::shared_ptr<Graphics::Engine> &engine);
+    void build(const std::shared_ptr<Engine> &engine);
     /// @brief Releases GPU resources owned by this object.
-    void cleanup(const std::shared_ptr<Graphics::Engine> &engine);
+    void cleanup(const std::shared_ptr<Engine> &engine);
 };
 }
 

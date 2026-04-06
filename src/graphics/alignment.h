@@ -1,12 +1,13 @@
 #ifndef ALIGNMENT_H
 #define ALIGNMENT_H
 
-#include <cstdint>
-#include <type_traits>
-
 #include <boost/pfr.hpp>
 #include <boost/pfr/core.hpp>
+
 #include <glm/glm.hpp>
+
+#include <cstdint>
+#include <type_traits>
 
 #define GPU_EXPOSED(Type, Name) alignas(::Graphics::Alignment::std430Compliant<Type>()) Type Name
 
@@ -23,14 +24,14 @@ struct Padding
 {
 private:
     /// @brief Reserved bytes used only for alignment.
-    std::byte __reserved[S];
+    std::array<std::byte, S> __reserved{};
 } __attribute__((packed));
 
 template<size_t CurrentOffset, size_t RequiredAlign>
 constexpr auto paddingNeeded() -> size_t
 {
     constexpr size_t remainder = CurrentOffset % RequiredAlign;
-    return remainder == 0 ? 0 : (RequiredAlign - remainder);
+    return remainder == 0 ? 0 : RequiredAlign - remainder;
 }
 
 namespace details {
@@ -135,7 +136,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, int8_t, uint8_t>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -143,7 +144,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, int16_t, uint16_t>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -151,7 +152,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, int, float, uint, bool>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -159,7 +160,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, glm::vec2, glm::ivec2, glm::uvec2, glm::bvec2, VkDeviceAddress>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -167,7 +168,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, glm::vec3, glm::ivec3, glm::uvec3, glm::bvec3>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -175,7 +176,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, glm::vec4, glm::ivec4, glm::uvec4, glm::bvec4>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -183,7 +184,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, glm::mat2>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -191,7 +192,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, glm::mat3>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 
@@ -199,7 +200,7 @@ template<typename S, size_t Offset, typename T, size_t I>
     requires details::is_one_of_v<S, glm::mat4>
 constexpr auto isStd430Compliant()
 {
-    static_assert((Offset % std430Compliant<S>()) == 0, "The alignment of your type does not match std430.");
+    static_assert(Offset % std430Compliant<S>() == 0, "The alignment of your type does not match std430.");
     return true;
 }
 

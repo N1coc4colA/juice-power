@@ -1,5 +1,4 @@
-#include "objectdata.h"
-#include "types.h"
+#include "src/graphics/types.h"
 
 namespace Graphics {
 
@@ -10,6 +9,10 @@ class AlignmentChecker
 {
 public:
     AlignmentChecker() = delete;
+
+    // This is used for Graphics::Alignment::Padding class.
+    static_assert(sizeof(std::byte[9]) == sizeof(std::array<std::byte, 9>),
+                  "The size of an std::array should be the same as a []. This breaks mem layout.");
 
     static_assert(sizeof(Vertex) == 48, "Vertex size mismatch");
     static_assert(offsetof(Vertex, uv) == 16, "uv offset mismatch");
@@ -24,7 +27,7 @@ public:
 
     static_assert(offsetof(GPUDrawPointPushConstants, color) == 16, "color offset mismatch");
 
-    static_assert(sizeof(ObjectData) == (4 + 4 + 4 + 4 + 16 + 64), "ObjectData size mismatch");
+    static_assert(sizeof(ObjectData) == 4 + 4 + 4 + 4 + 16 + 64, "ObjectData size mismatch");
     static_assert(offsetof(ObjectData, objId) == 0, "objId offset mismatch");
     static_assert(offsetof(ObjectData, verticesId) == 4, "verticesId offset mismatch");
     static_assert(offsetof(ObjectData, animationId) == 8, "animationId offset mismatch");
@@ -32,7 +35,7 @@ public:
     static_assert(offsetof(ObjectData, position) == 16, "position offset mismatch");
     static_assert(offsetof(ObjectData, transform) == 32, "transform offset mismatch");
 
-    static_assert(sizeof(AnimationData) == (4 + 2 + 2 + 2 + 2 + 4 + 16), "AnimationData size mismatch");
+    static_assert(sizeof(AnimationData) == 4 + 2 + 2 + 2 + 2 + 4 + 16, "AnimationData size mismatch");
     static_assert(offsetof(AnimationData, frameInterval) == 12, "frameInterval offset mismatch");
     static_assert(offsetof(AnimationData, imageInfo) == 16, "imageInfo offset mismatch");
     static_assert(offsetof(AnimationData, imageId) == 0, "imageId offset mismatch");

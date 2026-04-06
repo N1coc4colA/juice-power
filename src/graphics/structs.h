@@ -1,13 +1,12 @@
 #ifndef GRAPHICS_STRUCTS_H
 #define GRAPHICS_STRUCTS_H
 
+#include <vulkan/vulkan.h>
+
 #include <deque>
 #include <functional>
 
-#include <vulkan/vulkan.h>
-
-#include "descriptors.h"
-
+#include "src/graphics/descriptors.h"
 
 namespace Graphics
 {
@@ -24,7 +23,7 @@ struct DeletionQueue
 	std::deque<std::function<void()>> deleters {};
 
     /// @brief Enqueues a cleanup callback for later execution.
-    inline void pushFunction(std::function<void()> &&function) { deleters.push_back(std::move(function)); }
+    void pushFunction(std::function<void()> &&function) { deleters.push_back(std::move(function)); }
 
     /// @brief Executes all queued cleanup operations
 	void flush();

@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "src/keywords.h"
-#include "src/utils.h"
 
 namespace Physics
 {
@@ -180,14 +179,14 @@ public:
     // Used for integration of forces. Here it's not King Kunta but King Kutta !!
     /// @brief Computes RK derivative for translational/rotational state.
     void KingKutta(
-        const Entity::state_type &y, Entity::state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const;
+        const state_type &y, state_type &dydt, double gravity, double kx, double ky, double kt) const;
     /// @brief Aggregates all active forces over the given timestep.
-    _nodiscard auto resultOfForces(const double timeStep) const -> Forces;
+    _nodiscard auto resultOfForces(double timeStep) const -> Forces;
     /// @brief Advances simulation state to next frame.
-    void compute(const double timeDelta);
+    void compute(double timeDelta);
 
     /// @brief Returns geometric center from position and bounding box extents.
-    _nodiscard inline constexpr auto center() const noexcept { return position + (boundingBox.min + boundingBox.max) * 0.5f; }
+    _nodiscard constexpr auto center() const noexcept { return position + (boundingBox.min + boundingBox.max) * 0.5f; }
 
     /// @brief Projects polygon borders onto an axis and returns min/max interval.
     _nodiscard constexpr auto getMinMax(const std::span<const glm::vec2> &borders, const glm::vec2 &axis) const noexcept
@@ -222,10 +221,10 @@ public:
     _nodiscard auto collides(const Entity &other, CollisionInfo &info) const noexcept
     {
         // t: this, o: other, b: borders, n: normals
-        const auto tb = std::span<const glm::vec2>(borders.data(), borders.size());
-        const auto tn = std::span<const glm::vec2>(normals.data(), normals.size());
-        const auto ob = std::span<const glm::vec2>(other.borders.data(), other.borders.size());
-        const auto on = std::span<const glm::vec2>(other.normals.data(), other.normals.size());
+        const auto tb = std::span(borders.data(), borders.size());
+        const auto tn = std::span(normals.data(), normals.size());
+        const auto ob = std::span(other.borders.data(), other.borders.size());
+        const auto on = std::span(other.normals.data(), other.normals.size());
 
         float minOverlap = std::numeric_limits<float>::max();
         glm::vec2 smallestAxis{};
@@ -243,8 +242,8 @@ public:
 				const auto firstIntersect = getMinMax(tb, normal);
 				const auto secondIntersect = other.getMinMax(ob, normal);
 
-				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
-				if (isSeparated) {
+				// Check if it is separated.
+				if (firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj) {
 					if (debug) {
 						std::cout << "Separated on this's axis: (" << normal.x << "," << normal.y << ")\n";
 						std::cout << "  this proj: [" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other proj: [" << secondIntersect.minProj << "," << secondIntersect.maxProj << "]\n";
@@ -269,8 +268,8 @@ public:
 				const auto firstIntersect = getMinMax(tb, normal);
 				const auto secondIntersect = other.getMinMax(ob, normal);
 
-				const bool isSeparated = firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj;
-				if (isSeparated) {
+				// Check if it is separated
+				if (firstIntersect.maxProj < secondIntersect.minProj || secondIntersect.maxProj < firstIntersect.minProj) {
 					if (debug) {
 						std::cout << "Separated on other's axis: (" << normal.x << "," << normal.y << ")\n";
 						std::cout << "  this proj: [" << firstIntersect.minProj << "," << firstIntersect.maxProj << "] other proj: [" << secondIntersect.minProj << "," << secondIntersect.maxProj << "]\n";
@@ -293,8 +292,7 @@ public:
 		// Ensure the normal points from this entity to the other entity.
 		// Use (other.center - center) so a negative dot indicates the axis
 		// points away from the other entity and must be inverted.
-		const auto centerDelta = other.center() - center();
-		if (glm::dot(centerDelta, smallestAxis) < 0.f) {
+        if (const auto centerDelta = other.center() - center(); glm::dot(centerDelta, smallestAxis) < 0.f) {
 			smallestAxis = -smallestAxis;
 		}
 

@@ -1,12 +1,11 @@
-#include "descriptors.h"
+#include "src/graphics/descriptors.h"
+
+#include <fmt/ostream.h>
 
 #include <algorithm>
 #include <cassert>
 
-#include <fmt/ostream.h>
-
-#include "defines.h"
-
+#include "src/graphics/defines.h"
 
 namespace Graphics
 {
@@ -27,14 +26,14 @@ void DescriptorLayoutBuilder::clear()
 	bindings.clear();
 }
 
-auto DescriptorLayoutBuilder::build(VkDevice device, const VkShaderStageFlags shaderStages) -> VkDescriptorSetLayout
+auto DescriptorLayoutBuilder::build(const VkDevice device, const VkShaderStageFlags shaderStages) -> VkDescriptorSetLayout
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(shaderStages != VK_PIPELINE_LAYOUT_CREATE_FLAG_BITS_MAX_ENUM);
 
-	for (auto &b : bindings) {
-		b.stageFlags |= shaderStages;
-	}
+    for (auto &binding : bindings) {
+        binding.stageFlags |= shaderStages;
+    }
 
     const VkDescriptorSetLayoutCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -50,14 +49,14 @@ auto DescriptorLayoutBuilder::build(VkDevice device, const VkShaderStageFlags sh
 	return set;
 }
 
-void DescriptorAllocator::destroyPool(VkDevice device)
+void DescriptorAllocator::destroyPool(const VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
 	vkDestroyDescriptorPool(device, pool, nullptr);
 }
 
-auto DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
+auto DescriptorAllocator::allocate(const VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(layout != VK_NULL_HANDLE);
@@ -76,13 +75,13 @@ auto DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLayout layout
 	return ds;
 }
 
-void DescriptorWriter::writeImage(const int binding, VkImageView image, VkSampler sampler,  const VkImageLayout layout, const VkDescriptorType type)
+void DescriptorWriter::writeImage(const int binding, const VkImageView image, const VkSampler sampler,  const VkImageLayout layout, const VkDescriptorType type)
 {
 	assert(image != VK_NULL_HANDLE);
 	assert(layout != VK_IMAGE_LAYOUT_MAX_ENUM);
 	assert(type != VK_DESCRIPTOR_TYPE_MAX_ENUM);
 
-	VkDescriptorImageInfo &info = imageInfos.emplace_back(VkDescriptorImageInfo {
+	const VkDescriptorImageInfo &info = imageInfos.emplace_back(VkDescriptorImageInfo {
 		.sampler = sampler,
 		.imageView = image,
 		.imageLayout = layout
@@ -98,7 +97,7 @@ void DescriptorWriter::writeImage(const int binding, VkImageView image, VkSample
 	});
 }
 
-void DescriptorWriter::writeBuffer(const int binding, VkBuffer buffer, const size_t size, const size_t offset, const VkDescriptorType type)
+void DescriptorWriter::writeBuffer(const int binding, const VkBuffer buffer, const size_t size, const size_t offset, const VkDescriptorType type)
 {
 	assert(buffer != VK_NULL_HANDLE);
 	assert(size != 0);
@@ -127,7 +126,7 @@ void DescriptorWriter::clear()
 	bufferInfos.clear();
 }
 
-void DescriptorWriter::updateSet(VkDevice device, VkDescriptorSet set)
+void DescriptorWriter::updateSet(const VkDevice device, const VkDescriptorSet set)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(set != VK_NULL_HANDLE);
@@ -139,36 +138,36 @@ void DescriptorWriter::updateSet(VkDevice device, VkDescriptorSet set)
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
-void DescriptorAllocatorGrowable::init(VkDevice device, const uint32_t maxSets, const std::span<const PoolSizeRatio> &poolRatios)
+void DescriptorAllocatorGrowable::init(const VkDevice device, const uint32_t initialSets, const std::span<const PoolSizeRatio> &poolRatios)
 {
 	assert(device != VK_NULL_HANDLE);
-	assert(maxSets != 0);
+	assert(initialSets != 0);
 
     m_ratios.resize(poolRatios.size());
     std::ranges::copy(poolRatios, m_ratios.begin());
 
-    m_setsPerPool = static_cast<uint32_t>(static_cast<float>(maxSets) * growthSize); //grow it next allocation
-    const VkDescriptorPool newPool = createPool(device, maxSets, poolRatios);
+    m_setsPerPool = static_cast<uint32_t>(static_cast<float>(initialSets) * growthSize); //grow it next allocation
+    const VkDescriptorPool newPool = createPool(device, initialSets, poolRatios);
 
     m_readyPools.push_back(newPool);
 }
 
-void DescriptorAllocatorGrowable::clearPools(VkDevice device)
+void DescriptorAllocatorGrowable::clearPools(const VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
-	for (const auto &p : m_readyPools) {
-		vkCheck(vkResetDescriptorPool(device, p, 0));
-	}
-	for (const auto &p : m_fullPools) {
-		vkCheck(vkResetDescriptorPool(device, p, 0));
-		m_readyPools.push_back(p);
-	}
+    for (const auto &pool : m_readyPools) {
+        vkCheck(vkResetDescriptorPool(device, pool, 0));
+    }
+    for (const auto &pool : m_fullPools) {
+        vkCheck(vkResetDescriptorPool(device, pool, 0));
+        m_readyPools.push_back(pool);
+    }
 
-	m_fullPools.clear();
+    m_fullPools.clear();
 }
 
-void DescriptorAllocatorGrowable::destroyPools(VkDevice device)
+void DescriptorAllocatorGrowable::destroyPools(const VkDevice device)
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -183,7 +182,7 @@ void DescriptorAllocatorGrowable::destroyPools(VkDevice device)
 	m_fullPools.clear();
 }
 
-auto DescriptorAllocatorGrowable::getPool(VkDevice device) -> VkDescriptorPool
+auto DescriptorAllocatorGrowable::getPool(const VkDevice device) -> VkDescriptorPool
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -205,14 +204,14 @@ auto DescriptorAllocatorGrowable::getPool(VkDevice device) -> VkDescriptorPool
     return newPool;
 }
 
-auto DescriptorAllocatorGrowable::createPool(VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
+auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
     -> VkDescriptorPool
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(setCount != 0);
 
-	std::vector<VkDescriptorPoolSize> poolSizes;
-	poolSizes.reserve(poolRatios.size());
+    std::vector<VkDescriptorPoolSize> poolSizes{};
+    poolSizes.reserve(poolRatios.size());
 
     std::ranges::transform(poolRatios, poolSizes.begin(), [setCount](const auto &ratio) -> auto {
         return VkDescriptorPoolSize{.type = ratio.type, .descriptorCount = static_cast<uint32_t>(ratio.ratio * static_cast<float>(setCount))};
@@ -232,7 +231,7 @@ auto DescriptorAllocatorGrowable::createPool(VkDevice device, const uint32_t set
 	return newPool;
 }
 
-auto DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
+auto DescriptorAllocatorGrowable::allocate(const VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(layout != VK_NULL_HANDLE);
@@ -249,10 +248,9 @@ auto DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayou
 	};
 
 	VkDescriptorSet ds = VK_NULL_HANDLE;
-	const VkResult result = vkAllocateDescriptorSets(device, &allocInfo, &ds);
 
 	//allocation failed. Try again
-	if (result == VK_ERROR_OUT_OF_POOL_MEMORY ||
+	if (const VkResult result = vkAllocateDescriptorSets(device, &allocInfo, &ds); result == VK_ERROR_OUT_OF_POOL_MEMORY ||
 		result == VK_ERROR_FRAGMENTED_POOL) {
 
 		m_fullPools.push_back(poolToUse);
@@ -267,7 +265,7 @@ auto DescriptorAllocatorGrowable::allocate(VkDevice device, VkDescriptorSetLayou
 	return ds;
 }
 
-void DescriptorAllocatorFreeable::init(VkDevice device, const uint32_t maxSets, const VkDescriptorType type)
+void DescriptorAllocatorFreeable::init(const VkDevice device, const uint32_t maxSets, const VkDescriptorType type)
 {
     assert(device != VK_NULL_HANDLE);
     assert(maxSets != 0);
@@ -288,7 +286,7 @@ void DescriptorAllocatorFreeable::init(VkDevice device, const uint32_t maxSets, 
     vkCheck(vkCreateDescriptorPool(device, &poolInfo, nullptr, &m_pool));
 }
 
-void DescriptorAllocatorFreeable::destroyPool(VkDevice device)
+void DescriptorAllocatorFreeable::destroyPool(const VkDevice device)
 {
     assert(device != VK_NULL_HANDLE);
 
@@ -296,7 +294,7 @@ void DescriptorAllocatorFreeable::destroyPool(VkDevice device)
     m_pool = VK_NULL_HANDLE;
 }
 
-auto DescriptorAllocatorFreeable::allocate(VkDevice device, const VkDescriptorSetLayout layout) -> VkDescriptorSet
+auto DescriptorAllocatorFreeable::allocate(const VkDevice device, const VkDescriptorSetLayout layout) -> VkDescriptorSet
 {
     assert(device != VK_NULL_HANDLE);
     assert(layout != VK_NULL_HANDLE);
@@ -315,7 +313,7 @@ auto DescriptorAllocatorFreeable::allocate(VkDevice device, const VkDescriptorSe
     return ds;
 }
 
-void DescriptorAllocatorFreeable::free(VkDevice device, const VkDescriptorSet set)
+void DescriptorAllocatorFreeable::free(const VkDevice device, const VkDescriptorSet set)
 {
     assert(device != VK_NULL_HANDLE);
     assert(set != VK_NULL_HANDLE);

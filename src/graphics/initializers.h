@@ -5,35 +5,35 @@
 
 namespace Graphics::Init {
 
-auto commandPoolCreateInfo(const VkCommandPoolCreateFlags flags = 0) -> VkCommandPoolCreateInfo;
-auto commandBufferAllocateInfo(VkCommandPool pool, const uint32_t count = 1) -> VkCommandBufferAllocateInfo;
+auto commandPoolCreateInfo(VkCommandPoolCreateFlags flags = 0) -> VkCommandPoolCreateInfo;
+auto commandBufferAllocateInfo(VkCommandPool pool, uint32_t count = 1) -> VkCommandBufferAllocateInfo;
 
-auto commandBufferBeginInfo(const VkCommandBufferUsageFlags flags = 0) -> VkCommandBufferBeginInfo;
+auto commandBufferBeginInfo(VkCommandBufferUsageFlags flags = 0) -> VkCommandBufferBeginInfo;
 auto commandBufferSubmitInfo(VkCommandBuffer cmd) -> VkCommandBufferSubmitInfo;
 
-auto fenceCreateInfo(const VkFenceCreateFlags flags = 0) -> VkFenceCreateInfo;
+auto fenceCreateInfo(VkFenceCreateFlags flags = 0) -> VkFenceCreateInfo;
 
-auto semaphoreCreateInfo(const VkSemaphoreCreateFlags flags = 0) -> VkSemaphoreCreateInfo;
+auto semaphoreCreateInfo(VkSemaphoreCreateFlags flags = 0) -> VkSemaphoreCreateInfo;
 
 auto submitInfo(const VkCommandBufferSubmitInfo &cmd, const VkSemaphoreSubmitInfo *signalSemaphoreInfo, const VkSemaphoreSubmitInfo *waitSemaphoreInfo)
     -> VkSubmitInfo2;
 
-auto attachmentInfo(VkImageView view, const VkClearValue *clear, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+auto attachmentInfo(VkImageView view, const VkClearValue *clear, VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
     -> VkRenderingAttachmentInfo;
 
-auto depthAttachmentInfo(VkImageView view, const VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) -> VkRenderingAttachmentInfo;
+auto depthAttachmentInfo(VkImageView view, VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) -> VkRenderingAttachmentInfo;
 
 auto renderingInfo(const VkExtent2D &renderExtent, const VkRenderingAttachmentInfo *colorAttachment, const VkRenderingAttachmentInfo *depthAttachment)
     -> VkRenderingInfo;
 
-auto imageSubresourceRange(const VkImageAspectFlags aspectMask) -> VkImageSubresourceRange;
+auto imageSubresourceRange(VkImageAspectFlags aspectMask) -> VkImageSubresourceRange;
 
-auto semaphoreSubmitInfo(const VkPipelineStageFlags2 stageMask, VkSemaphore semaphore) -> VkSemaphoreSubmitInfo;
+auto semaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore) -> VkSemaphoreSubmitInfo;
 
-auto imageCreateInfo(const VkFormat format, const VkImageUsageFlags usageFlags, const VkExtent3D &extent) -> VkImageCreateInfo;
-auto imageViewCreateInfo(const VkFormat format, VkImage image, const VkImageAspectFlags aspectFlags) -> VkImageViewCreateInfo;
+auto imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, const VkExtent3D &extent) -> VkImageCreateInfo;
+auto imageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags) -> VkImageViewCreateInfo;
 auto pipelineLayoutCreateInfo() -> VkPipelineLayoutCreateInfo;
-auto pipelineShaderStageCreateInfo(const VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry = "main")
+auto pipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char *entry = "main")
     -> VkPipelineShaderStageCreateInfo;
 } // namespace Graphics::Init
 

@@ -11,7 +11,7 @@ namespace Graphics {
  * better, which is what this function does.
  * @param err Result of a previous call to the Vulkan API.
  */
-void vkCheck(const VkResult err);
+void vkCheck(VkResult error);
 } // namespace Graphics
 
 #endif // DEFINES_H

@@ -1,4 +1,13 @@
-#include "map.h"
+#include "src/loaders/map.h"
+
+#include <glaze/glaze.hpp>
+
+#include <magic_enum.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+#include <pack2/pack2.h>
 
 #include <algorithm>
 #include <filesystem>
@@ -6,24 +15,13 @@
 #include <iostream>
 #include <ranges>
 
-#include <glaze/glaze.hpp>
-
-#include <magic_enum.hpp>
-
-#include <pack2/pack2.h>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
+#include "src/algorithms.h"
+#include "src/config.h"
 #include "src/graphics/engine.h"
 #include "src/graphics/resources.h"
-
+#include "src/loaders/json.h"
+#include "src/loaders/packing.h"
 #include "src/world/scene.h"
-
-#include "src/algorithms.h"
-
-#include "json.h"
-#include "packing.h"
 
 namespace fs = std::filesystem;
 namespace algo = algorithms;
@@ -32,88 +30,91 @@ namespace algo = algorithms;
 namespace Loaders
 {
 
-Map::Map(std::string path)
+Map::Map(const std::string &path)
     : m_path(std::move(path))
 {
     stbi_set_flip_vertically_on_load(true);
 }
 
-inline void copyValues2(const std::vector<JsonChunkElement> &c, Graphics::Chunk2 &s, const JsonMap &map, const std::shared_ptr<World::Scene> &m_scene)
+inline void copyValues2(const std::vector<JsonChunkElement> &jsonChunk,
+                        Graphics::Chunk &chunk,
+                        const JsonMap &map,
+                        const std::shared_ptr<World::Scene> &scene)
 {
-    const auto esize = s.entities.size();
-    for (size_t j = 0; j < esize; j++) {
-        const auto &e = c[j];
+    const auto entitiesCount = chunk.entities.size();
+    for (size_t j = 0; j < entitiesCount; j++) {
+        const auto &entity = jsonChunk[j];
 
-        s.entities[j].position = glm::vec2{e.position[0], e.position[1]};
+        chunk.entities[j].position = glm::vec2{entity.position[0], entity.position[1]};
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        const auto &e = c[j];
+    for (size_t j = 0; j < entitiesCount; j++) {
+        const auto &entity = jsonChunk[j];
 
-        s.entities[j].velocity = glm::vec2{e.velocity[0], e.velocity[1]};
+        chunk.entities[j].velocity = glm::vec2{entity.velocity[0], entity.velocity[1]};
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        const auto &e = c[j];
+    for (size_t j = 0; j < entitiesCount; j++) {
+        const auto &entity = jsonChunk[j];
 
-        s.entities[j].acceleration = glm::vec2{e.acceleration[0], e.acceleration[1]};
+        chunk.entities[j].acceleration = glm::vec2{entity.acceleration[0], entity.acceleration[1]};
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        const auto &e = c[j];
+    for (size_t j = 0; j < entitiesCount; j++) {
+        const auto &entity = jsonChunk[j];
 
-        s.entities[j].friction = e.friction;
+        chunk.entities[j].friction = entity.friction;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].angularVelocity = c[j].angularVelocity;
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].angularVelocity = jsonChunk[j].angularVelocity;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].canCollide = c[j].canCollide;
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].canCollide = jsonChunk[j].canCollide;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].isNotFixed = c[j].isNotFixed;
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].isNotFixed = jsonChunk[j].isNotFixed;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].MoI = c[j].MoI;
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].MoI = jsonChunk[j].MoI;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.objects[j].verticesId = c[j].type;
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.objects[j].verticesId = jsonChunk[j].type;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].mass = map.resources[c[j].type].mass;
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].mass = map.resources[jsonChunk[j].type].mass;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].elasticity = map.resources[c[j].type].elasticity;
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].elasticity = map.resources[jsonChunk[j].type].elasticity;
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].borders = m_scene->res2->borders[c[j].type];
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].borders = scene->resources->borders[jsonChunk[j].type];
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        s.entities[j].normals = m_scene->res2->normals[c[j].type];
+    for (size_t j = 0; j < entitiesCount; j++) {
+        chunk.entities[j].normals = scene->resources->normals[jsonChunk[j].type];
     }
 
-    for (size_t j = 0; j < esize; j++) {
-        const auto &bb = m_scene->res2->boundingBoxes[c[j].type];
+    for (size_t j = 0; j < entitiesCount; j++) {
+        const auto &bb = scene->resources->boundingBoxes[jsonChunk[j].type];
 
-        s.entities[j].boundingBox = Physics::AABB{
+        chunk.entities[j].boundingBox = Physics::AABB{
             .min = std::get<0>(bb),
             .max = std::get<1>(bb),
         };
     }
 }
 
-inline void prepareVectors2(const size_t count, Graphics::Chunk2 &s)
+inline void prepareVectors2(const size_t count, Graphics::Chunk &chunk)
 {
-    s.entities.resize(count);
+    chunk.entities.resize(count);
 }
 
 auto loadChunk(std::vector<std::vector<JsonChunkElement>> &chunks, const std::string &chunkName) -> std::tuple<Status, std::string>
@@ -192,8 +193,8 @@ auto loadResources(const std::vector<fs::path> &paths, const std::vector<std::st
             std::cout << "Failed to open file " << paths[pathsResIndex] << ':' << resJson.error().location << ':'
                       << magic_enum::enum_name(resJson.error().ec) << ':' << resJson.error().includer_error << ':'
                       << resJson.error().custom_error_message << '\n';
+
             return {Status::JsonError, std::string(resJson.error().includer_error)};
-            ;
         }
 
         const std::vector<JsonResourceElement> &res = resJson.value();
@@ -203,7 +204,7 @@ auto loadResources(const std::vector<fs::path> &paths, const std::vector<std::st
     return {Status::Ok, ""};
 }
 
-auto loadChunks(const std::string &m_path, JsonMap &map) -> std::tuple<Status, std::string>
+auto loadChunks(const std::string &directory, JsonMap &map) -> std::tuple<Status, std::string>
 {
     // Load separate chunks if relevant.
     if (map.chunksExternal) {
@@ -211,8 +212,7 @@ auto loadChunks(const std::string &m_path, JsonMap &map) -> std::tuple<Status, s
 
         // Check that all files exist
         for (size_t i = 0; i < chunksSize; ++i) {
-            const auto fp = m_path + '/' + std::to_string(i) + ".json";
-            if (!fs::exists(fp)) {
+            if (const auto fp = directory + '/' + std::to_string(i) + ".json"; !fs::exists(fp)) {
                 return {Status::MissingJson, fp};
             }
         }
@@ -222,7 +222,7 @@ auto loadChunks(const std::string &m_path, JsonMap &map) -> std::tuple<Status, s
         // Try to open & load all chunk files.
         auto status = std::tuple<Status, std::string>{Status::Ok, ""};
         for (size_t i = 0; i < chunksSize && std::get<0>(status) == Status::Ok; ++i) {
-            status = loadChunk(map.chunks, m_path + '/' + std::to_string(i) + ".json");
+            status = loadChunk(map.chunks, directory + '/' + std::to_string(i) + ".json");
         }
 
         if (std::get<0>(status) != Status::Ok) {
@@ -232,8 +232,7 @@ auto loadChunks(const std::string &m_path, JsonMap &map) -> std::tuple<Status, s
         std::vector<std::vector<JsonChunkElement>> tmp{};
         tmp.reserve(1);
 
-        const auto mvStatus = loadChunk(tmp, m_path + "/movings.json");
-        if (std::get<0>(mvStatus) != Status::Ok) {
+        if (const auto mvStatus = loadChunk(tmp, directory + "/movings.json"); std::get<0>(mvStatus) != Status::Ok) {
             return mvStatus;
         }
 
@@ -243,7 +242,7 @@ auto loadChunks(const std::string &m_path, JsonMap &map) -> std::tuple<Status, s
     return {Status::Ok, ""};
 }
 
-void addVertices(const auto w, const auto h, const std::shared_ptr<Graphics::Resources2> &res2)
+void addVertices(const auto width, const auto height, const std::shared_ptr<Graphics::Resources> &resources)
 {
     // Solely for drawing purposes
     const std::array<Graphics::Vertex, 4> vertices = {{
@@ -253,25 +252,25 @@ void addVertices(const auto w, const auto h, const std::shared_ptr<Graphics::Res
             .normal = {0.f, 0.f, 1.f},
         },
         {
-            .position = {0.f, h, 0.f},
+            .position = {0.f, height, 0.f},
             .uv = {0.f, 1.f},
             .normal = {0.f, 0.f, 1.f},
         },
         {
-            .position = {w, 0.f, 0.f},
+            .position = {width, 0.f, 0.f},
             .uv = {1.f, 0.f},
             .normal = {0.f, 0.f, 1.f},
         },
         {
-            .position = {w, h, 0.f},
+            .position = {width, height, 0.f},
             .uv = {1.f, 1.f},
             .normal = {0.f, 0.f, 1.f},
         },
     }};
 
-    res2->vertices.append_range(vertices);
+    resources->vertices.append_range(vertices);
 
-    std::ranges::for_each(res2->vertices.cbegin(), res2->vertices.cend(), [](const auto &v) -> void {
+    std::ranges::for_each(resources->vertices.cbegin(), resources->vertices.cend(), [](const auto &v) -> void {
         assert(v.uv.x <= 1.f);
         assert(v.uv.y <= 1.f);
     });
@@ -299,12 +298,12 @@ auto groupBy(std::vector<T> &v) -> std::vector<std::span<T>>
 }
 
 auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
-                         const std::string &m_assets,
-                         const std::shared_ptr<Graphics::Resources2> &res2,
+                         const std::string &assetsDir,
+                         const std::shared_ptr<Graphics::Resources> &resources,
                          const std::shared_ptr<Graphics::Engine> &engine,
                          const JsonMap &map) -> std::tuple<Status, std::string>
 {
-    res2->images.resize(imagesMap.size());
+    resources->images.resize(imagesMap.size());
 
     // Load images and make add relevant data.
     algo::ImageVectorizer vectorizer{};
@@ -317,45 +316,47 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
 
     /* Source images loading. */ {
         // Fill infos indexed by the image id assigned in imagesMap (entry.second)
-        for (const auto &entry : imagesMap) {
-            const int srcId = entry.second;
-            ImageInfo inf{.frame_id = 0, .x = 0, .y = 0, .id = srcId};
+        for (const auto & [fst, snd] : imagesMap) {
+            const int srcId = snd;
+            ImageInfo inf{.frameId = 0, .x = 0, .y = 0, .id = srcId};
 
             // This gives an 8-bit per channel.
             int channelUseless;
-            inf.imgData = stbi_load((m_assets + entry.first).c_str(), &inf.width, &inf.height, &channelUseless, 4); // Force 4 channels (RGBA)
+            inf.imgData = stbi_load((assetsDir + fst).c_str(), &inf.width, &inf.height, &channelUseless, 4); // Force 4 channels (RGBA)
 
             if (!inf.imgData) {
-                for (auto &pinfo : infos) {
-                    if (pinfo.imgData) {
-                        stbi_image_free(pinfo.imgData);
+                for (auto &info : infos) {
+                    if (info.imgData != nullptr) {
+                        stbi_image_free(info.imgData);
                     }
                 }
 
-                return {Status::OpenError, std::string(__func__) + " " + (m_assets + entry.first)};
-            } else if (maxSize <= static_cast<uint64_t>(inf.width * inf.height) || inf.width <= 0 || inf.height <= 0) {
+                return {Status::OpenError, std::string(__func__) + " " + (assetsDir + fst)};
+            }
+
+            if (maxSize <= static_cast<uint64_t>(inf.width * inf.height) || inf.width <= 0 || inf.height <= 0) {
                 stbi_image_free(inf.imgData);
 
-                for (auto &pinfo : infos) {
-                    if (pinfo.imgData) {
-                        stbi_image_free(pinfo.imgData);
+                for (auto &info : infos) {
+                    if (info.imgData) {
+                        stbi_image_free(info.imgData);
                     }
                 }
 
                 return {Status::MissingRequirement,
-                        std::string(__func__) + " " + (m_assets + entry.first) + " " + std::to_string(maxSize) + " vs "
-                            + std::to_string(inf.width) + ":" + std::to_string(inf.height)};
+                        std::string(__func__) + " " + (assetsDir + fst) + " " + std::to_string(maxSize) + " vs " + std::to_string(inf.width) + ":"
+                            + std::to_string(inf.height)};
             }
 
-            std::cout << "Image [" << inf.id << "]: (" << inf.width << ", " << inf.height << ") at " << (m_assets + entry.first) << "\n";
+            std::cout << "Image [" << inf.id << "]: (" << inf.width << ", " << inf.height << ") at " << (assetsDir + fst) << "\n";
             infos[static_cast<size_t>(srcId)] = inf;
         }
     }
 
     /* Perform operations related on image data first. */ {
-        for (const auto &entry : imagesMap) {
-            const auto &key = entry.first;
-            const auto idx = entry.second;
+        for (const auto & [fst, snd] : imagesMap) {
+            const auto &key = fst;
+            const auto idx = snd;
             const auto &imgInfo = infos[static_cast<size_t>(idx)];
 
             // Because each pixel is the @var channels values, mult width by @var channels.
@@ -371,7 +372,7 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     }
 
     std::vector<Frame> imageFrames{};
-    const int packedCount = packImagesMultiFrame(infos, static_cast<uint64_t>(maxSize), imageFrames);
+    const int packedCount = packImagesMultiFrame(infos, maxSize, imageFrames);
     assert(packedCount == infos.size());
 
     // The packing routine may reorder infos; restore original image-id order so indices stay consistent.
@@ -379,11 +380,11 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
 
     {
         int i = 0;
-        for (const auto &f : imageFrames) {
-            std::cout << "Frame: (" << f.w << ", " << f.h << ", " << f.num_images << ")\n";
+        for (const auto &[w, h, imagesCount] : imageFrames) {
+            std::cout << "Frame: (" << w << ", " << h << ", " << imagesCount << ")\n";
 
             for (const auto &info : infos) {
-                if (info.frame_id == i) {
+                if (info.frameId == i) {
                     std::cout << "(" << info.x << ", " << info.y << ", " << info.width << ", " << info.height << ")\n";
                 }
             }
@@ -403,62 +404,62 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     }
 
     /* Set up mapping */ {
-        res2->groupedImagesMapping.reserve(infos.size());
+        resources->groupedImagesMapping.reserve(infos.size());
         for (const auto &info : infos) {
             std::cout << "Image [" << info.id << "]: (" << info.width << ", " << info.height << ")\n";
-            res2->groupedImagesMapping.insert({info.id, static_cast<uint32_t>(info.frame_id)});
+            resources->groupedImagesMapping.insert({info.id, static_cast<uint32_t>(info.frameId)});
         }
     }
 
     /* Copy data to its right place */ {
         for (const auto &info : infos) {
-            const auto frameInfo = imageFrames[info.frame_id];
-            auto &frame = frameImages[info.frame_id];
+            const auto frameInfo = imageFrames[info.frameId];
+            auto &frame = frameImages[info.frameId];
 
-            const auto src_w = static_cast<size_t>(info.width);
-            const auto src_h = static_cast<size_t>(info.height);
-            const auto src_row_bytes = src_w * 4;
+            const auto srcWidth = static_cast<size_t>(info.width);
+            const auto srcHeight = static_cast<size_t>(info.height);
+            const auto srcRowBytes = srcWidth * 4;
 
-            const auto frame_w = static_cast<size_t>(frameInfo.w);
-            const auto frame_h = static_cast<size_t>(frameInfo.h);
+            const auto frameWidth = static_cast<size_t>(frameInfo.w);
+            const auto frameHeight = static_cast<size_t>(frameInfo.h);
 
-            const size_t frame_total_bytes = frame_w * frame_h * 4;
-            const size_t src_total_bytes = src_w * src_h * 4;
+            const size_t frameTotalBytes = frameWidth * frameHeight * 4;
+            const size_t srcTotalytes = srcWidth * srcHeight * 4;
 
-            for (size_t row = 0; row < src_h; ++row) {
-                const auto dest_row = static_cast<size_t>(info.y) + row;
-                const auto dest_col = static_cast<size_t>(info.x);
+            for (size_t row = 0; row < srcHeight; ++row) {
+                const auto destRow = static_cast<size_t>(info.y) + row;
+                const auto destCol = static_cast<size_t>(info.x);
 
-                const size_t dest_offset = (dest_row * frame_w + dest_col) * 4;
-                const size_t src_offset = row * src_row_bytes;
+                const size_t destOffset = (destRow * frameWidth + destCol) * 4;
+                const size_t srcOffset = row * srcRowBytes;
 
-                assert(dest_row < frame_h);
-                assert(dest_col + src_w <= frame_w);
-                assert(dest_offset + src_row_bytes <= frame_total_bytes);
-                assert(src_offset + src_row_bytes <= src_total_bytes);
+                assert(destRow < frameHeight);
+                assert(destCol + srcWidth <= frameWidth);
+                assert(destOffset + srcRowBytes <= frameTotalBytes);
+                assert(srcOffset + srcRowBytes <= srcTotalytes);
 
-                std::memcpy(&frame.data()[dest_offset], &info.imgData[src_offset], src_row_bytes);
+                std::memcpy(&frame.data()[destOffset], &info.imgData[srcOffset], srcRowBytes);
             }
         }
     }
 
     /* Create Vulkan images for each packed frame (atlas) */
-    res2->images.resize(imageFrames.size());
+    resources->images.resize(imageFrames.size());
     for (size_t fi = 0; fi < imageFrames.size(); ++fi) {
         const auto &frameInfo = imageFrames[fi];
         // createImage expects a pointer to pixel data arranged as RGBA
-        res2->images[fi].image = engine->createImage(frameImages[fi].data(),
-                                                     VkExtent3D{static_cast<uint32_t>(frameInfo.w), static_cast<uint32_t>(frameInfo.h), 1},
-                                                     VK_FORMAT_R8G8B8A8_UNORM,
-                                                     VK_IMAGE_USAGE_SAMPLED_BIT);
+        resources->images[fi].image = engine->createImage(frameImages[fi].data(),
+                                                          VkExtent3D{static_cast<uint32_t>(frameInfo.w), static_cast<uint32_t>(frameInfo.h), 1},
+                                                          VK_FORMAT_R8G8B8A8_UNORM,
+                                                          VK_IMAGE_USAGE_SAMPLED_BIT);
     }
 
     /* Update animations' data */ {
         std::cout << "Updating animations...\n";
-        for (size_t ai = 0; ai < res2->animations.size(); ++ai) {
-            auto &anim = res2->animations[ai];
+        for (size_t ai = 0; ai < resources->animations.size(); ++ai) {
+            auto &anim = resources->animations[ai];
             const auto &info = infos[anim.imageId];
-            const auto &frame = imageFrames[info.frame_id];
+            const auto &frame = imageFrames[info.frameId];
 
             anim.imageInfo = glm::vec4{
                 static_cast<double>(info.x) / static_cast<double>(frame.w),
@@ -468,7 +469,7 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
             };
 
             std::cout << "Animation index " << ai << ": imageId(source)=" << anim.imageId
-                      << ", mappedFrame=" << info.frame_id
+                      << ", mappedFrame=" << info.frameId
                       << ", grid=" << anim.gridRows << "x" << anim.gridColumns
                       << ", frames=" << anim.framesCount << ", interval=" << anim.frameInterval
                       << ", imageInfo=(" << anim.imageInfo.x << ", " << anim.imageInfo.y << ", " << anim.imageInfo.z << ", " << anim.imageInfo.w << ")\n";
@@ -478,7 +479,7 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     for (const auto &res : map.resources) {
         const auto &h = res.h, &w = res.w;
 
-        addVertices(w, h, res2);
+        addVertices(w, h, resources);
 
         auto points = std::get<0>(mapped[res.source]);
         auto AB = std::get<2>(mapped[res.source]);
@@ -511,22 +512,21 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
         }
         std::cout << '\n';
 
-        res2->boundingBoxes.push_back(AB);
-        res2->types.push_back(res.type);
+        resources->boundingBoxes.push_back(AB);
+        resources->types.push_back(res.type);
         // recompute normals in the scaled coordinate system
         std::vector<glm::vec2> scaledNormals;
         if (points.size() >= 2) {
             // If points include a closing duplicate at the end, treat edges accordingly
-            const size_t distinct = (points.front() == points.back() && points.size() > 1) ? points.size() - 2 : points.size() - 1;
+            const size_t distinct = points.front() == points.back() && points.size() > 1 ? points.size() - 2 : points.size() - 1;
 
             assert(distinct < points.size());
 
             scaledNormals.reserve(distinct);
             for (size_t i = 0; i < distinct; ++i) {
                 const size_t next = i + 1;
-                const glm::vec2 edge = points[next] - points[i];
-                const float len2 = glm::dot(edge, edge);
-                if (len2 > 1e-12f) {
+
+                if (const glm::vec2 edge = points[next] - points[i]; glm::dot(edge, edge) > Config::potracePointError) {
                     scaledNormals.push_back(glm::normalize(glm::vec2{-edge.y, edge.x}));
                 } else if (!scaledNormals.empty()) {
                     scaledNormals.push_back(scaledNormals.back());
@@ -542,8 +542,8 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
         }
         std::cout << '\n';
 
-        res2->borders.push_back(points);
-        res2->normals.push_back(scaledNormals);
+        resources->borders.push_back(points);
+        resources->normals.push_back(scaledNormals);
     }
 
     for (const auto &info : infos) {
@@ -553,7 +553,7 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     return {Status::Ok, ""};
 }
 
-void chunkObjectsGrouping(Graphics::Chunk2 &chunk)
+void chunkObjectsGrouping(Graphics::Chunk &chunk)
 {
     const auto groups = groupBy<Graphics::ObjectData, &Graphics::ObjectData::animationId>(chunk.objects);
     chunk.references.reserve(groups.size());
@@ -571,7 +571,7 @@ void chunkObjectsGrouping(Graphics::Chunk2 &chunk)
     }
 }
 
-auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shared_ptr<World::Scene> &m_scene) -> std::tuple<Status, std::string>
+auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shared_ptr<World::Scene> &scene) -> std::tuple<Status, std::string>
 {
     if (!fs::exists(m_path)) {
         return {Status::MissingDirectory, m_path};
@@ -581,13 +581,13 @@ auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shar
         return {Status::NotDir, m_path};
     }
 
-    const std::string m_assets = m_path + "/assets/";
-    if (!fs::exists(m_assets)) {
-        return {Status::MissingDirectory, m_assets};
+    const std::string assetsDir = m_path + "/assets/";
+    if (!fs::exists(assetsDir)) {
+        return {Status::MissingDirectory, assetsDir};
     }
 
-    if (!fs::is_directory(m_assets)) {
-        return {Status::NotDir, m_assets};
+    if (!fs::is_directory(assetsDir)) {
+        return {Status::NotDir, assetsDir};
     }
 
     std::vector<fs::path> paths{};
@@ -602,27 +602,19 @@ auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shar
     }
 
     JsonMap map;
-    {
-        const auto status = readMapFile(paths, names, map);
-        if (std::get<0>(status) != Status::Ok) {
-            return status;
-        }
+    if (const auto status = readMapFile(paths, names, map); std::get<0>(status) != Status::Ok) {
+        return status;
     }
 
     // Now we may need to load from external JSON source file (Resources)
     // Or load from external sources the chunk files.
-    {
-        const auto status = loadResources(paths, names, map);
-        if (std::get<0>(status) != Status::Ok) {
-            return status;
-        }
+    if (const auto status = loadResources(paths, names, map);std::get<0>(status) != Status::Ok) {
+        return status;
     }
 
     // Check that every image resource does exist.
-    {
-        if (!std::ranges::all_of(map.resources, [&m_assets](const JsonResourceElement &res) -> bool { return fs::exists(m_assets + res.source); })) {
-            return {Status::MissingResource, m_assets};
-        }
+    if (!std::ranges::all_of(map.resources, [&assetsDir](const JsonResourceElement &res) -> bool { return fs::exists(assetsDir + res.source); })) {
+        return {Status::MissingResource, assetsDir};
     }
 
     // Contains ID of the images that are used for animations.
@@ -640,14 +632,14 @@ auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shar
         }
     }
 
-    m_scene->res2 = std::make_shared<Graphics::Resources2>();
+    scene->resources = std::make_shared<Graphics::Resources>();
 
     /* Create the animations */ {
-        m_scene->res2->animations.reserve(map.resources.size());
+        scene->resources->animations.reserve(map.resources.size());
 
         for (size_t idx = 0; idx < map.resources.size(); ++idx) {
             const auto &res = map.resources[idx];
-            m_scene->res2->animations.push_back({
+            scene->resources->animations.push_back({
                 .imageId = resourceToImageId[idx],
                 .gridRows = static_cast<uint16_t>(std::get<0>(res.gridSize)),
                 .gridColumns = static_cast<uint16_t>(std::get<1>(res.gridSize)),
@@ -658,42 +650,36 @@ auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shar
         }
     }
 
-    {
-        const auto status = loadChunks(m_path, map);
-        if (std::get<0>(status) != Status::Ok) {
-            return status;
-        }
+    if (const auto status = loadChunks(m_path, map); std::get<0>(status) != Status::Ok) {
+        return status;
     }
 
     // Now that any external resource have been checked or loaded, we can generate the object.
     // First load the resources.
 
     const auto resSize = map.resources.size();
-    m_scene->res2->images.reserve(resSize);
-    m_scene->res2->types.reserve(resSize);
-    m_scene->res2->borders.reserve(resSize);
-    m_scene->res2->normals.reserve(resSize);
+    scene->resources->images.reserve(resSize);
+    scene->resources->types.reserve(resSize);
+    scene->resources->borders.reserve(resSize);
+    scene->resources->normals.reserve(resSize);
 
-    {
-        const auto status = buildResources(imagesMap, m_assets, m_scene->res2, engine, map);
-        if (std::get<0>(status) != Status::Ok) {
-            return status;
-        }
+    if (const auto status = buildResources(imagesMap, assetsDir, scene->resources, engine, map); std::get<0>(status) != Status::Ok) {
+        return status;
     }
 
-    m_scene->chunks2.resize(map.chunks.size());
-    const auto csize = map.chunks.size();
+    scene->chunks.resize(map.chunks.size());
+    const auto chunksCount = map.chunks.size();
 
-    m_scene->movings2.objects.resize(map.movings.size());
-    for (size_t i = 0; i < csize; ++i) {
-        m_scene->chunks2[i].objects.resize(map.chunks[i].size());
+    scene->movings.objects.resize(map.movings.size());
+    for (size_t i = 0; i < chunksCount; ++i) {
+        scene->chunks[i].objects.resize(map.chunks[i].size());
     }
 
     /* Set object IDs */ {
         uint64_t currId = 0;
         const auto fn = [&currId](auto &obj) -> void { obj.objId = currId++; };
-        std::ranges::for_each(m_scene->movings2.objects, fn);
-        std::ranges::for_each(m_scene->chunks2, [&currId, fn](auto &chunk) -> void {
+        std::ranges::for_each(scene->movings.objects, fn);
+        std::ranges::for_each(scene->chunks, [&currId, fn](auto &chunk) -> void {
             currId = 0;
             std::ranges::for_each(chunk.objects, fn);
         });
@@ -703,81 +689,81 @@ auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shar
         for (size_t j = 0; j < map.movings.size(); ++j) {
             const auto pos = map.movings[j].position;
 
-            m_scene->movings2.objects[j].position = glm::vec4(pos[0], pos[1], pos[2], 1.f);
+            scene->movings.objects[j].position = glm::vec4(pos[0], pos[1], pos[2], 1.f);
         }
 
-        for (size_t i = 0; i < csize; ++i) {
+        for (size_t i = 0; i < chunksCount; ++i) {
             const auto size = map.chunks[i].size();
             for (size_t j = 0; j < size; ++j) {
                 const auto pos = map.chunks[i][j].position;
 
-                m_scene->chunks2[i].objects[j].position = glm::vec4(pos[0], pos[1], pos[2], 1.f);
+                scene->chunks[i].objects[j].position = glm::vec4(pos[0], pos[1], pos[2], 1.f);
             }
         }
     }
 
     /* Set object animation IDs*/ {
-        for (size_t j = 0; j < m_scene->movings2.objects.size(); ++j) {
+        for (size_t j = 0; j < scene->movings.objects.size(); ++j) {
             // map.movings[j].type is an index into map.resources, which corresponds to the
             // index in m_scene->res2->animations that we built earlier. Use that resource index
             // as the animationId so the renderer looks up the right AnimationData.
-            m_scene->movings2.objects[j].animationId = static_cast<uint32_t>(map.movings[j].type);
+            scene->movings.objects[j].animationId = static_cast<uint32_t>(map.movings[j].type);
         }
 
-        for (size_t i = 0; i < csize; ++i) {
+        for (size_t i = 0; i < chunksCount; ++i) {
             const auto size = map.chunks[i].size();
             for (size_t j = 0; j < size; ++j) {
                 // type is the resource index in map.resources; animations were created in
                 // the same order, so use type directly as animationId.
                 const auto &type = map.chunks[i][j].type;
-                m_scene->chunks2[i].objects[j].animationId = static_cast<uint32_t>(type);
+                scene->chunks[i].objects[j].animationId = static_cast<uint32_t>(type);
             }
         }
     }
 
     /* Set object transforms */ {
-        std::ranges::for_each(m_scene->movings2.objects, [](auto &obj) -> void { obj.transform = glm::mat4{1.f}; });
-        std::ranges::for_each(m_scene->chunks2, [](auto &chunk) -> void {
+        std::ranges::for_each(scene->movings.objects, [](auto &obj) -> void { obj.transform = glm::mat4{1.f}; });
+        std::ranges::for_each(scene->chunks, [](auto &chunk) -> void {
             std::ranges::for_each(chunk.objects, [](auto &obj) -> void { obj.transform = glm::mat4{1.f}; });
         });
     }
 
     // We fill it in later to avoid constructing and then change the data.
-    prepareVectors2(map.movings.size(), m_scene->movings2);
-    for (size_t i = 0; i < csize; ++i) {
-        prepareVectors2(map.chunks[i].size(), m_scene->chunks2[i]);
+    prepareVectors2(map.movings.size(), scene->movings);
+    for (size_t i = 0; i < chunksCount; ++i) {
+        prepareVectors2(map.chunks[i].size(), scene->chunks[i]);
     }
 
     // Update entities' information.
-    copyValues2(map.movings, m_scene->movings2, map, m_scene);
-    for (size_t i = 0; i < csize; ++i) {
-        copyValues2(map.chunks[i], m_scene->chunks2[i], map, m_scene);
+    copyValues2(map.movings, scene->movings, map, scene);
+    for (size_t i = 0; i < chunksCount; ++i) {
+        copyValues2(map.chunks[i], scene->chunks[i], map, scene);
     }
 
     /* Unique entity ID, different from object ID. */ {
         size_t i = 0;
-        std::ranges::for_each(m_scene->movings2.entities.begin(), m_scene->movings2.entities.end(), [&i](auto &e) -> void { e.id = i++; });
-        std::ranges::for_each(m_scene->chunks2.begin(), m_scene->chunks2.end(), [&i](auto &chunk) -> void {
-            std::ranges::for_each(chunk.entities.begin(), chunk.entities.end(), [&i](auto &e) -> void { e.id = i++; });
+        std::ranges::for_each(scene->movings.entities.begin(), scene->movings.entities.end(), [&i](auto &e) -> void { e.id = i++; });
+        std::ranges::for_each(scene->chunks.begin(), scene->chunks.end(), [&i](auto &chunk) -> void {
+            std::ranges::for_each(chunk.entities.begin(), chunk.entities.end(), [&i](auto &entity) -> void { entity.id = i++; });
         });
     }
 
-    m_scene->player2 = &m_scene->movings2.objects.front();
-    m_scene->res2->build(engine);
+    scene->player2 = &scene->movings.objects.front();
+    scene->resources->build(engine);
 
     /* Sort elements by their data and build the views */ {
-        constexpr auto sort_cmp = [](const auto &a, const auto &b) -> bool { return a.animationId < b.animationId; };
+        constexpr auto sortCmp = [](const auto &a, const auto &b) -> bool { return a.animationId < b.animationId; };
 
-        std::ranges::sort(m_scene->movings2.objects, sort_cmp);
-        std::ranges::for_each(m_scene->chunks2, [](auto &chunk) -> void {
+        std::ranges::sort(scene->movings.objects, sortCmp);
+        std::ranges::for_each(scene->chunks, [](auto &chunk) -> void {
             std::ranges::sort(chunk.objects, [](const auto &a, const auto &b) -> bool { return a.animationId < b.animationId; });
         });
 
-        chunkObjectsGrouping(m_scene->movings2);
-        std::ranges::for_each(m_scene->chunks2, &chunkObjectsGrouping);
+        chunkObjectsGrouping(scene->movings);
+        std::ranges::for_each(scene->chunks, &chunkObjectsGrouping);
     }
 
-    m_scene->view2 = m_scene->chunks2 | std::ranges::views::drop(0) | std::ranges::views::take(std::min(size_t(2), csize));
+    scene->view = scene->chunks | std::ranges::views::drop(0) | std::ranges::views::take(std::min(static_cast<size_t>(2), chunksCount));
 
     return {Status::Ok, ""};
 }

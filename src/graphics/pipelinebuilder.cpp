@@ -1,12 +1,12 @@
-#include "pipelinebuilder.h"
+#include "src/graphics/pipelinebuilder.h"
+
+#include <fmt/printf.h>
+
+#include <magic_enum.hpp>
 
 #include <cassert>
 
-#include <fmt/printf.h>
-#include <magic_enum.hpp>
-
-#include "initializers.h"
-
+#include "src/graphics/initializers.h"
 
 namespace Graphics
 {
@@ -34,21 +34,21 @@ void PipelineBuilder::clear()
     shaderStages.clear();
 }
 
-auto PipelineBuilder::buildPipeline(VkDevice device) -> VkPipeline
+auto PipelineBuilder::buildPipeline(const VkDevice device) -> VkPipeline
 {
 	assert(device != VK_NULL_HANDLE);
     assert(pipelineLayout != VK_NULL_HANDLE);
 
     // make viewport state from our stored viewport and scissor.
-	// at the moment we wont support multiple viewports or scissors
-	const VkPipelineViewportStateCreateInfo viewportState = {
+	// at the moment we won't support multiple viewports or scissors
+	constexpr VkPipelineViewportStateCreateInfo viewportState = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
 		.pNext = nullptr,
 		.viewportCount = 1,
 		.scissorCount = 1,
 	};
 
-	// setup dummy color blending. We arent using transparent objects yet
+	// setup dummy color blending. We aren't using transparent objects yet
 	// the blending is just "no blend", but we do write to the color attachment
 	const VkPipelineColorBlendStateCreateInfo colorBlending = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -61,7 +61,7 @@ auto PipelineBuilder::buildPipeline(VkDevice device) -> VkPipeline
 	};
 
 	// build the actual pipeline
-    const auto state = std::array<VkDynamicState, 2>({
+    constexpr auto state = std::array<VkDynamicState, 2>({
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
     });
@@ -92,19 +92,19 @@ auto PipelineBuilder::buildPipeline(VkDevice device) -> VkPipeline
 		.layout = pipelineLayout,
 	};
 
-	// its easy to error out on create graphics pipeline, so we handle it a bit
+	// It's easy to error out on create graphics pipeline, so we handle it a bit
 	// better than the common VK_CHECK case
 	VkPipeline newPipeline = VK_NULL_HANDLE;
     const VkResult err = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline);
     if (err != VK_SUCCESS) {
         fmt::println("Failed to create pipeline: {}", magic_enum::enum_name(err));
         return VK_NULL_HANDLE; // failed to create graphics pipeline
-    } else {
-        return newPipeline;
     }
+
+	return newPipeline;
 }
 
-void PipelineBuilder::setShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader)
+void PipelineBuilder::setShaders(const VkShaderModule vertexShader, const VkShaderModule fragmentShader)
 {
 	assert(vertexShader != VK_NULL_HANDLE);
 	assert(fragmentShader != VK_NULL_HANDLE);
@@ -133,7 +133,7 @@ void PipelineBuilder::setPolygonMode(const VkPolygonMode mode)
 	rasterizer.lineWidth = 1.f;
 }
 
-void PipelineBuilder::setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace)
+void PipelineBuilder::setCullMode(const VkCullModeFlags cullMode, const VkFrontFace frontFace)
 {
 	assert(cullMode != VK_CULL_MODE_FLAG_BITS_MAX_ENUM);
 	assert(frontFace != VK_FRONT_FACE_MAX_ENUM);
@@ -179,7 +179,7 @@ void PipelineBuilder::setDepthFormat(const VkFormat format)
 	renderInfo.depthAttachmentFormat = format;
 }
 
-void PipelineBuilder::disableDepthtest()
+void PipelineBuilder::disableDepthTest()
 {
 	depthStencil.depthTestEnable = VK_FALSE;
 	depthStencil.depthWriteEnable = VK_FALSE;
@@ -188,7 +188,7 @@ void PipelineBuilder::disableDepthtest()
     setupDepthTest();
 }
 
-void PipelineBuilder::enableDepthtest(bool depthWriteEnable, VkCompareOp op)
+void PipelineBuilder::enableDepthtest(const bool depthWriteEnable, const VkCompareOp op)
 {
 	depthStencil.depthTestEnable = VK_TRUE;
 	depthStencil.depthWriteEnable = depthWriteEnable;

@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "loaders/enums.h"
+#include "src/loaders/enums.h"
 
 namespace Graphics {
 class Engine;
@@ -57,16 +57,16 @@ public:
     void cleanup();
 
     /// @brief Loads a map into the provided scene.
-    auto loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) -> std::tuple<Loaders::Status, std::string>;
+    auto loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) const -> std::tuple<Loaders::Status, std::string>;
     /// @brief Sets the active scene for all subsystems.
     void setScene(const std::shared_ptr<World::Scene> &scene);
 
     /// @brief Returns the graphics engine instance.
-    inline auto graphicsEngine() -> std::shared_ptr<Graphics::Engine> { return m_graphicsEngine; }
+    auto graphicsEngine() -> std::shared_ptr<Graphics::Engine> { return m_graphicsEngine; }
     /// @brief Returns the physics engine instance.
-    inline auto physicsEngine() -> std::shared_ptr<Physics::Engine> { return m_physicsEngine; }
+    auto physicsEngine() -> std::shared_ptr<Physics::Engine> { return m_physicsEngine; }
     /// @brief Returns the input engine instance.
-    inline auto inputEngine() -> std::shared_ptr<Input::Engine> { return m_inputEngine; }
+    auto inputEngine() -> std::shared_ptr<Input::Engine> { return m_inputEngine; }
 
 private:
     /// @brief Graphics subsystem owner.

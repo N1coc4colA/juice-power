@@ -1,20 +1,18 @@
 #ifndef GRAPHICS_ENGINE_H
 #define GRAPHICS_ENGINE_H
 
+#include <vulkan/vulkan.h>
+
 #include <atomic>
 #include <chrono>
-#include <cstring>
 #include <span>
-
-#include <vulkan/vulkan.h>
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
-#include "allocatedimage.h"
-#include "descriptors.h"
-#include "objectdata.h"
-#include "structs.h"
-#include "types.h"
+#include "src/graphics/allocatedimage.h"
+#include "src/graphics/descriptors.h"
+#include "src/graphics/structs.h"
+#include "src/graphics/types.h"
 
 #include "src/keywords.h"
 
@@ -36,14 +34,14 @@ namespace Graphics
 {
 
 class Resources;
-class Resources2;
+class Resources;
 
 /// @brief Number of in-flight frames.
 constexpr unsigned int FRAME_OVERLAP = 2;
 
 
 /**
- * @brief Class responsible of rendering.
+ * @brief Class responsible for rendering.
  *
  * @warning Any allocation & deletion of resources must be called sync to GPU work.
  *
@@ -107,12 +105,12 @@ public:
     /// @brief Updates GPU object-data staging used by draw calls.
     void uploadObjectDataForDrawing();
     /// @brief Uploads object data span into GPU storage.
-    void uploadObjectData(const std::span<Graphics::ObjectData> &objectData);
+    void uploadObjectData(const std::span<ObjectData> &objectData);
 
     /// @brief Returns current scene.
-    _nodiscard inline auto scene() -> std::shared_ptr<World::Scene> { return m_scene; }
+    _nodiscard auto scene() -> std::shared_ptr<World::Scene> { return m_scene; }
     /// @brief Returns current scene (const overload).
-    _nodiscard inline auto scene() const -> const std::shared_ptr<World::Scene> { return m_scene; }
+    _nodiscard auto scene() const -> std::shared_ptr<World::Scene> { return m_scene; }
 
     /// @brief Queries maximum image dimension supported by the selected device.
     _nodiscard auto getDeviceMaxImageSize() const -> uint64_t;
@@ -121,7 +119,7 @@ protected:
     /// @brief Initializes SDL and creates the window.
     void initSDL();
     /// @brief Deinitializes SDL resources.
-    void deinitSDL();
+    static void deinitSDL();
     /// @brief Initializes Vulkan instance/device/swap chain dependencies.
     void initVulkan();
     /// @brief Initializes Vulkan Memory Allocator.
@@ -148,7 +146,7 @@ protected:
     void initObjectDataBuffer();
 
     /// @brief Initializes descriptor sets for loaded images.
-    void initImageDescriptors(const uint32_t imageCount);
+    void initImageDescriptors(uint32_t imageCount);
     /// @brief Releases image descriptor resources.
     void deinitImageDescriptors();
 
@@ -166,11 +164,11 @@ protected:
     /// @brief Draws point debug overlays.
     void drawPoints2(VkCommandBuffer cmd);
 
-    /// @brief Creates swapchain objects for the requested extent.
-    void createSwapchain(const uint32_t w, const uint32_t h);
+    /// @brief Creates swap chain objects for the requested extent.
+    void createSwapchain(uint32_t width, uint32_t height);
     /// @brief Destroys swapchain objects.
     void destroySwapchain();
-    /// @brief Recreates swapchain when window size changes.
+    /// @brief Recreates swap chain when window size changes.
     void resizeSwapchain();
 
     //void updateAnimations(World::Scene &scene);
@@ -179,9 +177,9 @@ protected:
 
 private:
     /// @brief Returns frame-local state for the current in-flight frame.
-    _nodiscard inline auto getCurrentFrame() -> FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    _nodiscard auto getCurrentFrame() -> FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
     /// @brief Returns frame-local state for the current in-flight frame (const overload).
-    _nodiscard inline auto getCurrentFrame() const -> const FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    _nodiscard auto getCurrentFrame() const -> const FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
 
     /**
 	 * @brief Creates an empty GPU image
@@ -194,7 +192,7 @@ private:
 	 * @note Always allocates as GPU-only device-local memory
 	 * @note Automatically handles depth format aspect flags
 	 */
-    auto createImage(const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false) -> AllocatedImage;
+    auto createImage(const VkExtent3D &size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false) -> AllocatedImage;
 
     /**
 	 * @brief Creates and initializes a GPU image with pixel data
@@ -211,7 +209,7 @@ private:
 	 *	   - Layout transitions
 	 *	   - Mipmap generation (if enabled)
 	 */
-    auto createImage(const void *data, const VkExtent3D &size, const VkFormat format, const VkImageUsageFlags usage, const bool mipmapped = false)
+    auto createImage(const void *data, const VkExtent3D &size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false)
         -> AllocatedImage;
 
     /**
@@ -237,7 +235,7 @@ private:
 	 *
 	 * @note Creates with VMA_ALLOCATION_CREATE_MAPPED_BIT by default
 	 */
-    auto createBuffer(const size_t allocSize, const VkBufferUsageFlags usage, const VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
+    auto createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
 
     /**
 	 * @brief Destroys buffer resources
@@ -256,7 +254,7 @@ private:
     bool m_isInitialized = false;
     /// @brief Monotonic frame counter.
     int m_frameNumber = 0;
-    /// @brief Set when swapchain resize is required.
+    /// @brief Set when swap chain resize is required.
     bool m_resizeRequested = false;
     /// @brief Render scale multiplier.
     float m_renderScale = 1.f;
@@ -267,9 +265,9 @@ private:
     /* Windowing */
 
     /// @brief Current window extent.
-    VkExtent2D m_windowExtent = {windowWidth, windowHeight};
+    VkExtent2D m_windowExtent = {.width = windowWidth, .height = windowHeight};
     /// @brief SDL window handle.
-    struct SDL_Window *m_window = nullptr;
+    SDL_Window *m_window = nullptr;
 
     /* Vulkan */
 
@@ -296,14 +294,14 @@ private:
 
     /// @brief Swapchain handle.
     VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
-    /// @brief Swapchain image format.
+    /// @brief Swap chain image format.
     VkFormat m_swapchainImageFormat = VK_FORMAT_MAX_ENUM;
-    /// @brief Swapchain images.
+    /// @brief Swap chain images.
     std::vector<VkImage> m_swapchainImages{};
-    /// @brief Swapchain image views.
+    /// @brief Swap chain image views.
     std::vector<VkImageView> m_swapchainImageViews{};
-    /// @brief Swapchain extent.
-    VkExtent2D m_swapchainExtent = {0, 0};
+    /// @brief Swap chain extent.
+    VkExtent2D m_swapchainExtent = {.width = 0, .height = 0};
 
     /* Drawing */
 
@@ -312,7 +310,7 @@ private:
     /// @brief Offscreen depth image.
     AllocatedImage m_depthImage{};
     /// @brief Effective draw extent.
-    VkExtent2D m_drawExtent = {0, 0};
+    VkExtent2D m_drawExtent = {.width = 0, .height = 0};
 
     /// @brief Global growable descriptor allocator.
     DescriptorAllocatorGrowable m_globalDescriptorAllocator{};
@@ -406,13 +404,13 @@ private:
     /* Others */
 
     /// @brief Singleton storage for loaded engine instance.
-    static Engine *loadedEngine;
+    static Engine *m_loadedEngine;
     /// @brief Timestamp of previous frame for delta computation.
-    static decltype(std::chrono::system_clock::now()) prevChrono;
+    static decltype(std::chrono::system_clock::now()) m_prevChrono;
 
-    friend class ::Loaders::Map;
+    friend class Loaders::Map;
     friend class Resources;
-    friend class Resources2;
+    friend class Resources;
     friend class DrawingFuncs;
 };
 }

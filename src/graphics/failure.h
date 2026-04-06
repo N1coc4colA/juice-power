@@ -4,7 +4,7 @@
 #include <exception>
 #include <string>
 
-#include "enums.h"
+#include "src/graphics/enums.h"
 #include "src/keywords.h"
 
 namespace Graphics

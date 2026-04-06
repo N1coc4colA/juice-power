@@ -1,7 +1,7 @@
 #ifndef INPUT_DEFINES_H
 #define INPUT_DEFINES_H
 
-#include "../defines.h"
+#include "src/defines.h"
 
 namespace Input {
 
@@ -51,14 +51,12 @@ struct InnerState
 /**
  * @brief Owning variant of InnerState with embedded mutex.
  */
-struct State : public InnerState
+struct State : InnerState
 {
     /// @brief Mutex protecting all action entries.
     std::mutex m_mtx;
-
-public:
     /// @brief Constructs an empty input state.
-    inline State()
+    State()
         : InnerState(m_mtx)
     {}
 };

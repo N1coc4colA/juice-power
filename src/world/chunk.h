@@ -1,11 +1,11 @@
 #ifndef CHUNK_H
 #define CHUNK_H
 
-#include <vector>
-
 #include <glm/glm.hpp>
 
-#include "../physics/entity.h"
+#include <vector>
+
+#include "src/physics/entity.h"
 
 namespace World
 {
@@ -24,8 +24,6 @@ public:
 	 * At runtime, stored in the Resources.
 	 */
 	std::vector<uint32_t> descriptions {};
-
-    //std::unordered_map < uint32_t,
 
     /**
 	 * @brief Objects positions

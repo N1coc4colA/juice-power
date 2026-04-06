@@ -1,10 +1,9 @@
 #ifndef PIPELINEBUILDER_H
 #define PIPELINEBUILDER_H
 
-#include <vector>
-
 #include <vulkan/vulkan.h>
 
+#include <vector>
 
 namespace Graphics
 {
@@ -50,7 +49,7 @@ public:
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
 
     /// @brief Constructs a new PipelineBuilder with default states
-    inline PipelineBuilder() { clear(); }
+    PipelineBuilder() { clear(); }
 
     /// @brief Resets all pipeline states to defaults
 	void clear();
@@ -74,20 +73,20 @@ public:
 	 * @brief Sets the primitive topology
 	 * @param topology The primitive topology (e.g. VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 	 */
-	void setInputTopology(const VkPrimitiveTopology topology);
+	void setInputTopology(VkPrimitiveTopology topology);
 
 	/**
 	 * @brief Sets the polygon rasterization mode
 	 * @param mode The polygon mode (e.g. VK_POLYGON_MODE_FILL)
 	 */
-	void setPolygonMode(const VkPolygonMode mode);
+	void setPolygonMode(VkPolygonMode mode);
 
 	/**
 	 * @brief Configures face culling
 	 * @param cullMode Which faces to cull (e.g. VK_CULL_MODE_BACK_BIT)
 	 * @param frontFace Winding order for front faces
 	 */
-	void setCullMode(const VkCullModeFlags cullMode, const VkFrontFace frontFace);
+	void setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);
 
 	/// @brief Disables multisampling
 	void setMultisamplingNone();
@@ -99,16 +98,16 @@ public:
 	 * @brief Sets the color attachment format
 	 * @param format The color attachment format
 	 */
-	void setColorAttachmentFormat(const VkFormat format);
+	void setColorAttachmentFormat(VkFormat format);
 
 	/**
 	 * @brief Sets the depth attachment format
 	 * @param format The depth attachment format
 	 */
-	void setDepthFormat(const VkFormat format);
+	void setDepthFormat(VkFormat format);
 
 	/// @brief Disables depth testing
-	void disableDepthtest();
+	void disableDepthTest();
 
 	/**
 	 * @brief Enables depth testing

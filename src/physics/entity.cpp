@@ -1,4 +1,4 @@
-#include "entity.h"
+#include "src/physics/entity.h"
 
 #include <boost/numeric/odeint.hpp>
 
@@ -13,6 +13,8 @@ namespace Physics
 
 void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const
 {
+	unused(kt);
+
 	auto vx = y[0];
 	auto vy = y[1];
     //const auto &theta = y[2];
@@ -45,9 +47,9 @@ auto Entity::resultOfForces(const double timeStep) const -> Forces
 	boost::numeric::odeint::integrate_const(
 		boost::numeric::odeint::runge_kutta4<state_type>(),
 		// The system function
-		[this](const state_type &y, state_type &dydt, const double t) {
-			UNUSED(t);
-            return KingKutta(y, dydt, GRAVITY, friction, friction, friction);
+		[this](const state_type &yValue, state_type &dydtValue, const double t) {
+			unused(t);
+            return KingKutta(yValue, dydtValue, GRAVITY, friction, friction, friction);
 		},
 		y,              // Initial state
 		0.0,            // Start time
@@ -64,11 +66,11 @@ auto Entity::resultOfForces(const double timeStep) const -> Forces
 void Entity::compute(const double timeDelta)
 {
     if (isNotFixed) {
-        const Forces f = resultOfForces(timeDelta);
-        angularVelocity = static_cast<float>(f.angularVelocity);
+        const auto [forces, fAngularVelocity] = resultOfForces(timeDelta);
+        angularVelocity = static_cast<float>(fAngularVelocity);
 
         // F = m*a, which means that a = F/m
-        acceleration = f.forces; // / mass;
+        acceleration = forces; // / mass;
         velocity = nextVelocity(static_cast<float>(timeDelta));
         position = nextPosition(static_cast<float>(timeDelta));
 

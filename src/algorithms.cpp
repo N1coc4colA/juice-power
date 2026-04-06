@@ -1,10 +1,13 @@
-#include "algorithms.h"
+#include "src/algorithms.h"
 
 #include <glm/geometric.hpp>
+
 #include <potracelib.h>
 
 #include <iostream>
 #include <ranges>
+
+#include "src/config.h"
 
 /*
 #define BM_USET(bm, x, y) (*bm_index(bm, x, y) |= bm_mask(x))
@@ -14,9 +17,9 @@
 */
 
 
-constexpr const auto po_ws = sizeof(potrace_word);
-constexpr const auto po_wbs = sizeof(potrace_word)*8;
-constexpr const auto po_wbs_sub = po_wbs -1;
+constexpr auto po_ws = sizeof(potrace_word);
+constexpr auto po_wbs = sizeof(potrace_word)*8;
+constexpr auto po_wbs_sub = po_wbs -1;
 
 
 namespace algorithms
@@ -36,7 +39,7 @@ ImageVectorizer::~ImageVectorizer()
 
 void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &image, const int channelsCount)
 {
-	points.clear();
+	m_points.clear();
 	normals.clear();
 
     const auto &imageWidth = image.width() / channelsCount;
@@ -46,7 +49,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     if (channelsCount == 3) {
         constexpr int normalsCount = 4;
         normals.resize(normalsCount);
-        points.resize(normalsCount + 1);
+        m_points.resize(normalsCount + 1);
 
         // Up, right, down, left.
         normals[0] = glm::vec2{-1.f, 0.f};
@@ -54,14 +57,14 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         normals[2] = glm::vec2{1.f, 0.f};
         normals[3] = glm::vec2{0.f, -1.f};
 
-        points[0] = glm::vec2{0.f, 0.f};
-        points[1] = glm::vec2{0.f, 1.f};
-        points[2] = glm::vec2{1.f, 1.f};
-        points[3] = glm::vec2{1.f, 0.f};
-        points[4] = glm::vec2{0.f, 0.f};
+        m_points[0] = glm::vec2{0.f, 0.f};
+        m_points[1] = glm::vec2{0.f, 1.f};
+        m_points[2] = glm::vec2{1.f, 1.f};
+        m_points[3] = glm::vec2{1.f, 0.f};
+        m_points[4] = glm::vec2{0.f, 0.f};
 
-        min = glm::vec2{0.f, 0.f};
-        max = glm::vec2{1.f, 1.f};
+        m_min = glm::vec2{0.f, 0.f};
+        m_max = glm::vec2{1.f, 1.f};
 
         return;
     }
@@ -86,10 +89,9 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 		for (size_t x = 0; x < imgRealWidth; x++) {
 			const auto wi = y*dy + x / po_wbs;
 			const auto bi = x % po_wbs;
-			const auto val = img[y*size_t(image.height()) + x*4 +3];
 
-			// Set to 1 or 0 depending on the transparency.
-            if (val > transparencyLimit) {
+            // Set to 1 or 0 depending on the transparency.
+            if (const auto val = img[y*image.height() + x*4 +3]; val > transparencyLimit) {
                 m_memory[wi] |= 1 << bi;
             } else {
                 m_memory[wi] &= ~(1 << bi);
@@ -104,7 +106,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     if (!st->plist) {
         constexpr int normalsCount = 4;
         normals.resize(normalsCount);
-        points.resize(normalsCount + 1);
+        m_points.resize(normalsCount + 1);
 
         // Up, right, down, left.
         normals[0] = glm::vec2{-1.f, 0.f};
@@ -112,17 +114,17 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         normals[2] = glm::vec2{1.f, 0.f};
         normals[3] = glm::vec2{0.f, -1.f};
 
-        points[0] = glm::vec2{0.f, 0.f};
-        points[1] = glm::vec2{0.f, 1.f};
-        points[2] = glm::vec2{1.f, 1.f};
-        points[3] = glm::vec2{1.f, 0.f};
-        points[4] = glm::vec2{0.f, 0.f};
+        m_points[0] = glm::vec2{0.f, 0.f};
+        m_points[1] = glm::vec2{0.f, 1.f};
+        m_points[2] = glm::vec2{1.f, 1.f};
+        m_points[3] = glm::vec2{1.f, 0.f};
+        m_points[4] = glm::vec2{0.f, 0.f};
 
-        min = glm::vec2{0.f, 0.f};
-        max = glm::vec2{1.f, 1.f};
+        m_min = glm::vec2{0.f, 0.f};
+        m_max = glm::vec2{1.f, 1.f};
 
-        assert(max.x <= 1.f && max.y <= 1.f);
-        assert(0.f <= max.x && 0.f <= max.y);
+        assert(m_max.x <= 1.f && m_max.y <= 1.f);
+        assert(0.f <= m_max.x && 0.f <= m_max.y);
 
         return;
     }
@@ -131,20 +133,18 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
     /*
 	 * We use simple physics. We just need points to delimit the area of the image.
-	 * For this purpose, we count any corner. However, for each bezier curve,
+	 * For this purpose, we count any corner. However, for each Bézier curve,
 	 * the reality is that we just use the ctl points.
 	 *
 	 */
 
-	// We just have to walk through the top level paths, which are always outter-directed.
+	// We just have to walk through the top level paths, which are always outer-directed.
 	{
 		size_t pointsCount = 0;
 		const potrace_path_t *path = st->plist;
 
 		while (path) {
-			const potrace_curve_t &curve = path->curve;
-
-            for (const auto &tag : std::span(curve.tag, curve.n)) {
+            for (const potrace_curve_t &curve = path->curve; const auto &tag : std::span(curve.tag, curve.n)) {
                 if (tag == POTRACE_CORNER) {
                     pointsCount++;
                 } else if (tag == POTRACE_CURVETO) {
@@ -155,7 +155,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
             path = path->next;
         }
 
-        points.reserve(pointsCount + 1); // Due to enclosing point.
+        m_points.reserve(pointsCount + 1); // Due to enclosing point.
         normals.reserve(pointsCount);
     }
 
@@ -170,20 +170,20 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         // the number of points we actually push when converting CURVETO->2 pts).
         int pathIndex = 0;
         while (path) {
-            const potrace_curve_t &curve = path->curve;
-            const int startIndex = static_cast<int>(points.size());
+            const auto & [n, tag, c] = path->curve;
+            const int startIndex = static_cast<int>(m_points.size());
 
-            const auto tags = std::span(curve.tag, curve.n);
-            const auto controls = std::span(curve.c, curve.n);
+            const auto tags = std::span(tag, n);
+            const auto controls = std::span(c, n);
 
             int countThisPath = 0;
             for (const auto &[tag, c] : std::views::zip(tags, controls)) {
                 if (tag == POTRACE_CORNER) {
-                    points.emplace_back(c[1].x, c[1].y);
+                    m_points.emplace_back(c[1].x, c[1].y);
                     countThisPath += 1;
                 } else if (tag == POTRACE_CURVETO) {
-                    points.emplace_back(c[0].x, c[0].y);
-                    points.emplace_back(c[1].x, c[1].y);
+                    m_points.emplace_back(c[0].x, c[0].y);
+                    m_points.emplace_back(c[1].x, c[1].y);
                     countThisPath += 2;
                 }
             }
@@ -193,7 +193,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
             // can use next = idx+1 without modulo complexity.
             if (countThisPath > 0) {
                 const int firstIdx = startIndex;
-                points.push_back(points[firstIdx]); // closing duplicate
+                m_points.push_back(m_points[firstIdx]); // closing duplicate
             }
 
             pathPointCounts.push_back(countThisPath);
@@ -216,19 +216,18 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
     // Normalize the points within the image.
     const auto width = static_cast<float>(imgRealWidth);
-    for (auto &p : points) {
+    for (auto &p : m_points) {
         p.x /= width;
     }
 
     const auto height = static_cast<float>(image.height());
-    for (auto &p : points) {
+    for (auto &p : m_points) {
         p.y /= height;
     }
 
     // Recompute normals in final (normalized) coordinate system using our per-path counts.
     {
         normals.clear();
-        const float eps2 = 1e-8f;
         size_t p = 0;
 
         for (size_t pathIndex = 0; pathIndex < pathPointCounts.size(); ++pathIndex) {
@@ -242,7 +241,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
             // centroid computed over the distinct points (exclude the closing dup)
             glm::vec2 centroid{0.f, 0.f};
             for (int i = 0; i < npts; ++i) {
-                centroid += points[base + i];
+                centroid += m_points[base + i];
             }
             centroid /= static_cast<float>(npts);
 
@@ -252,11 +251,11 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
                 const int idx = static_cast<int>(base) + i;
                 const int next = static_cast<int>(base) + i + 1; // safe: we added closing point
 
-                glm::vec2 edge = points[next] - points[idx];
+                glm::vec2 edge = m_points[next] - m_points[idx];
                 const float len2 = glm::dot(edge, edge);
 
                 glm::vec2 n;
-                if (len2 > eps2) {
+                if (len2 > Config::eps2) {
                     n = glm::normalize(glm::vec2{-edge.y, edge.x});
                     lastValidNormal = n;
                 } else {
@@ -267,8 +266,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
                 // Potrace: positive curves run CCW (interior to the left),
                 // so left-perp is inward and must be flipped. For negative/CW
                 // paths left-perp is outward.
-                const int psign = (pathIndex < pathSigns.size()) ? pathSigns[pathIndex] : 0;
-                if (psign > 0) {
+                if (const int path_sign = pathIndex < pathSigns.size() ? pathSigns[pathIndex] : 0; path_sign > 0) {
                     n = -n;
                     lastValidNormal = n;
                 }
@@ -280,28 +278,28 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         }
     }
 
-    min = glm::vec2{width, height};
-    max = glm::vec2{0.f, 0.f};
+    m_min = glm::vec2{width, height};
+    m_max = glm::vec2{0.f, 0.f};
 
-    for (const auto &p : points) {
-        if (p.x < min.x) {
-            min.x = p.x;
+    for (const auto &p : m_points) {
+        if (p.x < m_min.x) {
+            m_min.x = p.x;
         }
     }
-    for (const auto &p : points) {
-        if (p.y < min.y) {
-			min.y = p.y;
+    for (const auto &p : m_points) {
+        if (p.y < m_min.y) {
+			m_min.y = p.y;
 		}
     }
 
-    for (const auto &p : points) {
-        if (p.x > max.x) {
-			max.x = p.x;
+    for (const auto &p : m_points) {
+        if (p.x > m_max.x) {
+			m_max.x = p.x;
 		}
     }
-    for (const auto &p : points) {
-        if (p.y > max.y) {
-			max.y = p.y;
+    for (const auto &p : m_points) {
+        if (p.y > m_max.y) {
+			m_max.y = p.y;
 		}
     }
 

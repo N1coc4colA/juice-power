@@ -7,7 +7,7 @@
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
-#include "alignment.h"
+#include "src/graphics/alignment.h"
 
 namespace Graphics
 {
@@ -83,15 +83,15 @@ struct Vertex
     /// @brief Vertex position in object space.
     GPU_EXPOSED(glm::vec3, position) {};
     /// @brief Padding for std430 alignment.
-    Graphics::Alignment::Padding<4> _pad0{};
+    Alignment::Padding<4> _pad0{};
     /// @brief Texture coordinates.
     GPU_EXPOSED(glm::vec2, uv) {};
     /// @brief Padding for std430 alignment.
-    Graphics::Alignment::Padding<8> _pad1{};
+    Alignment::Padding<8> _pad1{};
     /// @brief Vertex normal in object space.
     GPU_EXPOSED(glm::vec3, normal) {};
     /// @brief Padding for std430 alignment.
-    Graphics::Alignment::Padding<4> _pad2{};
+    Alignment::Padding<4> _pad2{};
 };
 
 /**
@@ -185,7 +185,7 @@ struct GPUDrawLinePushConstants
     /// @brief Line color.
     GPU_EXPOSED(glm::vec3, color) {};
     /// @brief Padding for std430 alignment.
-    Graphics::Alignment::Padding<4> _pad0;
+    Alignment::Padding<4> _pad0 {};
     /// @brief Vertex buffer device address.
     GPU_EXPOSED(VkDeviceAddress, vertexBuffer) = 0;
 };
@@ -198,9 +198,57 @@ struct GPUDrawPointPushConstants
     /// @brief Point position.
     GPU_EXPOSED(glm::vec2, pos) {};
     /// @brief Padding for std430 alignment.
-    Graphics::Alignment::Padding<8> _pad0;
+    Alignment::Padding<8> _pad0 {};
     /// @brief Point color.
     GPU_EXPOSED(glm::vec4, color) {};
+};
+
+/**
+ * @brief Information about an animation.
+ */
+struct AnimationData
+{
+    /// @brief Id of the associated image.
+    GPU_EXPOSED(uint32_t, imageId) = 0;
+
+    /// @brief Number of rows in the animation's image.
+    GPU_EXPOSED(uint16_t, gridRows) = 0;
+    /// @brief Number of columns in the animation's image.
+    GPU_EXPOSED(uint16_t, gridColumns) = 0;
+
+    /// @brief Number of sprites in the animation's image.
+    GPU_EXPOSED(uint16_t, framesCount) = 0;
+
+    /// @brief Padding for std430 alignment.
+    Alignment::Padding<2> _pad0;
+
+    /// @brief Time between every frame.
+    GPU_EXPOSED(float, frameInterval) = 0;
+
+    /// @brief (x, y, w, h) of the anim within the image frame.
+    GPU_EXPOSED(glm::vec4, imageInfo) { -1, -1, -1, -1 };
+};
+
+/**
+ * @brief Data concerning the rendering of an object.
+ */
+struct ObjectData
+{
+    /// @brief Object unique identifier.
+    GPU_EXPOSED(uint32_t, objId) = 0;
+    /// @brief Id (offset) of the associated 6 vertices.
+    GPU_EXPOSED(uint32_t, verticesId) = 0;
+    /// @brief Currently used animation.
+    GPU_EXPOSED(uint32_t, animationId) = 0;
+    /// @brief Current animation's elapsed time.
+    GPU_EXPOSED(float, animationTime) = 0.f;
+    /** @brief The object's position within the scene.
+     *  The W value of the position should always be 1.f.
+     *  @note This is glm:vec4 instead of glm::vec3 for alignment purposes, truth is that it must always be seen as a glm::vec3.
+     **/
+    GPU_EXPOSED(glm::vec4, position) {};
+    /// @brief The object's transformation (size, pos...)
+    GPU_EXPOSED(glm::mat4, transform) {};
 };
 
 } // namespace Graphics

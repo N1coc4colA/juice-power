@@ -1,36 +1,32 @@
-#include <iostream>
-
 #include <magic_enum.hpp>
 
-#include "defines.h"
-#include "orchestrator.h"
+#include <iostream>
 
-#include "graphics/engine.h"
-#include "loaders/map.h"
-#include "world/scene.h"
+#include "src/defines.h"
+#include "src/orchestrator.h"
+#include "src/graphics/engine.h"
+#include "src/loaders/map.h"
+#include "src/world/scene.h"
 
-auto main(int argc, char **argv) -> int
+auto main(const int argc, char **argv) -> int
 {
-	UNUSED(argv);
-	UNUSED(argc);
+	unused(argv);
+	unused(argc);
 
-    std::vector<Graphics::Chunk2> chunks{};
+    std::vector<Graphics::Chunk> chunks{};
     auto scene = std::make_shared<World::Scene>(chunks);
     Orchestrator orchestrator{};
 
-    {
-        const auto error = orchestrator.loadMap(scene, "/home/nicolas/Documents/repos/github/juice-power/maps/0");
-        if (std::get<0>(error) != Loaders::Status::Ok) {
-            std::cerr << "Erreur: " << magic_enum::enum_name(std::get<0>(error)) << ": " << std::get<1>(error) << '\n';
-            return 0;
-        }
+    if (const auto error = orchestrator.loadMap(scene, "/home/nicolas/Documents/repos/github/juice-power/maps/0"); std::get<0>(error) != Loaders::Status::Ok) {
+        std::cerr << "Erreur: " << magic_enum::enum_name(std::get<0>(error)) << ": " << std::get<1>(error) << '\n';
+        return 0;
     }
 
     orchestrator.setScene(scene);
 
     orchestrator.run();
 
-    scene->res2->cleanup(orchestrator.graphicsEngine());
+    scene->resources->cleanup(orchestrator.graphicsEngine());
     orchestrator.cleanup();
 
     return 0;
