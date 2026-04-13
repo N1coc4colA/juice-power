@@ -11,7 +11,8 @@ public:
     AlignmentChecker() = delete;
 
     // This is used for Graphics::Alignment::Padding class.
-    static_assert(sizeof(std::byte[9]) == sizeof(std::array<std::byte, 9>),
+    // 9 is just a random value.
+    static_assert(sizeof(std::byte) * 9 == sizeof(std::array<std::byte, 9>),
                   "The size of an std::array should be the same as a []. This breaks mem layout.");
 
     static_assert(sizeof(Vertex) == 48, "Vertex size mismatch");

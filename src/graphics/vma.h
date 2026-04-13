@@ -1,5 +1,5 @@
-#ifndef VMA_H
-#define VMA_H
+#ifndef JP_GRAPHICS_VMA_H
+#define JP_GRAPHICS_VMA_H
 
 using VmaAllocation = struct VmaAllocation_T *;
 
@@ -21,5 +21,4 @@ auto getMappedData(VmaAllocation allocation) -> void *;
 auto getAllocationsCount() -> int;
 }
 
-
-#endif // VMA_H
+#endif // JP_GRAPHICS_VMA_H

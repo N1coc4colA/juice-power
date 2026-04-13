@@ -860,9 +860,8 @@ void Engine::initImgui()
     // 2: initialize imgui library
 
     // this initializes the core structures of imgui
-    // [TODO] We should destroy the context later on.
-    const auto igCtx = ImGui::CreateContext();
-    if (igCtx == nullptr) {
+    m_imguiContext = ImGui::CreateContext();
+    if (m_imguiContext == nullptr) {
         throw Failure(FailureType::ImguiContext);
     }
 
@@ -901,7 +900,10 @@ void Engine::initImgui()
 
     // add destroying of the imgui-created structures
     m_mainDeletionQueue.pushFunction([this, imguiPool]() -> void {
+        ImGui_ImplVulkan_DestroyFontsTexture();
         ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
+        ImGui::DestroyContext(m_imguiContext);
         vkDestroyDescriptorPool(m_device, imguiPool, nullptr);
     });
 }
@@ -1066,10 +1068,8 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
 void Engine::updateAnimations2(const std::shared_ptr<World::Scene> &scene)
 {
     const auto dms = static_cast<float>(m_deltaMS);
-    for (auto &chunk : scene->view) {
-        for (auto &obj : chunk.objects) {
-            obj.animationTime += dms;
-        }
+    for (auto &obj : scene->objects) {
+        obj.animationTime += dms;
     }
 }
 
@@ -1077,7 +1077,7 @@ void Engine::draw()
 {
     // Naive impl for now
     //const auto pos = m_scene->movings.positions[0];
-    const auto pos = m_scene->player2->position;
+    const auto pos = m_scene->objects[0].position;
     worldMatrix = createOrthographicProjection(pos.x - orthographicHorizontalOffset,
                                                pos.x + orthographicHorizontalOffset,
                                                pos.y - orthographicVerticalOffset,
@@ -1231,12 +1231,12 @@ class DrawingFuncs
 {
 public:
     /// @brief Draws chunk geometry batches.
-    static void drawChunkGeometry2(Engine &engine, const Chunk &chunk, const GPUDrawPushConstants2 &pushConstants, const VkCommandBuffer cmd)
+    static void drawChunkGeometry2(Engine &engine, const GPUDrawPushConstants2 &pushConstants, const VkCommandBuffer cmd)
         __attribute__((always_inline))
     {
         uint prevImgId = -1;
 
-        for (const auto &refs : chunk.references) {
+        for (const auto &refs : engine.m_scene->references) {
             if (const auto currImgId = engine.m_scene->resources->groupedImagesMapping[engine.m_scene->resources->animations[refs.front().animationId].imageId]; currImgId != prevImgId) {
                 prevImgId = currImgId;
                 ++engine.m_switchesCount;
@@ -1274,14 +1274,15 @@ public:
     }
 
     /// @brief Draws chunk border/physics debug lines.
-    static void drawChunkPhysics2(const Engine &engine, const Chunk &chunk, GPUDrawLinePushConstants &pushConstants, const VkCommandBuffer cmd)
+    static void drawChunkPhysics2(const Engine &engine, GPUDrawLinePushConstants &pushConstants, const VkCommandBuffer cmd)
         __attribute__((always_inline))
     {
-        for (const auto &refs : chunk.references) {
+        for (const auto &refs : engine.m_scene->references) {
             const auto currImgId = engine.m_scene->resources->groupedImagesMapping[engine.m_scene->resources->animations[refs.front().animationId].imageId];
 
             for (const auto &obj : refs) {
-                pushConstants.color = chunk.entities[obj.objId].has_collision ? glm::vec3(1.f, 0.f, 0.f) : glm::vec3(0.f, 1.f, 0.f);
+                pushConstants.color = engine.m_scene->entities.at<Entity::PhysicsObjectState>(obj.objId).hasCollision ? glm::vec3(1.f, 0.f, 0.f)
+                                                                                                                      : glm::vec3(0.f, 1.f, 0.f);
                 pushConstants.worldMatrix = glm::translate(engine.worldMatrix, glm::vec3(obj.position.x, obj.position.y, 0.0f));
 
                 vkCmdPushConstants(cmd, engine.m_linePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawLinePushConstants), &pushConstants);
@@ -1298,16 +1299,18 @@ public:
     }
 
     /// @brief Draws chunk debug points.
-    static void drawChunkPoints2(const Engine &engine, const Chunk &chunk, GPUDrawPointPushConstants &pushConstants, const VkCommandBuffer cmd)
+    static void drawChunkPoints2(const Engine &engine, GPUDrawPointPushConstants &pushConstants, const VkCommandBuffer cmd)
         __attribute__((always_inline))
     {
-        for (const auto &refs : chunk.references) {
+        for (const auto &refs : engine.m_scene->references) {
             for (const auto obj : refs) {
                 glm::vec4 worldPos = engine.worldMatrix * glm::vec4(obj.position.x, obj.position.y, 0.0f, 1.0f);
                 worldPos /= worldPos.w;
 
                 pushConstants.pos = glm::vec2(worldPos.x, worldPos.y);
-                pushConstants.color = chunk.entities[obj.objId].has_collision ? glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) : glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+                pushConstants.color = engine.m_scene->entities.at<Entity::PhysicsObjectState>(obj.objId).hasCollision
+                                          ? glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)
+                                          : glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
 
                 vkCmdPushConstants(cmd, engine.m_pointPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPointPushConstants), &pushConstants);
 
@@ -1373,10 +1376,7 @@ void Engine::drawGeometry2(const VkCommandBuffer cmd)
 
     // [NOTE] Must match the ordering of uploadObjectDataForDrawing! Otherwise, the
     // instance offsets will be wrong, and elements will not be drawn properly.
-    for (const auto &chunk : m_scene->view) {
-        DrawingFuncs::drawChunkGeometry2(*this, chunk, pushConstants, cmd);
-    }
-    DrawingFuncs::drawChunkGeometry2(*this, m_scene->movings, pushConstants, cmd);
+    DrawingFuncs::drawChunkGeometry2(*this, pushConstants, cmd);
 
     vkCmdEndRendering(cmd);
 }
@@ -1428,10 +1428,7 @@ void Engine::drawPhysics2(const VkCommandBuffer cmd)
         .vertexBuffer = m_scene->resources->linesBuffer.vertexBufferAddress,
     };
 
-    for (const auto &chunk : m_scene->view) {
-        DrawingFuncs::drawChunkPhysics2(*this, chunk, pushConstants, cmd);
-    }
-    DrawingFuncs::drawChunkPhysics2(*this, m_scene->movings, pushConstants, cmd);
+    DrawingFuncs::drawChunkPhysics2(*this, pushConstants, cmd);
 
     vkCmdEndRendering(cmd);
 }
@@ -1480,10 +1477,7 @@ void Engine::drawPoints2(VkCommandBuffer cmd)
 
     GPUDrawPointPushConstants pushConstants{};
 
-    for (const auto &chunk : m_scene->view) {
-        DrawingFuncs::drawChunkPoints2(*this, chunk, pushConstants, cmd);
-    }
-    DrawingFuncs::drawChunkPoints2(*this, m_scene->movings, pushConstants, cmd);
+    DrawingFuncs::drawChunkPoints2(*this, pushConstants, cmd);
 
     vkCmdEndRendering(cmd);
 }
@@ -1545,14 +1539,11 @@ auto Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::spa
 
 void Engine::uploadObjectDataForDrawing()
 {
-    if (m_scene->view.empty()) {
+    if (m_scene->entities.empty()) {
         return;
     }
 
-    const size_t elementsCount = m_scene->movings.objects.size()
-                                 + std::accumulate(m_scene->chunks.cbegin(), m_scene->chunks.cend(), 0, [](const int prev, const auto &src) -> size_t {
-                                       return src.objects.size() + prev;
-                                   });
+    const size_t elementsCount = m_scene->entities.size();
 
     assert(elementsCount < Config::maximumObjectCount);
 
@@ -1563,19 +1554,10 @@ void Engine::uploadObjectDataForDrawing()
 
     // Copy data to staging buffer
     size_t offset = 0;
-    for (const auto &chunk : m_scene->view) {
-        for (const auto &ref : chunk.references) {
-            const auto s = ref.size() * sizeof(ObjectData);
-            std::memcpy(&static_cast<std::byte *>(staging.info.pMappedData)[offset], ref.data(), s);
-            offset += s;
-        }
-    }
-    {
-        for (const auto &ref : m_scene->movings.references) {
-            const auto s = ref.size() * sizeof(ObjectData);
-            std::memcpy(&static_cast<std::byte *>(staging.info.pMappedData)[offset], ref.data(), s);
-            offset += s;
-        }
+    for (const auto &ref : m_scene->references) {
+        const auto s = ref.size() * sizeof(ObjectData);
+        std::memcpy(&static_cast<std::byte *>(staging.info.pMappedData)[offset], ref.data(), s);
+        offset += s;
     }
 
     // Submit a copy command

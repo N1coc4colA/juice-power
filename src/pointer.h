@@ -1,5 +1,5 @@
-#ifndef POINTER_H
-#define POINTER_H
+#ifndef JP_POINTER_H
+#define JP_POINTER_H
 
 #include "src/keywords.h"
 
@@ -161,4 +161,4 @@ template<typename T>
 /// @brief Pointer wrapper that releases memory with delete.
 using AutoDeletePtr = AutoCleanPtr<T, Private::typeDelete<T>>;
 
-#endif // POINTER_H
+#endif // JP_POINTER_H

@@ -1,5 +1,5 @@
-#ifndef PHYSICS_DEFINES_H
-#define PHYSICS_DEFINES_H
+#ifndef JP_PHYSICS_DEFINES_H
+#define JP_PHYSICS_DEFINES_H
 
 #include "src/config.h"
 
@@ -14,5 +14,4 @@ static constexpr auto timestep() -> float
 
 }
 
-
-#endif // PHYSICS_DEFINES_H
+#endif // JP_PHYSICS_DEFINES_H

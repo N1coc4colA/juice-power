@@ -1,5 +1,5 @@
-#ifndef LOADERS_ENUMS_H
-#define LOADERS_ENUMS_H
+#ifndef JP_LOADERS_ENUMS_H
+#define JP_LOADERS_ENUMS_H
 
 #include <cstdint>
 
@@ -26,4 +26,4 @@ enum class Status : uint8_t {
 };
 }
 
-#endif // LOADERS_ENUMS_H
+#endif // JP_LOADERS_ENUMS_H

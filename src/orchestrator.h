@@ -1,10 +1,11 @@
-#ifndef ORCHESTRATOR_H
-#define ORCHESTRATOR_H
+#ifndef JP_ORCHESTRATOR_H
+#define JP_ORCHESTRATOR_H
 
 #include <atomic>
 #include <memory>
 #include <string>
 
+#include "src/keywords.h"
 #include "src/loaders/enums.h"
 
 namespace Graphics {
@@ -57,7 +58,7 @@ public:
     void cleanup();
 
     /// @brief Loads a map into the provided scene.
-    auto loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) const -> std::tuple<Loaders::Status, std::string>;
+    _nodiscard auto loadMap(const std::shared_ptr<World::Scene> &scene, const std::string &path) const -> std::tuple<Loaders::Status, std::string>;
     /// @brief Sets the active scene for all subsystems.
     void setScene(const std::shared_ptr<World::Scene> &scene);
 
@@ -83,4 +84,4 @@ private:
     static Orchestrator *m_instance;
 };
 
-#endif // ORCHESTRATOR_H
+#endif // JP_ORCHESTRATOR_H

@@ -1,5 +1,5 @@
-#ifndef PIPELINEBUILDER_H
-#define PIPELINEBUILDER_H
+#ifndef JP_GRAPHICS_PIPELINEBUILDER_H
+#define JP_GRAPHICS_PIPELINEBUILDER_H
 
 #include <vulkan/vulkan.h>
 
@@ -130,5 +130,4 @@ private:
 };
 }
 
-
-#endif // PIPELINEBUILDER_H
+#endif // JP_GRAPHICS_PIPELINEBUILDER_H

@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_RESOURCES_H
-#define GRAPHICS_RESOURCES_H
+#ifndef JP_GRAPHICS_RESOURCES_H
+#define JP_GRAPHICS_RESOURCES_H
 
 #include <glm/glm.hpp>
 
@@ -79,5 +79,4 @@ public:
 };
 }
 
-
-#endif // GRAPHICS_RESOURCES_H
+#endif // JP_GRAPHICS_RESOURCES_H

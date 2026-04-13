@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef JP_UTILS_H
+#define JP_UTILS_H
 
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
@@ -9,6 +9,7 @@
 #include <numeric>
 #include <ranges>
 #include <type_traits>
+#include <vector>
 
 namespace utils
 {
@@ -201,4 +202,4 @@ constexpr auto accumulate(const Container0 &container0, const Container1 &contai
 
 } // namespace utils
 
-#endif // UTILS_H
+#endif // JP_UTILS_H

@@ -1,10 +1,11 @@
-#ifndef CHUNK_H
-#define CHUNK_H
+#ifndef JP_GRAPHICS_CHUNK_H
+#define JP_GRAPHICS_CHUNK_H
 
 #include <vector>
 
+#include "src/entity/components.h"
+#include "src/entity/vector.h"
 #include "src/graphics/types.h"
-#include "src/physics/entity.h"
 
 namespace Graphics {
 
@@ -14,14 +15,8 @@ namespace Graphics {
 class Chunk
 {
 public:
-    /// @brief Groups of contiguous object references sharing draw state.
-    std::vector<std::span<ObjectData>> references{};
-    /// @brief Owned object data entries.
-    std::vector<ObjectData> objects{};
-    /// @brief Physics entities associated with objects.
-    std::vector<Physics::Entity> entities{};
 };
 
 } // namespace Graphics
 
-#endif // CHUNK_H
+#endif // JP_GRAPHICS_CHUNK_H

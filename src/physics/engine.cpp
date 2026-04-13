@@ -2,18 +2,21 @@
 
 #include <chrono>
 #include <iostream>
+#include <ranges>
 
 #include "src/config.h"
 #include "src/input/defines.h"
+#include "src/physics/entity.h"
 #include "src/states.h"
 
 namespace
 {
 
-auto prevChrono = std::chrono::system_clock::now();
 /// @brief Constant value of 3/4 of Pi.
 constexpr double pi3_4 = M_PI_2 + M_PI;
 
+static auto prevChrono = std::chrono::system_clock::now();
+static Physics::ComputeState computeState{};
 }
 
 constexpr auto epsiloned(const auto &t)
@@ -41,31 +44,34 @@ void Engine::prepare()
 	prevChrono = std::chrono::system_clock::now();
 }
 
+class DumpVisitor
+{
+public:
+    void visit(const Entity::PhysicsSetup &setup,
+               const Entity::PhysicsObjectState &objState,
+               const Entity::AABB &boundingBox,
+               const Entity::PhysicsConstraints &constraints,
+               const Entity::PhysicsCartesianState &cState,
+               const Entity::PhysicsAngularState &aState) const
+    {
+        const auto center = Physics::center(cState, boundingBox);
+
+        std::cout << "id: " << objState.id << ", ";
+        std::cout << "position: (" << cState.position.x << ", " << cState.position.y << "), ";
+        std::cout << "velocity: (" << cState.velocity.x << ", " << cState.velocity.y << "), ";
+        std::cout << "acceleration: (" << cState.acceleration.x << ", " << cState.acceleration.y << "), ";
+        std::cout << "angular_velocity: " << aState.angularVelocity << ", ";
+        std::cout << "elasticity: " << setup.elasticity << ", mass: " << setup.mass << ", " << ", angle: " << setup.angle;
+        std::cout << "canCollide: " << setup.canCollide << ", isNotFixed: " << setup.isNotFixed << ", ";
+        std::cout << "MoI: " << constraints.MoI << ", ";
+        std::cout << "bounding_box_min: (" << boundingBox.min.x << ", " << boundingBox.min.y << "), ";
+        std::cout << "bounding_box_max: (" << boundingBox.max.x << ", " << boundingBox.max.y << ")\n";
+    }
+};
+
 void Engine::dump() const
 {
-    const auto csize = m_scene->chunks.size();
-
-    for (size_t i = 0; i < csize; i++) {
-        const auto &chunk = m_scene->chunks[i];
-
-        const auto esize = chunk.entities.size();
-        for (size_t j = 0; j < esize; j++) {
-            const auto &e = chunk.entities[j];
-
-            const auto center = e.center();
-
-            std::cout << "id: " << i * 10 + j << ", ";
-            std::cout << "position: (" << e.position.x << ", " << e.position.y << "), ";
-            std::cout << "center: (" << center.x << ", " << center.y << "), ";
-            std::cout << "velocity: (" << e.velocity.x << ", " << e.velocity.y << "), ";
-			std::cout << "acceleration: (" << e.acceleration.x << ", " << e.acceleration.y << "), ";
-			std::cout << "angular_velocity: " << e.angularVelocity << ", elasticity: " << e.elasticity << ", ";
-			std::cout << "MoI: " << e.MoI << ", mass: " << e.mass << ", angle: " << e.angle << ", ";
-			std::cout << "canCollide: " << e.canCollide << ", isNotFixed: " << e.isNotFixed << ", ";
-			std::cout << "bounding_box_min: (" << e.boundingBox.min.x << ", " << e.boundingBox.min.y << "), ";
-			std::cout << "bounding_box_max: (" << e.boundingBox.max.x << ", " << e.boundingBox.max.y << ")\n";
-        }
-    }
+    m_scene->entities.visit(DumpVisitor());
 }
 
 constexpr auto rotate(const glm::vec2 &v) noexcept -> glm::vec2
@@ -81,14 +87,19 @@ constexpr auto rotate(const glm::vec2 &v, const double angle) -> glm::vec2
 	return glm::vec2 {v.x * c - v.y * s, v.x * s + v.y * c};
 }
 
-void Engine::resolveCollision(Entity &a, Entity &b, const CollisionInfo &info)
+void Engine::resolveCollision(const int a, const int b, const Entity::CollisionInfo &info)
 {
+    using requiredFields = ReferencesSet<Entity::PhysicsSetup, Entity::PhysicsCartesianState>;
+
     if (info.depth < Config::physicsEpsilon) {
         return;
     }
 
+    const auto &[a_Setup, a_cState] = m_scene->entities.at<requiredFields>(a);
+    const auto &[b_Setup, b_cState] = m_scene->entities.at<requiredFields>(b);
+
     // Relative velocity
-    const glm::vec2 relVel = a.velocity - b.velocity;
+    const glm::vec2 relVel = a_cState.velocity - b_cState.velocity;
 
     // Velocity along the normal
     const float velAlongNormal = glm::dot(relVel, info.normal);
@@ -99,11 +110,11 @@ void Engine::resolveCollision(Entity &a, Entity &b, const CollisionInfo &info)
     }
 
     // Restitution (elasticity)
-    const float e = std::clamp(std::min(a.elasticity, b.elasticity), 0.0f, 1.0f);
+    const float e = std::clamp(std::min(a_Setup.elasticity, b_Setup.elasticity), 0.0f, 1.0f);
 
     // Inverse masses
-    const float invMassA = a.isNotFixed ? 1.0f / a.mass : 0.0f;
-    const float invMassB = b.isNotFixed ? 1.0f / b.mass : 0.0f;
+    const float invMassA = a_Setup.isNotFixed ? 1.0f / a_Setup.mass : 0.0f;
+    const float invMassB = b_Setup.isNotFixed ? 1.0f / b_Setup.mass : 0.0f;
 
     const float denom = epsiloned(invMassA + invMassB);
     if (denom == 0.f) {
@@ -122,24 +133,24 @@ void Engine::resolveCollision(Entity &a, Entity &b, const CollisionInfo &info)
         1 0 2+2 = 4
         1 1 2+4 = 6
     */
-    switch ((1 << a.canCollide) + (2 << b.canCollide)) {
+    switch ((1 << a_Setup.canCollide) + (2 << b_Setup.canCollide)) {
     case 4: {
         const auto v = epsiloned(impulse * invMassA);
 
-        a.velocity += v;
-        a.position -= info.normal * info.depth;
+        a_cState.velocity += v;
+        a_cState.position -= info.normal * info.depth;
         break;
     }
     case 5: {
         const auto v = epsiloned(impulse * invMassB);
 
-        b.velocity -= v;
-        b.position += info.normal * info.depth;
+        b_cState.velocity -= v;
+        b_cState.position += info.normal * info.depth;
         break;
     }
     case 6: {
-        a.velocity += epsiloned(impulse * invMassA);
-        b.velocity -= epsiloned(impulse * invMassB);
+        a_cState.velocity += epsiloned(impulse * invMassA);
+        b_cState.velocity -= epsiloned(impulse * invMassB);
         break;
     }
     case 3: {
@@ -151,6 +162,31 @@ void Engine::resolveCollision(Entity &a, Entity &b, const CollisionInfo &info)
     }
     }
 }
+
+class CollisionReset
+{
+public:
+    void visit(Entity::PhysicsObjectState &entity) const { entity.hasCollision = false; }
+};
+
+class ObjectCompute
+{
+public:
+    explicit ObjectCompute(const double timeDelta)
+        : timeDelta(timeDelta)
+    {}
+
+    void visit(Entity::PhysicsCartesianState &cState,
+               Entity::PhysicsAngularState &aState,
+               Entity::PhysicsSetup &setup,
+               Entity::PhysicsForces &forces,
+               Entity::PhysicsConstraints &constraints) const
+    {
+        Physics::compute(timeDelta, ReferencesSet{cState, aState, setup, forces, constraints});
+    }
+
+    double timeDelta;
+};
 
 void Engine::compute()
 {
@@ -164,97 +200,66 @@ void Engine::compute()
 
     /* Resolve collisions */ {
         m_scene->collisions.clear();
-
-        for (auto &c : m_scene->view) {
-            for (auto &e : c.entities) {
-                e.has_collision = false;
-            }
-        }
-        for (auto &e : m_scene->movings.entities) {
-            e.has_collision = false;
-        }
-
+        m_scene->entities.visit(CollisionReset());
         resolveAllCollisions();
     }
 
-    /* Cleaning up */ {
-        for (auto &chunk : m_scene->view) {
-            for (auto &obj : chunk.entities) {
-                obj.cleanup();
-            }
-        }
-        for (auto &obj : m_scene->movings.entities) {
-            obj.cleanup();
-        }
-    }
-
     /* Position update */ {
-        for (auto &chunk : m_scene->view) {
-            for (auto &obj : chunk.entities) {
-                obj.compute(delta);
-            }
-        }
-        for (auto &obj : m_scene->movings.entities) {
-            obj.compute(delta);
-        }
-
+        ObjectCompute computeVisitor(delta);
+        m_scene->entities.visit(computeVisitor);
         updateMainPosition();
     }
 
     prevChrono = currentTime;
 }
 
-void Engine::resolveCollisions(std::vector<Entity> &en1, Entity &e)
+void Engine::collisionResolutionFilter(const int a, const int b)
 {
-    for (auto &e2 : en1) {
-        // If both elements are not the same, we can check for collision.
-        const std::pair m = {std::min(&e, &e2), std::max(&e, &e2)};
-        if (&e != &e2) {
-            if (!m_scene->collisions.contains(m) && (e.canCollide || e2.canCollide) && (e.isNotFixed || e2.isNotFixed)) {
-                // We need to resolve the collision.
-                if (CollisionInfo info{}; e.collides(e2, info)) {
-                    //std::cout << "Detected collision between entities " << e.id << " and " << e2.id << " normal=(" << info.normal.x << "," << info.normal.y << ") depth=" << info.depth << "\n";
-                    resolveCollision(e, e2, info);
+    if (a == b) {
+        return;
+    }
 
-                    e.has_collision = e.canCollide;
-                    e2.has_collision = e2.canCollide;
+    const std::pair m = {std::min(a, b), std::max(a, b)};
+    if (m_scene->collisions.contains(m)) {
+        return;
+    }
 
-                    m_scene->collisions.insert(m);
-                }
-            }
-        }
+    const auto argsA = m_scene->entities.at<removeConstReferencesType<Physics::ComputeState::CollisionParameters>>(a);
+    const auto argsB = m_scene->entities.at<removeConstReferencesType<Physics::ComputeState::CollisionParameters>>(b);
+
+    const auto &aSetup = std::get<0>(argsA);
+    const auto &bSetup = std::get<0>(argsB);
+
+    const bool mayCollide = aSetup.canCollide || bSetup.canCollide;
+    const bool mayNotBeFixed = aSetup.isNotFixed || bSetup.isNotFixed;
+
+    if (!(mayCollide && mayNotBeFixed)) {
+        return;
+    }
+
+    // We need to resolve the collision.
+
+    if (Entity::CollisionInfo info{}; computeState.collides(argsA, argsB, info)) {
+        //std::cout << "Detected collision between entities " << e.id << " and " << e2.id << " normal=(" << info.normal.x << "," << info.normal.y << ") depth=" << info.depth << "\n";
+        resolveCollision(a, b, info);
+
+        std::get<1>(argsA).hasCollision = aSetup.canCollide;
+        std::get<1>(argsB).hasCollision = bSetup.canCollide;
+
+        m_scene->collisions.insert(m);
     }
 }
 
 void Engine::resolveAllCollisions()
 {
-    const auto size = static_cast<int64_t>(m_scene->view.size());
+    const auto size = static_cast<int64_t>(m_scene->entities.size());
 
-    for (int64_t i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         // For every entity in the current chunk, we check the entities in the current AND next chunk.
         // Previous chunks' entities have already been checked against.
-        for (auto &entity : m_scene->view[i].entities) {
-            for (int64_t j = i; j < size; j++) {
-                resolveCollisions(m_scene->view[j].entities, entity);
-            }
+        for (int j = i + 1; j < size; j++) {
+            collisionResolutionFilter(i, j);
         }
-    }
-
-    for (auto &chunk : m_scene->view) {
-        for (auto &entity : chunk.entities) {
-            resolveCollisions(m_scene->movings.entities, entity);
-        }
-    }
-
-    for (auto &entity : m_scene->movings.entities) {
-        resolveCollisions(m_scene->movings.entities, entity);
-    }
-}
-
-void copyPositions2(Graphics::Chunk &c)
-{
-    for (auto &&[obj, entity] : std::views::zip(c.objects, c.entities)) {
-        obj.position = glm::vec4(entity.position, 0.f, 1.f);
     }
 }
 
@@ -264,9 +269,9 @@ void Engine::run(std::atomic<uint64_t> &commands)
         compute();
 
         if (commands & PrepareDrawing) {
-            copyPositions2(m_scene->movings);
-            for (auto &chunk : m_scene->view) {
-                copyPositions2(chunk);
+            const auto pStateRange = m_scene->entities.range<Entity::PhysicsCartesianState>();
+            for (auto &&[obj, entity] : std::views::zip(m_scene->objects, pStateRange)) {
+                obj.position = glm::vec4(std::get<0>(entity).position, 0.f, 1.f);
             }
 
             // Update states.
@@ -281,23 +286,23 @@ void Engine::updateMainPosition()
     constexpr auto horVel = 0.05f;
     constexpr auto vertVel = 0.01f;
 
+    Entity::Vector<int, float, bool> vect0{};
+
     if (m_inputState->left.unsafeGet().state) {
         std::cout << "left\n";
-        //m_scene->movings.entities[0].velocity.x += horVel;
-        m_scene->movings.entities[0].thrusts.push_back(Thrust{.vector = {horVel, 0.f, 0.f}});
+        m_scene->entities.at<Entity::PhysicsForces>(0).thrusts.push_back(Entity::Thrust{.vector = {horVel, 0.f, 0.f}});
     }
     if (m_inputState->right.unsafeGet().state) {
         std::cout << "right\n";
-        //m_scene->movings.entities[0].velocity.x += horVel;
-        m_scene->movings.entities[0].thrusts.push_back(Thrust{.vector = {-horVel, 0.f, 0.f}});
+        m_scene->entities.at<Entity::PhysicsForces>(0).thrusts.push_back(Entity::Thrust{.vector = {-horVel, 0.f, 0.f}});
     }
     if (m_inputState->down.unsafeGet().state) {
         std::cout << "down\n";
-        m_scene->movings.entities[0].velocity.x -= vertVel;
+        m_scene->entities.at<Entity::PhysicsCartesianState>(0).velocity.x -= vertVel;
     }
     if (m_inputState->up.unsafeGet().state && !m_inputState->up.unsafeGet().hold) {
         std::cout << "up\n";
-        m_scene->movings.entities[0].velocity.x += vertVel;
+        m_scene->entities.at<Entity::PhysicsCartesianState>(0).velocity.x += vertVel;
     }
 }
 }

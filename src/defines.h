@@ -4,12 +4,51 @@
 /**
  * @brief Silences unused variable warnings.
  */
-template<typename T>
-constexpr void unused(T)
+template<typename... Types>
+constexpr void unused(Types...)
 {}
 
 #include <functional>
 #include <mutex>
+#include <tuple>
+
+template<typename... Types>
+class TypesSet
+{};
+
+template<typename... Types>
+using ReferencesSet = std::tuple<Types &...>;
+
+template<typename T>
+class ReferencesSetTypesImpl;
+
+/**
+ * @brief Specialization used for unwrapping @tparam Ts... to @ref Vector
+ **/
+template<typename... Ts>
+class ReferencesSetTypesImpl<TypesSet<Ts...>>
+{
+public:
+    using type = ReferencesSet<Ts...>;
+};
+
+/**
+ * @brief Wrapper class to use Vector<TypeSet<...>> more easily.
+ */
+template<typename T>
+using ReferencesSetTypes = typename ReferencesSetTypesImpl<T>::type;
+
+template<typename T>
+struct removeConstReferences;
+
+template<typename... Ts>
+struct removeConstReferences<std::tuple<Ts &...>>
+{
+    using type = std::tuple<std::remove_const_t<Ts> &...>;
+};
+
+template<typename T>
+using removeConstReferencesType = typename removeConstReferences<T>::type;
 
 /**
  * @brief Mutex-protected value wrapper.

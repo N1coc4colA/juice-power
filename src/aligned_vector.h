@@ -1,5 +1,5 @@
-#ifndef ALIGNED_VECTOR_H
-#define ALIGNED_VECTOR_H
+#ifndef JP_ALIGNED_VECTOR_H
+#define JP_ALIGNED_VECTOR_H
 
 #include <gsl/gsl-lite.hpp>
 
@@ -96,4 +96,4 @@ template<typename T, typename A>
 /// @brief Vector aligned on the alignment of type A.
 using TypeAlignedVector = AlignedVector<T, alignof(A)>;
 
-#endif // ALIGNED_VECTOR_H
+#endif // JP_ALIGNED_VECTOR_H

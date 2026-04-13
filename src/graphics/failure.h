@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_ERROR_H
-#define GRAPHICS_ERROR_H
+#ifndef JP_GRAPHICS_ERROR_H
+#define JP_GRAPHICS_ERROR_H
 
 #include <exception>
 #include <string>
@@ -39,5 +39,4 @@ private:
 
 }
 
-
-#endif // GRAPHICS_ERROR_H
+#endif // JP_GRAPHICS_ERROR_H

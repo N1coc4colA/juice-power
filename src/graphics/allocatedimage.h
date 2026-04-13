@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_ALLOCATEDIMAGE_H
-#define GRAPHICS_ALLOCATEDIMAGE_H
+#ifndef JP_GRAPHICS_ALLOCATEDIMAGE_H
+#define JP_GRAPHICS_ALLOCATEDIMAGE_H
 
 #include <vulkan/vulkan.h>
 
@@ -58,5 +58,4 @@ struct CachedImage
 };
 }
 
-
-#endif // GRAPHICS_ALLOCATEDIMAGE_H
+#endif // JP_GRAPHICS_ALLOCATEDIMAGE_H

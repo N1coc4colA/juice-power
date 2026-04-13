@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_INITIALIZERS_H
-#define GRAPHICS_INITIALIZERS_H
+#ifndef JP_GRAPHICS_INITIALIZERS_H
+#define JP_GRAPHICS_INITIALIZERS_H
 
 #include <vulkan/vulkan.h>
 
@@ -37,4 +37,4 @@ auto pipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule s
     -> VkPipelineShaderStageCreateInfo;
 } // namespace Graphics::Init
 
-#endif // GRAPHICS_INITIALIZERS_H
+#endif // JP_GRAPHICS_INITIALIZERS_H

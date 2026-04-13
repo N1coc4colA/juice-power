@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_ENUMS_H
-#define GRAPHICS_ENUMS_H
+#ifndef JP_GRAPHICS_ENUMS_H
+#define JP_GRAPHICS_ENUMS_H
 
 #include <cstdint>
 
@@ -64,4 +64,4 @@ enum class FailureType : uint8_t {
 
 } // namespace Graphics
 
-#endif // GRAPHICS_ENUMS_H
+#endif // JP_GRAPHICS_ENUMS_H

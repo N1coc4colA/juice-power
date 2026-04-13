@@ -1,5 +1,5 @@
-#ifndef STATES_H
-#define STATES_H
+#ifndef JP_STATES_H
+#define JP_STATES_H
 
 #include <cstdint>
 
@@ -13,4 +13,4 @@ enum CommandStates : uint8_t {
     CommandStates_MAX = Stop,
 };
 
-#endif // STATES_H
+#endif // JP_STATES_H

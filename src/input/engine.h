@@ -1,5 +1,5 @@
-#ifndef INPUT_ENGINE_H
-#define INPUT_ENGINE_H
+#ifndef JP_INPUT_ENGINE_H
+#define JP_INPUT_ENGINE_H
 
 #include <atomic>
 #include <unordered_map>
@@ -44,4 +44,4 @@ private:
 
 } // namespace Input
 
-#endif // INPUT_ENGINE_H
+#endif // JP_INPUT_ENGINE_H

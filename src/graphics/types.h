@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_TYPES_H
-#define GRAPHICS_TYPES_H
+#ifndef JP_GRAPHICS_TYPES_H
+#define JP_GRAPHICS_TYPES_H
 
 #include <vulkan/vulkan.h>
 
@@ -253,4 +253,4 @@ struct ObjectData
 
 } // namespace Graphics
 
-#endif // GRAPHICS_TYPES_H
+#endif // JP_GRAPHICS_TYPES_H

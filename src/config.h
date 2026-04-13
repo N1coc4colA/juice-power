@@ -1,5 +1,5 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef JP_CONFIG_H
+#define JP_CONFIG_H
 
 namespace Config {
 /// @brief Maximum number of objects that can reside in a scene.
@@ -26,4 +26,4 @@ static constexpr float physicsEpsilon = 0.00001f;
 
 } // namespace Config
 
-#endif // CONFIG_H
+#endif // JP_CONFIG_H

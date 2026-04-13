@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_ENGINE_H
-#define GRAPHICS_ENGINE_H
+#ifndef JP_GRAPHICS_ENGINE_H
+#define JP_GRAPHICS_ENGINE_H
 
 #include <vulkan/vulkan.h>
 
@@ -17,6 +17,7 @@
 #include "src/keywords.h"
 
 struct SDL_Window;
+struct ImGuiContext;
 
 namespace Loaders
 {
@@ -336,6 +337,9 @@ private:
     /// @brief Descriptor layout used by line pipeline.
     VkDescriptorSetLayout m_lineDescriptorLayout = VK_NULL_HANDLE;
 
+    // The cute window within the window
+    ImGuiContext *m_imguiContext = nullptr;
+
     // Points, for debugging purposes
     /// @brief Pipeline layout for point rendering.
     VkPipelineLayout m_pointPipelineLayout = VK_NULL_HANDLE;
@@ -415,5 +419,4 @@ private:
 };
 }
 
-
-#endif // GRAPHICS_ENGINE_H
+#endif // JP_GRAPHICS_ENGINE_H

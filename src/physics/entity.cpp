@@ -11,7 +11,19 @@ constexpr double GRAVITY = -0.05;
 namespace Physics
 {
 
-void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravity, const double kx, const double ky, const double kt) const
+/**
+ * @brief Used for integration of forces. Here it's not King Kunta but King Kutta !!
+ * Runge-Kutta is an integration method.
+ **/
+void KingKutta(const state_type &y,
+               state_type &dydt,
+               const double gravity,
+               const double mass,
+               const bool isNotFixed,
+               const std::vector<Entity::Thrust> &thrusts,
+               const double kx,
+               const double ky,
+               const double kt)
 {
 	unused(kt);
 
@@ -20,9 +32,10 @@ void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravi
     //const auto &theta = y[2];
 
     if (isNotFixed) {
-		vx = (static_cast<double>(utils::accumulate<utils::Access<&Thrust::vector, &glm::vec3::x>>(thrusts, 0.f)) - kx*vx) / static_cast<double>(mass);
-		// Because for us, Y is in the opposite direction, we have to invert the operation for the Weight & frictions.
-        vy = (static_cast<double>(utils::accumulate<utils::Access<&Thrust::vector, &glm::vec3::y>>(thrusts, 0.f))
+        vx = (static_cast<double>(utils::accumulate<utils::Access<&Entity::Thrust::vector, &glm::vec3::x>>(thrusts, 0.f)) - kx * vx)
+             / static_cast<double>(mass);
+        // Because for us, Y is in the opposite direction, we have to invert the operation for the Weight & frictions.
+        vy = (static_cast<double>(utils::accumulate<utils::Access<&Entity::Thrust::vector, &glm::vec3::y>>(thrusts, 0.f))
               + static_cast<double>(mass) * gravity - ky * vy)
              / static_cast<double>(mass);
     }
@@ -38,61 +51,59 @@ void Entity::KingKutta(const state_type &y, state_type &dydt, const double gravi
               / static_cast<double>(MoI);*/
 }
 
-auto Entity::resultOfForces(const double timeStep) const -> Forces
+auto resultOfForces(const glm::vec2 velocity,
+                    const float angularVelocity,
+                    const float temporaryAngularVelocities,
+                    const float friction,
+                    const double mass,
+                    const bool isNotFixed,
+                    const std::vector<Entity::Thrust> &thrusts,
+                    const double timeStep) -> Entity::Forces
 {
 	// [vx, vy, theta]
     state_type y{static_cast<double>(velocity.x), static_cast<double>(velocity.y), static_cast<double>(angularVelocity + temporaryAngularVelocities)};
 
     // Use runge_kutta4 stepper with constant time step, we may have to use a variable one in the future.
-	boost::numeric::odeint::integrate_const(
-		boost::numeric::odeint::runge_kutta4<state_type>(),
-		// The system function
-		[this](const state_type &yValue, state_type &dydtValue, const double t) {
-			unused(t);
-            return KingKutta(yValue, dydtValue, GRAVITY, friction, friction, friction);
-		},
-		y,              // Initial state
-		0.0,            // Start time
-		timeStep,       // End time
-		timeStep/10.0   // Initial step size (smaller steps for accuracy)
-	);
+    boost::numeric::odeint::integrate_const(
+        boost::numeric::odeint::runge_kutta4<state_type>(),
+        // The system function
+        [friction, mass, isNotFixed, &thrusts](const state_type &yValue, state_type &dydtValue, const double t) -> auto {
+            unused(t);
+            return KingKutta(yValue, dydtValue, GRAVITY, mass, isNotFixed, thrusts, friction, friction, friction);
+        },
+        y,              // Initial state
+        0.0,            // Start time
+        timeStep,       // End time
+        timeStep / 10.0 // Initial step size (smaller steps for accuracy)
+    );
 
-	return Forces {
-		.forces = {y[0], y[1]},
-		.angularVelocity = y[2],
-	};
+    return Entity::Forces{
+        .forces = {y[0], y[1]},
+        .angularVelocity = y[2],
+    };
 }
 
-void Entity::compute(const double timeDelta)
+void compute(const double timeDelta, ComputeParameters params)
 {
-    if (isNotFixed) {
-        const auto [forces, fAngularVelocity] = resultOfForces(timeDelta);
-        angularVelocity = static_cast<float>(fAngularVelocity);
+    auto &[cState, aState, pSetup, pForces, pConstraints] = params;
+
+    if (pSetup.isNotFixed) {
+        const auto [forces, fAngularVelocity] = resultOfForces(cState.velocity,
+                                                               aState.angularVelocity,
+                                                               aState.temporaryAngularVelocities,
+                                                               pConstraints.friction,
+                                                               pSetup.mass,
+                                                               pSetup.isNotFixed,
+                                                               pForces.thrusts,
+                                                               timeDelta);
+        aState.angularVelocity = static_cast<float>(fAngularVelocity);
 
         // F = m*a, which means that a = F/m
-        acceleration = forces; // / mass;
-        velocity = nextVelocity(static_cast<float>(timeDelta));
-        position = nextPosition(static_cast<float>(timeDelta));
+        cState.acceleration = forces; // / mass;
+        cState.velocity = nextVelocity(cState, static_cast<float>(timeDelta));
+        cState.position = nextPosition(cState, static_cast<float>(timeDelta));
 
-        thrusts.clear();
+        pForces.thrusts.clear();
     }
-}
-
-/*void Entity::applyFriction()
-{
-    if (isNotFixed) {
-        // friction: 0.00001f
-        const glm::vec2 direction = normalize(velocity);
-        const glm::vec2 frictionForce = direction * friction;
-
-        // Apply friction to acceleration
-        velocity -= frictionForce / mass;
-    }
-}*/
-
-void Entity::cleanup()
-{
-    /*acceleration = epsiloned(acceleration);
-    velocity = epsiloned(velocity);*/
 }
 }

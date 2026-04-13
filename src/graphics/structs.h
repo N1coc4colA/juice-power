@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_STRUCTS_H
-#define GRAPHICS_STRUCTS_H
+#ifndef JP_GRAPHICS_STRUCTS_H
+#define JP_GRAPHICS_STRUCTS_H
 
 #include <vulkan/vulkan.h>
 
@@ -62,5 +62,4 @@ struct FrameData
 
 }
 
-
-#endif // GRAPHICS_STRUCTS_H
+#endif // JP_GRAPHICS_STRUCTS_H

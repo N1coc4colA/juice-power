@@ -1,5 +1,5 @@
-#ifndef HELPERS_H
-#define HELPERS_H
+#ifndef JP_HELPERS_H
+#define JP_HELPERS_H
 
 #include <glm/glm.hpp>
 
@@ -20,4 +20,4 @@ constexpr auto epsiloned(const glm::vec2 v, const float min = -epsilon_value, co
     return glm::vec2{epsiloned(v.x, min, max), epsiloned(v.y, min, max)};
 }
 
-#endif // HELPERS_H
+#endif // JP_HELPERS_H

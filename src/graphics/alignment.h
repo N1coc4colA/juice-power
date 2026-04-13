@@ -1,5 +1,5 @@
-#ifndef ALIGNMENT_H
-#define ALIGNMENT_H
+#ifndef JP_GRAPHICS_ALIGNMENT_H
+#define JP_GRAPHICS_ALIGNMENT_H
 
 #include <boost/pfr.hpp>
 #include <boost/pfr/core.hpp>
@@ -230,4 +230,4 @@ constexpr auto validateStructMembers()
 
 } // namespace Graphics::Alignment
 
-#endif // ALIGNMENT_H
+#endif // JP_GRAPHICS_ALIGNMENT_H

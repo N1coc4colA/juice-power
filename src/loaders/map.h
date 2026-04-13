@@ -1,5 +1,5 @@
-#ifndef LOADERS_MAP_H
-#define LOADERS_MAP_H
+#ifndef JP_LOADERS_MAP_H
+#define JP_LOADERS_MAP_H
 
 #include <memory>
 #include <string>
@@ -56,5 +56,4 @@ private:
 
 }
 
-
-#endif // LOADERS_MAP_H
+#endif // JP_LOADERS_MAP_H

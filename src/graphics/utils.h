@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_UTILS_H
-#define GRAPHICS_UTILS_H
+#ifndef JP_GRAPHICS_UTILS_H
+#define JP_GRAPHICS_UTILS_H
 
 #include <vulkan/vulkan.h>
 
@@ -14,4 +14,4 @@ auto loadShaderModule(const char *filePath, VkDevice device, VkShaderModule &out
 void generateMipmaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize);
 } // namespace Graphics::Utils
 
-#endif // GRAPHICS_UTILS_H
+#endif // JP_GRAPHICS_UTILS_H

@@ -14,6 +14,7 @@
 #include <fstream>
 #include <iostream>
 #include <ranges>
+#include <utility>
 
 #include "src/algorithms.h"
 #include "src/config.h"
@@ -31,90 +32,85 @@ namespace Loaders
 {
 
 Map::Map(const std::string &path)
-    : m_path(std::move(path))
+    : m_path(path)
 {
     stbi_set_flip_vertically_on_load(true);
 }
 
-inline void copyValues2(const std::vector<JsonChunkElement> &jsonChunk,
-                        Graphics::Chunk &chunk,
+inline void copyValues2(decltype(std::views::concat(std::declval<JsonMap &>().movings, std::declval<JsonMap &>().chunks | std::views::join)) json,
                         const JsonMap &map,
                         const std::shared_ptr<World::Scene> &scene)
 {
-    const auto entitiesCount = chunk.entities.size();
-    for (size_t j = 0; j < entitiesCount; j++) {
-        const auto &entity = jsonChunk[j];
+    const auto entitiesCount = scene->entities.size();
 
-        chunk.entities[j].position = glm::vec2{entity.position[0], entity.position[1]};
+    auto pSetupRange = scene->entities.range<Entity::PhysicsSetup>();
+    auto pConstraintsRange = scene->entities.range<Entity::PhysicsConstraints>();
+    auto pCStateRange = scene->entities.range<Entity::PhysicsCartesianState>();
+    auto pAStateRange = scene->entities.range<Entity::PhysicsAngularState>();
+    auto pBoundsRange = scene->entities.range<Entity::PhysicsBounds>();
+    auto pBBoxRange = scene->entities.range<Entity::AABB>();
+    //auto pCStateRange = scene->entities.range<Entity::PhysicsCartesianState>();
+
+    for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {
+        std::get<0>(entity).elasticity = map.resources[element.type].elasticity;
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        const auto &entity = jsonChunk[j];
-
-        chunk.entities[j].velocity = glm::vec2{entity.velocity[0], entity.velocity[1]};
+    for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {
+        std::get<0>(entity).mass = map.resources[element.type].mass;
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        const auto &entity = jsonChunk[j];
-
-        chunk.entities[j].acceleration = glm::vec2{entity.acceleration[0], entity.acceleration[1]};
+    for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {
+        std::get<0>(entity).canCollide = element.canCollide;
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        const auto &entity = jsonChunk[j];
-
-        chunk.entities[j].friction = entity.friction;
+    for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {
+        std::get<0>(entity).isNotFixed = element.isNotFixed;
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].angularVelocity = jsonChunk[j].angularVelocity;
+    for (const auto &[entity, element] : std::views::zip(pConstraintsRange, json)) {
+        std::get<0>(entity).friction = element.friction;
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].canCollide = jsonChunk[j].canCollide;
+    for (const auto &[entity, element] : std::views::zip(pConstraintsRange, json)) {
+        std::get<0>(entity).MoI = element.MoI;
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].isNotFixed = jsonChunk[j].isNotFixed;
+    for (const auto &[entity, element] : std::views::zip(pCStateRange, json)) {
+        std::get<0>(entity).position = glm::vec2{element.position[0], element.position[1]};
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].MoI = jsonChunk[j].MoI;
+    for (const auto &[entity, element] : std::views::zip(pCStateRange, json)) {
+        std::get<0>(entity).velocity = glm::vec2{element.velocity[0], element.velocity[1]};
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.objects[j].verticesId = jsonChunk[j].type;
+    for (const auto &[entity, element] : std::views::zip(pCStateRange, json)) {
+        std::get<0>(entity).acceleration = glm::vec2{element.acceleration[0], element.acceleration[1]};
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].mass = map.resources[jsonChunk[j].type].mass;
+    for (const auto &[entity, element] : std::views::zip(pAStateRange, json)) {
+        std::get<0>(entity).angularVelocity = element.angularVelocity;
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].elasticity = map.resources[jsonChunk[j].type].elasticity;
+    for (const auto &[entity, element] : std::views::zip(pBoundsRange, json)) {
+        std::get<0>(entity).borders = scene->resources->borders[element.type];
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].borders = scene->resources->borders[jsonChunk[j].type];
+    for (const auto &[entity, element] : std::views::zip(pBoundsRange, json)) {
+        std::get<0>(entity).normals = scene->resources->normals[element.type];
     }
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        chunk.entities[j].normals = scene->resources->normals[jsonChunk[j].type];
-    }
+    for (const auto &[entity, element] : std::views::zip(pBBoxRange, json)) {
+        const auto &bb = scene->resources->boundingBoxes[element.type];
 
-    for (size_t j = 0; j < entitiesCount; j++) {
-        const auto &bb = scene->resources->boundingBoxes[jsonChunk[j].type];
-
-        chunk.entities[j].boundingBox = Physics::AABB{
+        std::get<0>(entity) = Entity::AABB{
             .min = std::get<0>(bb),
             .max = std::get<1>(bb),
         };
     }
-}
 
-inline void prepareVectors2(const size_t count, Graphics::Chunk &chunk)
-{
-    chunk.entities.resize(count);
+    for (const auto &[obj, element] : std::views::zip(scene->objects, json)) {
+        obj.verticesId = element.type;
+    }
 }
 
 auto loadChunk(std::vector<std::vector<JsonChunkElement>> &chunks, const std::string &chunkName) -> std::tuple<Status, std::string>
@@ -321,7 +317,7 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
             ImageInfo inf{.frameId = 0, .x = 0, .y = 0, .id = srcId};
 
             // This gives an 8-bit per channel.
-            int channelUseless;
+            int channelUseless = 0;
             inf.imgData = stbi_load((assetsDir + fst).c_str(), &inf.width, &inf.height, &channelUseless, 4); // Force 4 channels (RGBA)
 
             if (!inf.imgData) {
@@ -334,7 +330,7 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
                 return {Status::OpenError, std::string(__func__) + " " + (assetsDir + fst)};
             }
 
-            if (maxSize <= static_cast<uint64_t>(inf.width * inf.height) || inf.width <= 0 || inf.height <= 0) {
+            if (std::cmp_less_equal(maxSize, inf.width * inf.height) || inf.width <= 0 || inf.height <= 0) {
                 stbi_image_free(inf.imgData);
 
                 for (auto &info : infos) {
@@ -553,10 +549,10 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     return {Status::Ok, ""};
 }
 
-void chunkObjectsGrouping(Graphics::Chunk &chunk)
+void chunkObjectsGrouping(const std::shared_ptr<World::Scene> &scene)
 {
-    const auto groups = groupBy<Graphics::ObjectData, &Graphics::ObjectData::animationId>(chunk.objects);
-    chunk.references.reserve(groups.size());
+    const auto groups = groupBy<Graphics::ObjectData, &Graphics::ObjectData::animationId>(scene->objects);
+    scene->references.reserve(groups.size());
 
     size_t index = 0;
     for (auto group : groups) {
@@ -565,7 +561,7 @@ void chunkObjectsGrouping(Graphics::Chunk &chunk)
         const size_t end = start + count;
 
         // Safe because the underlying container is contiguous (std::vector) and already sorted.
-        chunk.references.emplace_back(&chunk.objects[start], count);
+        scene->references.emplace_back(&scene->objects[start], count);
 
         index = end;
     }
@@ -667,103 +663,55 @@ auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shar
         return status;
     }
 
-    scene->chunks.resize(map.chunks.size());
-    const auto chunksCount = map.chunks.size();
+    auto flattenedChunks = std::views::concat(map.movings, map.chunks | std::views::join);
 
-    scene->movings.objects.resize(map.movings.size());
-    for (size_t i = 0; i < chunksCount; ++i) {
-        scene->chunks[i].objects.resize(map.chunks[i].size());
-    }
+    const auto entitiesCount = std::accumulate(map.chunks.cbegin(), map.chunks.cend(), 0, [](const size_t prev, const auto &chunk) -> size_t {
+        return prev + chunk.size();
+    });
+
+    // We fill it in later to avoid constructing and then change the data.
+    scene->entities.resize(entitiesCount);
+    scene->objects.resize(entitiesCount);
 
     /* Set object IDs */ {
         uint64_t currId = 0;
         const auto fn = [&currId](auto &obj) -> void { obj.objId = currId++; };
-        std::ranges::for_each(scene->movings.objects, fn);
-        std::ranges::for_each(scene->chunks, [&currId, fn](auto &chunk) -> void {
-            currId = 0;
-            std::ranges::for_each(chunk.objects, fn);
-        });
+        std::ranges::for_each(scene->objects, fn);
     }
 
-    /* Set object positions */ {
-        for (size_t j = 0; j < map.movings.size(); ++j) {
-            const auto pos = map.movings[j].position;
-
-            scene->movings.objects[j].position = glm::vec4(pos[0], pos[1], pos[2], 1.f);
-        }
-
-        for (size_t i = 0; i < chunksCount; ++i) {
-            const auto size = map.chunks[i].size();
-            for (size_t j = 0; j < size; ++j) {
-                const auto pos = map.chunks[i][j].position;
-
-                scene->chunks[i].objects[j].position = glm::vec4(pos[0], pos[1], pos[2], 1.f);
-            }
-        }
+    // Set object positions
+    for (const auto &[chunkElement, obj] : std::views::zip(flattenedChunks, scene->objects)) {
+        const auto pos = chunkElement.position;
+        obj.position = glm::vec4(pos[0], pos[1], pos[2], 1.f);
     }
 
-    /* Set object animation IDs*/ {
-        for (size_t j = 0; j < scene->movings.objects.size(); ++j) {
-            // map.movings[j].type is an index into map.resources, which corresponds to the
-            // index in m_scene->res2->animations that we built earlier. Use that resource index
-            // as the animationId so the renderer looks up the right AnimationData.
-            scene->movings.objects[j].animationId = static_cast<uint32_t>(map.movings[j].type);
-        }
-
-        for (size_t i = 0; i < chunksCount; ++i) {
-            const auto size = map.chunks[i].size();
-            for (size_t j = 0; j < size; ++j) {
-                // type is the resource index in map.resources; animations were created in
-                // the same order, so use type directly as animationId.
-                const auto &type = map.chunks[i][j].type;
-                scene->chunks[i].objects[j].animationId = static_cast<uint32_t>(type);
-            }
-        }
+    // Set object animation IDs
+    for (const auto &[chunkElement, obj] : std::views::zip(flattenedChunks, scene->objects)) {
+        // type is the resource index in map.resources; animations were created in
+        // the same order, so use type directly as animationId.
+        obj.animationId = static_cast<uint32_t>(chunkElement.type);
     }
 
-    /* Set object transforms */ {
-        std::ranges::for_each(scene->movings.objects, [](auto &obj) -> void { obj.transform = glm::mat4{1.f}; });
-        std::ranges::for_each(scene->chunks, [](auto &chunk) -> void {
-            std::ranges::for_each(chunk.objects, [](auto &obj) -> void { obj.transform = glm::mat4{1.f}; });
-        });
-    }
-
-    // We fill it in later to avoid constructing and then change the data.
-    prepareVectors2(map.movings.size(), scene->movings);
-    for (size_t i = 0; i < chunksCount; ++i) {
-        prepareVectors2(map.chunks[i].size(), scene->chunks[i]);
-    }
+    // Set object transforms
+    std::ranges::for_each(scene->objects, [](auto &obj) -> void { obj.transform = glm::mat4{1.f}; });
 
     // Update entities' information.
-    copyValues2(map.movings, scene->movings, map, scene);
-    for (size_t i = 0; i < chunksCount; ++i) {
-        copyValues2(map.chunks[i], scene->chunks[i], map, scene);
-    }
+    copyValues2(flattenedChunks, map, scene);
 
     /* Unique entity ID, different from object ID. */ {
         size_t i = 0;
-        std::ranges::for_each(scene->movings.entities.begin(), scene->movings.entities.end(), [&i](auto &e) -> void { e.id = i++; });
-        std::ranges::for_each(scene->chunks.begin(), scene->chunks.end(), [&i](auto &chunk) -> void {
-            std::ranges::for_each(chunk.entities.begin(), chunk.entities.end(), [&i](auto &entity) -> void { entity.id = i++; });
-        });
+        const auto objStateRange = scene->entities.range<Entity::PhysicsObjectState>();
+        std::ranges::for_each(objStateRange.begin(), objStateRange.end(), [&i](const auto &entity) -> auto { std::get<0>(entity).id = i++; });
     }
 
-    scene->player2 = &scene->movings.objects.front();
     scene->resources->build(engine);
 
     /* Sort elements by their data and build the views */ {
-        constexpr auto sortCmp = [](const auto &a, const auto &b) -> bool { return a.animationId < b.animationId; };
+        std::ranges::sort(scene->objects,
+                          [](const Graphics::ObjectData &a, const Graphics::ObjectData &b) -> bool { return a.animationId < b.animationId; });
 
-        std::ranges::sort(scene->movings.objects, sortCmp);
-        std::ranges::for_each(scene->chunks, [](auto &chunk) -> void {
-            std::ranges::sort(chunk.objects, [](const auto &a, const auto &b) -> bool { return a.animationId < b.animationId; });
-        });
-
-        chunkObjectsGrouping(scene->movings);
-        std::ranges::for_each(scene->chunks, &chunkObjectsGrouping);
+        chunkObjectsGrouping(scene);
     }
-
-    scene->view = scene->chunks | std::ranges::views::drop(0) | std::ranges::views::take(std::min(static_cast<size_t>(2), chunksCount));
 
     return {Status::Ok, ""};
 }

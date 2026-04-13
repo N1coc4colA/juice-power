@@ -1,5 +1,5 @@
-#ifndef LOADERS_JSON_H
-#define LOADERS_JSON_H
+#ifndef JP_LOADERS_JSON_H
+#define JP_LOADERS_JSON_H
 
 #include <array>
 #include <cstdint>
@@ -136,5 +136,4 @@ struct JsonMap
 
 }
 
-
-#endif // LOADERS_JSON_H
+#endif // JP_LOADERS_JSON_H

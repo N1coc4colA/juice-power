@@ -1,5 +1,5 @@
-#ifndef PACKING_H
-#define PACKING_H
+#ifndef JP_PACKING_H
+#define JP_PACKING_H
 
 #include <cstdint>
 #include <vector>
@@ -49,4 +49,4 @@ struct Frame
  */
 auto packImagesMultiFrame(std::vector<ImageInfo> &images, uint64_t maxArea, std::vector<Frame> &frames) -> int;
 
-#endif // PACKING_H
+#endif // JP_PACKING_H

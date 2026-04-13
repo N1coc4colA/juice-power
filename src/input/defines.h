@@ -1,5 +1,5 @@
-#ifndef INPUT_DEFINES_H
-#define INPUT_DEFINES_H
+#ifndef JP_INPUT_DEFINES_H
+#define JP_INPUT_DEFINES_H
 
 #include "src/defines.h"
 
@@ -75,4 +75,4 @@ enum class EventType : uint8_t {
 
 } // namespace Input
 
-#endif // INPUT_DEFINES_H
+#endif // JP_INPUT_DEFINES_H

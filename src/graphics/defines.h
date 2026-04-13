@@ -1,5 +1,5 @@
-#ifndef DEFINES_H
-#define DEFINES_H
+#ifndef JP_GRAPHICS_DEFINES_H
+#define JP_GRAPHICS_DEFINES_H
 
 #include <vulkan/vulkan_core.h>
 
@@ -14,4 +14,4 @@ namespace Graphics {
 void vkCheck(VkResult error);
 } // namespace Graphics
 
-#endif // DEFINES_H
+#endif // JP_GRAPHICS_DEFINES_H

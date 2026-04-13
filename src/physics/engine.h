@@ -1,5 +1,5 @@
-#ifndef PHYSICS_ENGINE_H
-#define PHYSICS_ENGINE_H
+#ifndef JP_PHYSICS_ENGINE_H
+#define JP_PHYSICS_ENGINE_H
 
 #include <atomic>
 
@@ -33,12 +33,11 @@ public:
     void run(std::atomic<uint64_t> &commands);
 
 protected:
-	/// @brief Resolves contact between two entities.
-    static void resolveCollision(Entity &a, Entity &b, const CollisionInfo &info);
+    /// @brief Resolves contact between two entities.
+    void resolveCollision(int a, int b, const Entity::CollisionInfo &info);
+    void collisionResolutionFilter(int a, int b);
     /// @brief Resolves all currently detected collisions.
     void resolveAllCollisions();
-    /// @brief Resolves collisions for one entity against a set.
-    void resolveCollisions(std::vector<Entity> &en1, Entity &e);
 
 private:
     /// @brief Scene currently simulated.
@@ -53,8 +52,6 @@ private:
     void updateMainPosition();
 };
 
-
 }
 
-
-#endif // PHYSICS_ENGINE_H
+#endif // JP_PHYSICS_ENGINE_H

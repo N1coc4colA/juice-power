@@ -1,5 +1,5 @@
-#ifndef GRAPHICS_DESCRIPTORS_H
-#define GRAPHICS_DESCRIPTORS_H
+#ifndef JP_GRAPHICS_DESCRIPTORS_H
+#define JP_GRAPHICS_DESCRIPTORS_H
 
 #include <vulkan/vulkan.h>
 
@@ -232,5 +232,4 @@ private:
 };
 }
 
-
-#endif // GRAPHICS_DESCRIPTORS_H
+#endif // JP_GRAPHICS_DESCRIPTORS_H

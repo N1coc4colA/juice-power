@@ -1,5 +1,5 @@
-#ifndef BACKTRACE_H
-#define BACKTRACE_H
+#ifndef JP_BACKTRACE_H
+#define JP_BACKTRACE_H
 
 #include <memory>
 #include <span>
@@ -61,5 +61,4 @@ private:
     std::shared_ptr<BackTraceEntry> m_bt;
 };
 
-
-#endif // BACKTRACE_H
+#endif // JP_BACKTRACE_H
