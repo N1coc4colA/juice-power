@@ -10,3 +10,6 @@
 [submodule "submodules/glaze"]
 	path = submodules/glaze
 	url = https://github.com/stephenberry/glaze.git
+[submodule "submodules/ctrack"]
+	path = submodules/ctrack
+	url = https://github.com/Compaile/ctrack.git
