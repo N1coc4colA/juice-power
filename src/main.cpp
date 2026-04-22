@@ -1,6 +1,8 @@
+#include <iostream>
+
 #include <magic_enum.hpp>
 
-#include <iostream>
+#include <ctrack.hpp>
 
 #include "src/defines.h"
 #include "src/orchestrator.h"
@@ -28,6 +30,8 @@ auto main(const int argc, char **argv) -> int
 
     scene->resources->cleanup(orchestrator.graphicsEngine());
     orchestrator.cleanup();
+
+    ctrack::result_print();
 
     return 0;
 }

@@ -53,6 +53,7 @@ set(CMAKE_CXX_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized b
 set(CMAKE_C_FLAGS_OPTIMIZED "-O2 -DNDEBUG" CACHE STRING "Flags for Optimized build type")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	message(WARNING "You are building in **DEBUG** mode.")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		set(SANITIZER_FLAGS "-fsanitize=address,undefined,memtag-stack,,leak") #shadow-call-stack
 	elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
@@ -61,6 +62,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 
+option(ENABLE_CTRACK "Build with CTRACK perf tracking enabled" OFF)
 option(BUILD_STATIC "Build libraries as static" OFF)
 option(ENABLE_PROFILE "Enable profiling with gprof" OFF)
 
@@ -77,6 +79,9 @@ else()
 	set(LIB_TYPE SHARED)
 endif()
 
+if (NOT ENABLE_CTRACK)
+	add_compile_definitions(CTRACK_DISABLE)
+endif()
 
 # Collect base flags
 set(EXTRA_FLAGS "")
@@ -221,12 +226,16 @@ add_subdirectory("submodules/glaze")
 add_subdirectory("submodules") # For ImGui
 add_subdirectory("submodules/pack2")
 
+set(DISABLE_EXAMPLES OFF)
+add_subdirectory("submodules/ctrack") # Alterntive perf tracking
+
 find_package(Vulkan REQUIRED)
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
 find_package(Boost REQUIRED)
 find_package(fmt CONFIG REQUIRED)			# Convenience dependency
 find_package(magic_enum CONFIG REQUIRED)	# Convenience dependency
 find_package(gsl-lite CONFIG REQUIRED)
+find_package(box2d CONFIG REQUIRED)
 
 
 ## Tooling for analysis ##
@@ -298,6 +307,7 @@ juice-power
 target_link_libraries(
 juice-power
 	PRIVATE
+		box2d::box2d
 		gsl::gsl-lite-v1
 		Vulkan::Vulkan
 		vk-bootstrap::vk-bootstrap
@@ -308,6 +318,7 @@ juice-power
 		imgui_impl_sdl3
 		imgui_impl_vulkan
 		glaze::glaze
+		ctrack
 		${Boost_LIBRARIES}
 		potrace
 		pack2

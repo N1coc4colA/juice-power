@@ -4,6 +4,8 @@
 #include <iostream>
 #include <ranges>
 
+#include <ctrack.hpp>
+
 #include "src/config.h"
 #include "src/input/defines.h"
 #include "src/physics/entity.h"
@@ -190,8 +192,10 @@ public:
 
 void Engine::compute()
 {
-	const auto currentTime = std::chrono::system_clock::now();
-	const auto delta = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count()) / 400.0; // 200.0
+    CTRACK;
+
+    const auto currentTime = std::chrono::system_clock::now();
+    const auto delta = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count()) / 400.0; // 200.0
 
 	// It's true that sometimes, delta is so small that it's 0, so we have to skip the operation.
 	if (delta == 0.) {

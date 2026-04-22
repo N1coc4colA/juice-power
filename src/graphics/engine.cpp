@@ -16,12 +16,13 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <numeric>
 #include <thread>
 
 #include <imgui/backends/imgui_impl_sdl3.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imgui.h>
+
+#include <ctrack.hpp>
 
 #include "src/config.h"
 #include "src/graphics/defines.h"
@@ -1075,6 +1076,8 @@ void Engine::updateAnimations2(const std::shared_ptr<World::Scene> &scene)
 
 void Engine::draw()
 {
+    CTRACK;
+
     // Naive impl for now
     //const auto pos = m_scene->movings.positions[0];
     const auto pos = m_scene->objects[0].position;
