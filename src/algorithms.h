@@ -141,7 +141,7 @@ private:
 	 * This is used to store data for Potrace, and is re-used through the different
 	 * calls to @fn determineImageBorders.
 	 */
-    TypeAlignedVector<unsigned char, potrace_word> m_memory{};
+    std::vector<potrace_word> m_memory{};
 
     /// @brief Extracted border m_points.
     std::vector<glm::vec2> m_points{};

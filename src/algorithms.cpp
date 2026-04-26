@@ -18,7 +18,7 @@
 
 
 constexpr auto po_ws = sizeof(potrace_word);
-constexpr auto po_wbs = sizeof(potrace_word)*8;
+constexpr auto po_wbs = sizeof(potrace_word);
 constexpr auto po_wbs_sub = po_wbs -1;
 
 
@@ -46,7 +46,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     std::cout << "Image width: " << imageWidth << '\n';
 
     // If we have only 3 channels, this means that there is no alpha channel, so the border's just the image.
-    if (channelsCount == 3) {
+    if (channelsCount <= 3) {
         constexpr int normalsCount = 4;
         normals.resize(normalsCount);
         m_points.resize(normalsCount + 1);
@@ -69,32 +69,32 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         return;
     }
 
-    const size_t imgRealWidth = imageWidth;
+    assert(channelsCount == 4);
 
-    // Words per line.
-    const auto dy = (imgRealWidth + po_wbs_sub) / po_wbs;
+    constexpr auto bitsPerWord = sizeof(potrace_word) * 8;
+    const auto dy = (imageWidth + bitsPerWord - 1) / bitsPerWord;
     // Perform resize. Our storage is per-byte.
-    m_memory.resize(dy * image.height() * po_ws);
+    m_memory.resize(dy * image.height());
 
     const potrace_bitmap_t bm{
-        .w = static_cast<int>(imgRealWidth),
+        .w = static_cast<int>(imageWidth),
         .h = static_cast<int>(image.height()),
         .dy = static_cast<int>(dy),
-        .map = reinterpret_cast<potrace_word *>(m_memory.data()),
+        .map = m_memory.data(),
     };
 
     const auto img = image.flattened();
 
     for (size_t y = 0; y < image.height(); y++) {
-		for (size_t x = 0; x < imgRealWidth; x++) {
-			const auto wi = y*dy + x / po_wbs;
-			const auto bi = x % po_wbs;
+        for (size_t x = 0; x < imageWidth; x++) {
+            const auto wi = y * dy + x / bitsPerWord;
+            const auto bi = bitsPerWord - 1 - x % bitsPerWord;
 
             // Set to 1 or 0 depending on the transparency.
-            if (const auto val = img[y*image.height() + x*4 +3]; val > transparencyLimit) {
-                m_memory[wi] |= 1 << bi;
+            if (const auto val = img[y * image.height() + x * 4 + 3]; val > transparencyLimit) {
+                m_memory[wi] |= potrace_word(1) << bi;
             } else {
-                m_memory[wi] &= ~(1 << bi);
+                m_memory[wi] &= ~(potrace_word(1) << bi);
             }
         }
     }
@@ -215,7 +215,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     // Keep pathPointCounts available for that phase.
 
     // Normalize the points within the image.
-    const auto width = static_cast<float>(imgRealWidth);
+    const auto width = static_cast<float>(imageWidth);
     for (auto &p : m_points) {
         p.x /= width;
     }
