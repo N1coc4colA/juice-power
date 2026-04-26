@@ -1,4 +1,4 @@
-#include "engine.h"
+#include "src/graphics/engine.h"
 
 #include <gsl/gsl-lite.hpp>
 
@@ -7,8 +7,6 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
-
-#include <VkBootstrap.h>
 
 #include <fmt/printf.h>
 
@@ -131,20 +129,24 @@ void Engine::init()
 {
 	LOGFN();
 
-	// only one Engine initialization is allowed with the application.
-	assert(m_loadedEngine == nullptr);
-	m_loadedEngine = this;
+    if (m_isInitialized) {
+        return;
+    }
 
-	initSDL();
-	initVulkan();
-	initVMA();
-	initSwapchain();
-	initCommands();
-	initSyncStructures();
-	initDescriptors();
-	initPipelines();
-	initDefaultData();
-	initImgui();
+    // only one Engine initialization is allowed with the application.
+    assert(m_loadedEngine == nullptr);
+    m_loadedEngine = this;
+
+    initSDL();
+    initVulkan();
+    initVMA();
+    initSwapchain();
+    initCommands();
+    initSyncStructures();
+    initDescriptors();
+    initPipelines();
+    initDefaultData();
+    initImgui();
 
     initObjectDataBuffer();
 
@@ -168,6 +170,12 @@ void Engine::initSDL()
     if (m_window == nullptr) {
         throw Failure(FailureType::SDLWindowCreation);
     }
+
+    m_mainDeletionQueue.pushFunction([this]() -> void {
+        SDL_DestroyWindow(m_window);
+        m_window = nullptr;
+        deinitSDL();
+    });
 }
 
 void Engine::deinitSDL()
@@ -213,7 +221,7 @@ void Engine::initVulkan()
               .set_debug_messenger_type(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
               .build();
 
-    const vkb::Instance vkbInstance = instRet.value();
+    vkbInstance = instRet.value();
 
     //store the instance
     m_instance = vkbInstance.instance;
@@ -253,7 +261,7 @@ void Engine::initVulkan()
     enumerateDevices(m_instance);
 
     //create the final Vulkan device
-    const vkb::Device vkbDevice = vkb::DeviceBuilder(physicalDevices.front()).add_pNext(&bufferDeviceAddressFeatures).build().value();
+    vkbDevice = vkb::DeviceBuilder(physicalDevices.front()).add_pNext(&bufferDeviceAddressFeatures).build().value();
 
     // Get the VkDevice handle used in the rest of a Vulkan application
     m_device = vkbDevice.device;
@@ -279,6 +287,24 @@ void Engine::initVulkan()
     if (m_graphicsQueue == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkQueueCreation);
     }
+
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitVulkan(); });
+}
+
+void Engine::deinitVulkan()
+{
+    vkb::destroy_device(vkbDevice);
+    m_device = VK_NULL_HANDLE;
+    m_chosenGPU = VK_NULL_HANDLE;
+
+    SDL_Vulkan_DestroySurface(m_instance, m_surface, nullptr);
+    m_surface = VK_NULL_HANDLE;
+
+    vkb::destroy_instance(vkbInstance);
+    m_instance = VK_NULL_HANDLE;
+    m_debugMessenger = VK_NULL_HANDLE;
+
+    maxResourceSize = 0;
 }
 
 void Engine::initVMA()
@@ -299,7 +325,13 @@ void Engine::initVMA()
         throw Failure(FailureType::VMAInitialisation);
     }
 
-    m_mainDeletionQueue.pushFunction([this]() -> void { vmaDestroyAllocator(m_allocator); });
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitVMA(); });
+}
+
+void Engine::deinitVMA()
+{
+    vmaDestroyAllocator(m_allocator);
+    m_allocator = VK_NULL_HANDLE;
 }
 
 void Engine::initSwapchain()
@@ -373,10 +405,20 @@ void Engine::initSwapchain()
 		throw Failure(FailureType::VMAImageViewCreation, "Depth");
 	}
 
-    m_mainDeletionQueue.pushFunction([this]() -> void {
-        vkDestroyImageView(m_device, m_depthImage.imageView, nullptr);
-        vmaDestroyImage(m_allocator, m_depthImage.image, m_depthImage.allocation);
-    });
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitSwapchain(); });
+}
+
+void Engine::deinitSwapchain()
+{
+    vkDestroyImageView(m_device, m_drawImage.imageView, nullptr);
+    vmaDestroyImage(m_allocator, m_drawImage.image, m_drawImage.allocation);
+    m_drawImage = {};
+
+    vkDestroyImageView(m_device, m_depthImage.imageView, nullptr);
+    vmaDestroyImage(m_allocator, m_depthImage.image, m_depthImage.allocation);
+    m_depthImage = {};
+
+    destroySwapchain();
 }
 
 void Engine::initCommands()
@@ -415,7 +457,34 @@ void Engine::initCommands()
 		throw Failure(FailureType::VkCommandBufferCreation, "Immediate");
 	}
 
-    m_mainDeletionQueue.pushFunction([this]() -> void { vkDestroyCommandPool(m_device, m_immCommandPool, nullptr); });
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitCommands(); });
+}
+
+void Engine::deinitCommands()
+{
+    for (auto &frame : m_frames) {
+        frame.deletionQueue.flush();
+    }
+
+    vkFreeCommandBuffers(m_device, m_immCommandPool, 1, &m_immCommandBuffer);
+    m_immCommandBuffer = VK_NULL_HANDLE;
+
+    vkDestroyCommandPool(m_device, m_immCommandPool, nullptr);
+    m_immCommandPool = VK_NULL_HANDLE;
+
+    std::array<std::function<void(FrameData &)>, 3> funcs = {[&](auto &frame) -> void {
+                                                                 vkFreeCommandBuffers(m_device, frame.commandPool, 1, &frame.mainCommandBuffer);
+                                                             },
+                                                             [&](auto &frame) -> void { vkDestroyCommandPool(m_device, frame.commandPool, nullptr); },
+                                                             [&](auto &frame) -> void { frame = {}; }
+
+    };
+
+    for (const auto &fn : funcs) {
+        for (auto &frame : m_frames) {
+            fn(frame);
+        }
+    }
 }
 
 void Engine::initSyncStructures()
@@ -450,14 +519,34 @@ void Engine::initSyncStructures()
         throw Failure(FailureType::VkFenceCreation, "Immediate");
     }
 
-    m_mainDeletionQueue.pushFunction([this]() -> void { vkDestroyFence(m_device, m_immFence, nullptr); });
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitSyncStructures(); });
+}
+
+void Engine::deinitSyncStructures()
+{
+    vkDestroyFence(m_device, m_immFence, nullptr);
+    m_immFence = VK_NULL_HANDLE;
+
+    std::array<std::function<void(FrameData &)>, 3> funcs = {[&](auto &frame) -> void { vkDestroyFence(m_device, frame.renderFence, nullptr); },
+                                                             [&](auto &frame) -> void {
+                                                                 vkDestroySemaphore(m_device, frame.renderSemaphore, nullptr);
+                                                             },
+                                                             [&](auto &frame) -> void {
+                                                                 vkDestroySemaphore(m_device, frame.swapchainSemaphore, nullptr);
+                                                             }};
+
+    for (const auto &fn : funcs) {
+        for (auto &frame : m_frames) {
+            fn(frame);
+        }
+    }
 }
 
 void Engine::initDescriptors()
 {
-	LOGFN();
+    LOGFN();
 
-	//create a descriptor pool that will hold 10 sets with 1 image each
+    //create a descriptor pool that will hold 10 sets with 1 image each
     constexpr std::array<DescriptorAllocatorGrowable::PoolSizeRatio, 2> sizes = {{
         {.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .ratio = 1.f},
         {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .ratio = 1.f},
@@ -520,29 +609,37 @@ void Engine::initDescriptors()
     }
 
     //make sure both the descriptor allocator and the new layout get cleaned up properly
-    m_mainDeletionQueue.pushFunction([this]() -> void {
-        m_globalDescriptorAllocator.destroyPools(m_device);
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitDescriptors(); });
+}
 
-        vkDestroyDescriptorSetLayout(m_device, m_drawImageDescriptorLayout, nullptr);
-        vkDestroyDescriptorSetLayout(m_device, m_singleImageDescriptorLayout, nullptr);
-        vkDestroyDescriptorSetLayout(m_device, m_lineDescriptorLayout, nullptr);
-        vkDestroyDescriptorSetLayout(m_device, m_pointDescriptorLayout, nullptr);
-    });
+void Engine::deinitDescriptors()
+{
+    m_globalDescriptorAllocator.destroyPools(m_device);
+
+    vkDestroyDescriptorSetLayout(m_device, m_drawImageDescriptorLayout, nullptr);
+    vkDestroyDescriptorSetLayout(m_device, m_singleImageDescriptorLayout, nullptr);
+    vkDestroyDescriptorSetLayout(m_device, m_lineDescriptorLayout, nullptr);
+    vkDestroyDescriptorSetLayout(m_device, m_pointDescriptorLayout, nullptr);
+
+    m_drawImageDescriptorLayout = VK_NULL_HANDLE;
+    m_singleImageDescriptorLayout = VK_NULL_HANDLE;
+    m_lineDescriptorLayout = VK_NULL_HANDLE;
+    m_pointDescriptorLayout = VK_NULL_HANDLE;
 }
 
 void Engine::initPipelines()
 {
-	LOGFN();
+    LOGFN();
 
-	initBackgroundPipelines();
-	initMeshPipeline();
+    initBackgroundPipelines();
+    initMeshPipeline();
 }
 
 void Engine::initMeshPipeline()
 {
-	LOGFN();
+    LOGFN();
 
-	VkShaderModule triangleFragShader = VK_NULL_HANDLE;
+    VkShaderModule triangleFragShader = VK_NULL_HANDLE;
     if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/tex_image.frag.spv", m_device, triangleFragShader)) {
         throw Failure(FailureType::FragmentShader, "Triangle");
     }
@@ -755,44 +852,57 @@ void Engine::initMeshPipeline()
     vkDestroyShaderModule(m_device, pointFragShader, nullptr);
     vkDestroyShaderModule(m_device, pointVertexShader, nullptr);
 
-    m_mainDeletionQueue.pushFunction([&]() -> void {
-        vkDestroyPipelineLayout(m_device, m_meshPipelineLayout, nullptr);
-        vkDestroyPipeline(m_device, m_meshPipeline, nullptr);
+    m_mainDeletionQueue.pushFunction([&]() -> void { deinitMeshPipeline(); });
+}
 
-        vkDestroyPipelineLayout(m_device, m_linePipelineLayout, nullptr);
-        vkDestroyPipeline(m_device, m_linePipeline, nullptr);
+void Engine::deinitMeshPipeline()
+{
+    std::array<std::reference_wrapper<VkPipeline>, 3> pipelines{m_meshPipeline, m_linePipeline, m_pointPipeline};
+    std::array<std::reference_wrapper<VkPipelineLayout>, 3> layouts{m_meshPipelineLayout, m_linePipelineLayout, m_pointPipelineLayout};
 
-        vkDestroyPipelineLayout(m_device, m_pointPipelineLayout, nullptr);
-        vkDestroyPipeline(m_device, m_pointPipeline, nullptr);
-    });
+    for (auto &layout : layouts) {
+        vkDestroyPipelineLayout(m_device, layout, nullptr);
+    }
+
+    for (auto &layout : layouts) {
+        layout.get() = VK_NULL_HANDLE;
+    }
+
+    for (auto &pipeline : pipelines) {
+        vkDestroyPipeline(m_device, pipeline, nullptr);
+    }
+
+    for (auto &pipeline : pipelines) {
+        pipeline.get() = VK_NULL_HANDLE;
+    }
 }
 
 void Engine::initBackgroundPipelines()
 {
-	LOGFN();
+    LOGFN();
 
-	constexpr VkPushConstantRange pushConstant {
-		.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-		.offset = 0,
-		.size = sizeof(ComputePushConstants),
-	};
+    constexpr VkPushConstantRange pushConstant{
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset = 0,
+        .size = sizeof(ComputePushConstants),
+    };
 
-	const VkPipelineLayoutCreateInfo computeLayout {
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		.pNext = nullptr,
-		.setLayoutCount = 1,
-		.pSetLayouts = &m_drawImageDescriptorLayout,
-		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &pushConstant,
-	};
+    const VkPipelineLayoutCreateInfo computeLayout{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .setLayoutCount = 1,
+        .pSetLayouts = &m_drawImageDescriptorLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &pushConstant,
+    };
 
-	vkCheck(vkCreatePipelineLayout(m_device, &computeLayout, nullptr, &m_gradientPipelineLayout));
-	if (m_gradientPipelineLayout == VK_NULL_HANDLE) {
-		throw Failure(FailureType::VkPipelineLayoutCreation, "Gradient");
-	}
+    vkCheck(vkCreatePipelineLayout(m_device, &computeLayout, nullptr, &m_gradientPipelineLayout));
+    if (m_gradientPipelineLayout == VK_NULL_HANDLE) {
+        throw Failure(FailureType::VkPipelineLayoutCreation, "Gradient");
+    }
 
-	//layout code
-	VkShaderModule computeDrawShader = VK_NULL_HANDLE;
+    //layout code
+    VkShaderModule computeDrawShader = VK_NULL_HANDLE;
     if (!Utils::loadShaderModule(COMPILED_SHADERS_DIR "/gradient.comp.spv", m_device, computeDrawShader)) {
         throw Failure(FailureType::ComputeShader);
     }
@@ -819,19 +929,25 @@ void Engine::initBackgroundPipelines()
 
     vkDestroyShaderModule(m_device, computeDrawShader, nullptr);
 
-    m_mainDeletionQueue.pushFunction([this]() -> void {
-        vkDestroyPipelineLayout(m_device, m_gradientPipelineLayout, nullptr);
-        vkDestroyPipeline(m_device, m_gradientPipeline, nullptr);
-    });
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitBackgroundPipelines(); });
+}
+
+void Engine::deinitBackgroundPipelines()
+{
+    vkDestroyPipelineLayout(m_device, m_gradientPipelineLayout, nullptr);
+    vkDestroyPipeline(m_device, m_gradientPipeline, nullptr);
+
+    m_gradientPipelineLayout = VK_NULL_HANDLE;
+    m_gradientPipeline = VK_NULL_HANDLE;
 }
 
 void Engine::initImgui()
 {
-	LOGFN();
+    LOGFN();
 
-	// 1: create descriptor pool for IMGUI
-	//  the size of the pool is very oversize, but it's copied from imgui demo
-	//  itself.
+    // 1: create descriptor pool for IMGUI
+    //  the size of the pool is very oversize, but it's copied from imgui demo
+    //  itself.
     constexpr std::array<VkDescriptorPoolSize, 11> poolSizes = {{{.type = VK_DESCRIPTOR_TYPE_SAMPLER, .descriptorCount = 1000},
                                                                  {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1000},
                                                                  {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = 1000},
@@ -901,25 +1017,30 @@ void Engine::initImgui()
 
     // add destroying of the imgui-created structures
     m_mainDeletionQueue.pushFunction([this, imguiPool]() -> void {
-        ImGui_ImplVulkan_DestroyFontsTexture();
-        ImGui_ImplVulkan_Shutdown();
-        ImGui_ImplSDL3_Shutdown();
-        ImGui::DestroyContext(m_imguiContext);
+        deinitImgui();
         vkDestroyDescriptorPool(m_device, imguiPool, nullptr);
     });
 }
 
+void Engine::deinitImgui()
+{
+    ImGui_ImplVulkan_DestroyFontsTexture();
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext(m_imguiContext);
+}
+
 void Engine::immediateSubmit(const std::function<void(VkCommandBuffer cmd)> &function)
 {
-	LOGFN();
+    LOGFN();
 
-	assert(m_immFence);
-	assert(m_immCommandBuffer);
+    assert(m_immFence);
+    assert(m_immCommandBuffer);
 
-	vkCheck(vkResetFences(m_device, 1, &m_immFence));
-	vkCheck(vkResetCommandBuffer(m_immCommandBuffer, 0));
+    vkCheck(vkResetFences(m_device, 1, &m_immFence));
+    vkCheck(vkResetCommandBuffer(m_immCommandBuffer, 0));
 
-	const VkCommandBuffer cmd = m_immCommandBuffer;
+    const VkCommandBuffer cmd = m_immCommandBuffer;
 
     const VkCommandBufferBeginInfo cmdBeginInfo = Init::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -941,53 +1062,28 @@ void Engine::immediateSubmit(const std::function<void(VkCommandBuffer cmd)> &fun
 
 void Engine::cleanup()
 {
-	LOGFN();
+    LOGFN();
 
-	if (m_isInitialized) {
-		// We need to wait for the GPU to finish until...
-		vkCheck(vkDeviceWaitIdle(m_device));
+    if (m_isInitialized) {
+        // We need to wait for the GPU to finish until...
+        vkCheck(vkDeviceWaitIdle(m_device));
 
-		// we can destroy the command pools.
-		// It may crash the app otherwise.
-        for (const auto &frame : m_frames) {
-            vkDestroyCommandPool(m_device, frame.commandPool, nullptr);
-        }
-        for (auto &frame : m_frames) {
-            //destroy sync objects
-            vkDestroyFence(m_device, frame.renderFence, nullptr);
-            vkDestroySemaphore(m_device, frame.renderSemaphore, nullptr);
-            vkDestroySemaphore(m_device, frame.swapchainSemaphore, nullptr);
-
-            frame.deletionQueue.flush();
-        }
-
-        //flush the global deletion queue
         m_mainDeletionQueue.flush();
 
+#define VMA_USE_DEBUG_LOG
 #ifdef VMA_USE_DEBUG_LOG
 		// Right here because all VMA (de)allocs must all have been performed
 		// just when we finish flushing the main queue.
-		assert(allocationCounter == 0 && "Memory leak detected!");
+        assert(getAllocationsCount() == 0 && "Memory leak detected!");
 #endif
 
-        //destroy swapchain-associated resources
-        destroySwapchain();
-
-        vkDestroyDevice(m_device, nullptr);
-        SDL_Vulkan_DestroySurface(m_instance, m_surface, nullptr);
-        vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
-        vkDestroyInstance(m_instance, nullptr);
-        SDL_DestroyWindow(m_window);
-
-        m_device = VK_NULL_HANDLE;
-        m_instance = VK_NULL_HANDLE;
-        m_surface = VK_NULL_HANDLE;
-        m_debugMessenger = VK_NULL_HANDLE;
-        m_window = nullptr;
+        m_isInitialized = false;
     }
 
     // clear Engine pointer
-    m_loadedEngine = nullptr;
+    if (m_loadedEngine == this) {
+        m_loadedEngine = nullptr;
+    }
 }
 
 void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &commands)
@@ -1020,7 +1116,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
         ImGui::NewFrame();
 
         if (ImGui::Begin("background")) {
-            ImGui::SliderFloat("Render Scale", &m_renderScale, 0.3f, 1.f);
+            ImGui::SliderFloat("Render Scale", &m_renderScale, Config::renderingScaleMin, Config::renderingScaleMax);
 
             /*ComputeEffect &selected = backgroundEffects[currentBackgroundEffect];
 
@@ -1597,18 +1693,22 @@ void Engine::uploadObjectData(const std::span<ObjectData> &objectData)
 
 auto Engine::getDeviceMaxImageSize() const -> uint64_t
 {
-    assert(m_chosenGPU != VK_NULL_HANDLE);
+    if (maxResourceSize == 0) {
+        assert(m_chosenGPU != VK_NULL_HANDLE);
 
-    VkImageFormatProperties props{};
-    vkGetPhysicalDeviceImageFormatProperties(m_chosenGPU,
-                                             VK_FORMAT_R8G8B8A8_UNORM,
-                                             VK_IMAGE_TYPE_2D,
-                                             VK_IMAGE_TILING_OPTIMAL,
-                                             VK_IMAGE_USAGE_SAMPLED_BIT,
-                                             VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
-                                             &props);
+        VkImageFormatProperties props{};
+        vkGetPhysicalDeviceImageFormatProperties(m_chosenGPU,
+                                                 VK_FORMAT_R8G8B8A8_UNORM,
+                                                 VK_IMAGE_TYPE_2D,
+                                                 VK_IMAGE_TILING_OPTIMAL,
+                                                 VK_IMAGE_USAGE_SAMPLED_BIT,
+                                                 VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+                                                 &props);
 
-    return props.maxResourceSize;
+        maxResourceSize = props.maxResourceSize;
+    }
+
+    return maxResourceSize;
 }
 
 auto Engine::uploadMesh(const std::span<const AnimationData> &animations) -> GPUAnimationBuffers
@@ -1780,7 +1880,14 @@ void Engine::initObjectDataBuffer()
 
     m_objectDataBuffer.deviceAddress = vkGetBufferDeviceAddress(m_device, &deviceAddressInfo);
 
-    m_mainDeletionQueue.pushFunction([this]() -> void { destroyBuffer(m_objectDataBuffer.buffer); });
+    m_mainDeletionQueue.pushFunction([this]() -> void { deinitObjectDataBuffer(); });
+}
+
+void Engine::deinitObjectDataBuffer()
+{
+    destroyBuffer(m_objectDataBuffer.buffer);
+    m_objectDataBuffer.buffer = {};
+    m_objectDataBuffer.deviceAddress = 0;
 }
 
 void Engine::initImageDescriptors(const uint32_t imageCount)
@@ -1827,6 +1934,11 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
     if (m_swapchainImages.size() <= 1) {
         throw Failure(FailureType::VkSwapchainImagesCreation);
     }
+
+    m_mainDeletionQueue.pushFunction([&]() -> void {
+        vkb_swapchain.destroy_image_views(m_swapchainImageViews);
+        destroy_swapchain(vkb_swapchain);
+    });
 }
 
 void Engine::destroySwapchain()

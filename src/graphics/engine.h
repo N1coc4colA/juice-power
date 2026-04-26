@@ -9,6 +9,8 @@
 
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
+#include <VkBootstrap.h>
+
 #include "src/graphics/allocatedimage.h"
 #include "src/graphics/descriptors.h"
 #include "src/graphics/structs.h"
@@ -123,28 +125,39 @@ protected:
     static void deinitSDL();
     /// @brief Initializes Vulkan instance/device/swap chain dependencies.
     void initVulkan();
+    void deinitVulkan();
     /// @brief Initializes Vulkan Memory Allocator.
     void initVMA();
+    void deinitVMA();
     /// @brief Initializes swapchain-dependent resources.
     void initSwapchain();
-	/// @brief Initializes command pools and command buffers.
-	void initCommands();
-	/// @brief Initializes semaphores and fences.
-	void initSyncStructures();
-	/// @brief Initializes descriptor allocators and layouts.
-	void initDescriptors();
-	/// @brief Initializes graphics/compute pipelines.
-	void initPipelines();
-	/// @brief Initializes the mesh rendering pipeline.
-	void initMeshPipeline();
-	/// @brief Initializes background rendering pipeline(s).
-	void initBackgroundPipelines();
-	/// @brief Initializes ImGui backends and resources.
-	void initImgui();
-	/// @brief Initializes default fallback textures and samplers.
-	void initDefaultData();
+    void deinitSwapchain();
+    /// @brief Initializes command pools and command buffers.
+    void initCommands();
+    void deinitCommands();
+    /// @brief Initializes semaphores and fences.
+    void initSyncStructures();
+    void deinitSyncStructures();
+    /// @brief Initializes descriptor allocators and layouts.
+    void initDescriptors();
+    void deinitDescriptors();
+    /// @brief Initializes graphics/compute pipelines.
+    void initPipelines();
+    /// @brief Initializes the mesh rendering pipeline.
+    void initMeshPipeline();
+    void deinitMeshPipeline();
+    /// @brief Initializes background rendering pipeline(s).
+    void initBackgroundPipelines();
+    void deinitBackgroundPipelines();
+    /// @brief Initializes ImGui backends and resources.
+    void initImgui();
+    void deinitImgui();
+    /// @brief Initializes default fallback textures and samplers.
+    void initDefaultData();
+    void deinitDefaultData();
     /// @brief Initializes GPU buffer storing object data.
     void initObjectDataBuffer();
+    void deinitObjectDataBuffer();
 
     /// @brief Initializes descriptor sets for loaded images.
     void initImageDescriptors(uint32_t imageCount);
@@ -271,6 +284,9 @@ private:
     SDL_Window *m_window = nullptr;
 
     /* Vulkan */
+
+    vkb::Instance vkbInstance;
+    vkb::Device vkbDevice;
 
     /// @brief Vulkan instance handle.
     VkInstance m_instance = VK_NULL_HANDLE;
@@ -404,6 +420,9 @@ private:
 
     /// @brief GPU object-data buffer wrapper.
     GPUObjectDataBuffer m_objectDataBuffer{};
+
+    /* Caching */
+    mutable VkDeviceSize maxResourceSize = 0;
 
     /* Others */
 
