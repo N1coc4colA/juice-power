@@ -32,7 +32,7 @@ class Map
 {
 public:
     /// @brief Constructs loader from map root path.
-    explicit Map(const std::string &path);
+    explicit Map(std::string path);
 
     /**
 	 * @brief Loads the map & associated resources from path provided to ctor.
