@@ -28,7 +28,12 @@ Orchestrator::Orchestrator()
     init();
 }
 
-Orchestrator::~Orchestrator() = default;
+Orchestrator::~Orchestrator()
+{
+    if (m_instance == this) {
+        m_instance = nullptr;
+    }
+};
 
 auto Orchestrator::get() -> Orchestrator &
 {
