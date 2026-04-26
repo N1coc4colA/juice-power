@@ -5,15 +5,18 @@
 #include <ctrack.hpp>
 
 #include "src/defines.h"
-#include "src/orchestrator.h"
 #include "src/graphics/engine.h"
 #include "src/loaders/map.h"
+#include "src/orchestrator.h"
+#include "src/threadpool.h"
 #include "src/world/scene.h"
 
 auto main(const int argc, char **argv) -> int
 {
 	unused(argv);
 	unused(argc);
+
+    ThreadPool threadPool{};
 
     std::vector<Graphics::Chunk> chunks{};
     auto scene = std::make_shared<World::Scene>(chunks);
