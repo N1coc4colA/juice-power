@@ -22,6 +22,7 @@
 #include "src/graphics/resources.h"
 #include "src/loaders/json.h"
 #include "src/loaders/packing.h"
+#include "src/threadpool.h"
 #include "src/world/scene.h"
 
 namespace fs = std::filesystem;
@@ -31,8 +32,8 @@ namespace algo = algorithms;
 namespace Loaders
 {
 
-Map::Map(const std::string &path)
-    : m_path(path)
+Map::Map(std::string path)
+    : m_path(std::move(path))
 {
     stbi_set_flip_vertically_on_load(true);
 }
@@ -302,55 +303,61 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     resources->images.resize(imagesMap.size());
 
     // Load images and make add relevant data.
-    algo::ImageVectorizer vectorizer{};
-
-    std::unordered_map<std::string, std::tuple<std::vector<glm::vec2>, std::vector<glm::vec2>, std::tuple<glm::vec2, glm::vec2>>> mapped{};
-
-    const uint64_t maxSize = engine->getDeviceMaxImageSize() / 4; // Because we need 4 channels, and each compo on 1 byte.
     std::vector<ImageInfo> infos{};
+    std::unordered_map<std::string, std::tuple<std::vector<glm::vec2>, std::vector<glm::vec2>, std::tuple<glm::vec2, glm::vec2>>> mapped{};
+    const uint64_t maxSize = engine->getDeviceMaxImageSize() / 4; // Because we need 4 channels, and each compo on 1 byte.
+
     infos.resize(imagesMap.size());
 
     /* Source images loading. */ {
         // Fill infos indexed by the image id assigned in imagesMap (entry.second)
-        for (const auto & [fst, snd] : imagesMap) {
+
+        std::vector<std::future<void>> futures{};
+        futures.reserve(imagesMap.size());
+
+        for (const auto &[fst, snd] : imagesMap) {
             const int srcId = snd;
-            ImageInfo inf{.frameId = 0, .x = 0, .y = 0, .id = srcId};
+            const std::string path = assetsDir + fst;
 
-            // This gives an 8-bit per channel.
-            int channelUseless = 0;
-            inf.imgData = stbi_load((assetsDir + fst).c_str(), &inf.width, &inf.height, &channelUseless, 4); // Force 4 channels (RGBA)
+            futures.push_back(ThreadPool::instance().enqueue([path, srcId, maxSize, &infos]() -> void {
+                ImageInfo &inf = infos[srcId];
+                inf = {.frameId = 0, .x = 0, .y = 0, .id = srcId};
 
-            if (!inf.imgData) {
-                for (auto &info : infos) {
-                    if (info.imgData != nullptr) {
-                        stbi_image_free(info.imgData);
+                // This gives an 8-bit per channel.
+                int channels = 0;
+                inf.imgData = stbi_load(path.c_str(), &inf.width, &inf.height, &channels, 4);
+
+                if (!inf.imgData || inf.width <= 0 || inf.height <= 0 || std::cmp_less_equal(maxSize, inf.width * inf.height)) {
+                    if (inf.imgData) {
+                        stbi_image_free(inf.imgData);
                     }
+
+                    throw std::runtime_error("Load failed: " + path); // Or custom error
                 }
+            }));
+        }
 
-                return {Status::OpenError, std::string(__func__) + " " + (assetsDir + fst)};
-            }
-
-            if (std::cmp_less_equal(maxSize, inf.width * inf.height) || inf.width <= 0 || inf.height <= 0) {
-                stbi_image_free(inf.imgData);
-
+        // Wait & check results
+        for (auto &future : futures) {
+            try {
+                future.get();
+            } catch (const std::exception &e) {
+                // Cleanup on error
                 for (auto &info : infos) {
                     if (info.imgData) {
                         stbi_image_free(info.imgData);
                     }
                 }
 
-                return {Status::MissingRequirement,
-                        std::string(__func__) + " " + (assetsDir + fst) + " " + std::to_string(maxSize) + " vs " + std::to_string(inf.width) + ":"
-                            + std::to_string(inf.height)};
+                return {Status::OpenError, e.what()};
             }
-
-            std::cout << "Image [" << inf.id << "]: (" << inf.width << ", " << inf.height << ") at " << (assetsDir + fst) << "\n";
-            infos[static_cast<size_t>(srcId)] = inf;
         }
     }
 
     /* Perform operations related on image data first. */ {
-        for (const auto & [fst, snd] : imagesMap) {
+        algo::ImageVectorizer vectorizer{};
+
+        for (const auto &[fst, snd] : imagesMap) {
             const auto &key = fst;
             const auto idx = snd;
             const auto &imgInfo = infos[static_cast<size_t>(idx)];
@@ -361,8 +368,6 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
                                                               static_cast<size_t>(imgInfo.height)),
                                              4); // Because we have RGBA channels.
 
-            std::cout << "Image [" << imgInfo.id << "]: (" << vectorizer.getMin().x << ", " << vectorizer.getMin().y << ")|(" << vectorizer.getMax().x
-                      << ", " << vectorizer.getMax().y << ")\n";
             mapped.insert({key, {vectorizer.getPoints(), vectorizer.getNormals(), {std::tuple{vectorizer.getMin(), vectorizer.getMax()}}}});
         }
     }
@@ -374,68 +379,48 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     // The packing routine may reorder infos; restore original image-id order so indices stay consistent.
     std::ranges::sort(infos, [](const ImageInfo &a, const ImageInfo &b) -> bool { return a.id < b.id; });
 
-    {
-        int i = 0;
-        for (const auto &[w, h, imagesCount] : imageFrames) {
-            std::cout << "Frame: (" << w << ", " << h << ", " << imagesCount << ")\n";
-
-            for (const auto &info : infos) {
-                if (info.frameId == i) {
-                    std::cout << "(" << info.x << ", " << info.y << ", " << info.width << ", " << info.height << ")\n";
-                }
-            }
-
-            std::cout << std::flush;
-            i++;
-        }
-    }
-
     std::vector<std::vector<stbi_uc>> frameImages;
     frameImages.reserve(imageFrames.size());
 
-    /* Allocate grouped images before-hand */ {
-        for (const auto &frame : imageFrames) {
-            frameImages.emplace_back(static_cast<size_t>(frame.h) * static_cast<size_t>(frame.w) * 4);
-        }
+    /* Allocate grouped images before-hand */
+    for (const auto &frame : imageFrames) {
+        frameImages.emplace_back(static_cast<size_t>(frame.h) * static_cast<size_t>(frame.w) * 4);
     }
 
-    /* Set up mapping */ {
-        resources->groupedImagesMapping.reserve(infos.size());
-        for (const auto &info : infos) {
-            std::cout << "Image [" << info.id << "]: (" << info.width << ", " << info.height << ")\n";
-            resources->groupedImagesMapping.insert({info.id, static_cast<uint32_t>(info.frameId)});
-        }
+    /* Set up mapping */
+    resources->groupedImagesMapping.reserve(infos.size());
+    for (const auto &info : infos) {
+        resources->groupedImagesMapping.insert({info.id, static_cast<uint32_t>(info.frameId)});
     }
 
-    /* Copy data to its right place */ {
-        for (const auto &info : infos) {
-            const auto frameInfo = imageFrames[info.frameId];
-            auto &frame = frameImages[info.frameId];
+    /* Copy data to its right place */
+    for (const auto &info : infos) {
+        const auto frameInfo = imageFrames[info.frameId];
+        auto &frame = frameImages[info.frameId];
 
-            const auto srcWidth = static_cast<size_t>(info.width);
-            const auto srcHeight = static_cast<size_t>(info.height);
-            const auto srcRowBytes = srcWidth * 4;
+        const auto srcWidth = static_cast<size_t>(info.width);
+        const auto srcHeight = static_cast<size_t>(info.height);
+        const auto srcRowBytes = srcWidth * 4;
 
-            const auto frameWidth = static_cast<size_t>(frameInfo.w);
-            const auto frameHeight = static_cast<size_t>(frameInfo.h);
+        const auto frameWidth = static_cast<size_t>(frameInfo.w);
+        const auto frameHeight = static_cast<size_t>(frameInfo.h);
 
-            const size_t frameTotalBytes = frameWidth * frameHeight * 4;
-            const size_t srcTotalytes = srcWidth * srcHeight * 4;
+        const size_t frameTotalBytes = frameWidth * frameHeight * 4;
+        const size_t srcTotalytes = srcWidth * srcHeight * 4;
 
-            for (size_t row = 0; row < srcHeight; ++row) {
-                const auto destRow = static_cast<size_t>(info.y) + row;
-                const auto destCol = static_cast<size_t>(info.x);
+        for (size_t row = 0; row < srcHeight; ++row) {
+            const auto destRow = static_cast<size_t>(info.y) + row;
+            const auto destCol = static_cast<size_t>(info.x);
 
-                const size_t destOffset = (destRow * frameWidth + destCol) * 4;
-                const size_t srcOffset = row * srcRowBytes;
+            const size_t destOffset = (destRow * frameWidth + destCol) * 4;
+            const size_t srcOffset = row * srcRowBytes;
 
-                assert(destRow < frameHeight);
-                assert(destCol + srcWidth <= frameWidth);
-                assert(destOffset + srcRowBytes <= frameTotalBytes);
-                assert(srcOffset + srcRowBytes <= srcTotalytes);
+            assert(destRow < frameHeight);
+            assert(destCol + srcWidth <= frameWidth);
+            assert(destOffset + srcRowBytes <= frameTotalBytes);
+            assert(srcOffset + srcRowBytes <= srcTotalytes);
 
-                std::memcpy(&frame.data()[destOffset], &info.imgData[srcOffset], srcRowBytes);
-            }
+            std::memcpy(&frame.data()[destOffset], &info.imgData[srcOffset], srcRowBytes);
         }
     }
 
@@ -450,26 +435,18 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
                                                           VK_IMAGE_USAGE_SAMPLED_BIT);
     }
 
-    /* Update animations' data */ {
-        std::cout << "Updating animations...\n";
-        for (size_t ai = 0; ai < resources->animations.size(); ++ai) {
-            auto &anim = resources->animations[ai];
-            const auto &info = infos[anim.imageId];
-            const auto &frame = imageFrames[info.frameId];
+    /* Update animations' data */
+    std::cout << "Updating animations...\n";
+    for (auto &anim : resources->animations) {
+        const auto &info = infos[anim.imageId];
+        const auto &frame = imageFrames[info.frameId];
 
-            anim.imageInfo = glm::vec4{
-                static_cast<double>(info.x) / static_cast<double>(frame.w),
-                static_cast<double>(info.y) / static_cast<double>(frame.h),
-                static_cast<double>(info.width) / static_cast<double>(frame.w),
-                static_cast<double>(info.height) / static_cast<double>(frame.h),
-            };
-
-            std::cout << "Animation index " << ai << ": imageId(source)=" << anim.imageId
-                      << ", mappedFrame=" << info.frameId
-                      << ", grid=" << anim.gridRows << "x" << anim.gridColumns
-                      << ", frames=" << anim.framesCount << ", interval=" << anim.frameInterval
-                      << ", imageInfo=(" << anim.imageInfo.x << ", " << anim.imageInfo.y << ", " << anim.imageInfo.z << ", " << anim.imageInfo.w << ")\n";
-        }
+        anim.imageInfo = glm::vec4{
+            static_cast<double>(info.x) / static_cast<double>(frame.w),
+            static_cast<double>(info.y) / static_cast<double>(frame.h),
+            static_cast<double>(info.width) / static_cast<double>(frame.w),
+            static_cast<double>(info.height) / static_cast<double>(frame.h),
+        };
     }
 
     for (const auto &res : map.resources) {
@@ -479,12 +456,6 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
 
         auto points = std::get<0>(mapped[res.source]);
         auto AB = std::get<2>(mapped[res.source]);
-
-        std::cout << "Source BB: " << res.source << '\n';
-        for (const auto &p : points) {
-            std::cout << '(' << p.x << ", " << p.y << ") ";
-        }
-        std::cout << '\n';
 
         for (auto &p : points) {
             p.x *= w;
@@ -497,16 +468,6 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
         std::get<1>(AB).x *= w;
         std::get<0>(AB).y *= h;
         std::get<1>(AB).y *= h;
-
-        std::cout << "\n======================\n";
-        std::cout << "W: " << w << ", H: " << h << '\n';
-        std::cout << "Resource with bounding box: (" << std::get<0>(AB).x << ", " << std::get<0>(AB).y << ")  (" << std::get<1>(AB).x << ", "
-                  << std::get<1>(AB).y << ")\n";
-
-        for (const auto &point : points) {
-            std::cout << '(' << point.x << ", " << point.y << ") ";
-        }
-        std::cout << '\n';
 
         resources->boundingBoxes.push_back(AB);
         resources->types.push_back(res.type);
@@ -531,12 +492,6 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
                 }
             }
         }
-
-        std::cout << "Result BB: " << res.source << '\n';
-        for (const auto &p : points) {
-            std::cout << '(' << p.x << ", " << p.y << ") ";
-        }
-        std::cout << '\n';
 
         resources->borders.push_back(points);
         resources->normals.push_back(scaledNormals);
@@ -604,7 +559,7 @@ auto Map::load2(const std::shared_ptr<Graphics::Engine> &engine, const std::shar
 
     // Now we may need to load from external JSON source file (Resources)
     // Or load from external sources the chunk files.
-    if (const auto status = loadResources(paths, names, map);std::get<0>(status) != Status::Ok) {
+    if (const auto status = loadResources(paths, names, map); std::get<0>(status) != Status::Ok) {
         return status;
     }
 
