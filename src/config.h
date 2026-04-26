@@ -23,6 +23,10 @@ static constexpr float simSpeed = 0.5;
 static constexpr int simTick = 60;
 /// @brief Numerical epsilon used in collision/math comparisons.
 static constexpr float physicsEpsilon = 0.00001f;
+/// @brief Minimum scaling option when rendering the window.
+static constexpr float renderingScaleMin = 0.3f;
+/// @brief Maximum scaling option when rendering the window.
+static constexpr float renderingScaleMax = 1.f;
 
 } // namespace Config
 
