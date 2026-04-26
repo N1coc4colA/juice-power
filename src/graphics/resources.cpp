@@ -94,5 +94,12 @@ void Resources::cleanup(const std::shared_ptr<Engine> &engine)
     normals.clear();
     boundingBoxes.clear();
     borderOffsets.clear();
+    animations.clear();
+    groupedImagesMapping.clear();
+
+    animationsBuffer = {};
+    meshBuffers = {};
+    linesBuffer = {};
+    pointsBuffer = {};
 }
 }
