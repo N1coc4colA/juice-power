@@ -221,6 +221,10 @@ void Engine::initVulkan()
               .set_debug_messenger_type(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
               .build();
 
+    if (!instRet.has_value()) {
+        throw Failure(FailureType::VkDeviceBuild, instRet.error().message());
+    }
+
     vkbInstance = instRet.value();
 
     //store the instance

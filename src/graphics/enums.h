@@ -24,6 +24,7 @@ enum class FailureType : uint8_t {
     SDLVkSurfaceCreation, ///< Failed to create Vulkan surface from SDL window
 
     // Vulkan resource creation failures
+    VkDeviceBuild,              ///< Instanciation of the Vulkan device
     VkBufferAllocation,         ///< Failed to allocate Vulkan buffer
     VkCommandBufferCreation,    ///< Failed to create command buffer(s)
     VkCommandPoolCreation,      ///< Failed to create command pool
