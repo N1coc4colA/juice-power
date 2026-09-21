@@ -1,5 +1,6 @@
 #include "src/physics/engine.h"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <ranges>
@@ -19,6 +20,7 @@ constexpr double pi3_4 = M_PI_2 + M_PI;
 
 static auto prevChrono = std::chrono::system_clock::now();
 static Physics::ComputeState computeState{};
+constexpr float kBox2DStep = 1.0f / 60.0f;
 }
 
 constexpr auto epsiloned(const auto &t)
@@ -34,6 +36,78 @@ Engine::Engine() = default;
 void Engine::setScene(const std::shared_ptr<World::Scene> &scene)
 {
     m_scene = scene;
+    rebuildWorld();
+}
+
+void Engine::rebuildWorld()
+{
+    m_world = std::make_unique<b2World>(b2Vec2{0.0f, 9.81f * 0.1f});
+    m_bodies.clear();
+
+    if (!m_scene) {
+        return;
+    }
+
+    m_bodies.resize(m_scene->entities.size(), nullptr);
+
+    for (size_t i = 0; i < m_scene->entities.size(); ++i) {
+        auto &setup = m_scene->entities.at<Entity::PhysicsSetup>(i);
+        auto &cState = m_scene->entities.at<Entity::PhysicsCartesianState>(i);
+        auto &constraints = m_scene->entities.at<Entity::PhysicsConstraints>(i);
+        auto &bbox = m_scene->entities.at<Entity::AABB>(i);
+
+        b2BodyDef bodyDef;
+        bodyDef.type = setup.isNotFixed ? b2_dynamicBody : b2_staticBody;
+        bodyDef.position.Set(cState.position.x, cState.position.y);
+        bodyDef.angle = setup.angle;
+        bodyDef.linearVelocity.Set(cState.velocity.x, cState.velocity.y);
+        bodyDef.angularVelocity = m_scene->entities.at<Entity::PhysicsAngularState>(i).angularVelocity;
+        bodyDef.gravityScale = setup.isNotFixed ? 1.0f : 0.0f;
+
+        auto *body = m_world->CreateBody(&bodyDef);
+        if (body == nullptr) {
+            continue;
+        }
+
+        const auto half = (bbox.max - bbox.min) * 0.5f;
+        const auto halfX = std::max(half.x, 0.5f);
+        const auto halfY = std::max(half.y, 0.5f);
+
+        b2PolygonShape shape;
+        shape.SetAsBox(halfX, halfY);
+
+        b2FixtureDef fixtureDef;
+        fixtureDef.shape = &shape;
+        fixtureDef.density = std::max(1.0f, setup.mass > 0.0f ? 1.0f / setup.mass : 1.0f);
+        fixtureDef.friction = constraints.friction;
+        fixtureDef.restitution = setup.elasticity;
+        body->CreateFixture(&fixtureDef);
+
+        body->SetFixedRotation(false);
+        m_bodies[i] = body;
+    }
+}
+
+void Engine::syncSceneFromBodies()
+{
+    if (!m_scene || !m_world || m_scene->entities.empty()) {
+        return;
+    }
+
+    for (size_t i = 0; i < m_scene->entities.size(); ++i) {
+        auto *body = m_bodies.at(i);
+        if (body == nullptr) {
+            continue;
+        }
+
+        auto &cState = m_scene->entities.at<Entity::PhysicsCartesianState>(i);
+        auto &aState = m_scene->entities.at<Entity::PhysicsAngularState>(i);
+
+        const auto bodyPosition = body->GetPosition();
+        cState.position = {bodyPosition.x, bodyPosition.y};
+        cState.velocity = {body->GetLinearVelocity().x, body->GetLinearVelocity().y};
+        aState.angularVelocity = body->GetAngularVelocity();
+    }
 }
 
 void Engine::setInputState(Input::InnerState &state)
@@ -194,25 +268,23 @@ void Engine::compute()
 {
     CTRACK;
 
-    const auto currentTime = std::chrono::system_clock::now();
-    const auto delta = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count()) / 400.0; // 200.0
-
-	// It's true that sometimes, delta is so small that it's 0, so we have to skip the operation.
-	if (delta == 0.) {
-		return;
-	}
-
-    /* Resolve collisions */ {
-        m_scene->collisions.clear();
-        m_scene->entities.visit(CollisionReset());
-        resolveAllCollisions();
+    if (!m_scene || !m_world) {
+        return;
     }
 
-    /* Position update */ {
-        ObjectCompute computeVisitor(delta);
-        m_scene->entities.visit(computeVisitor);
+    const auto currentTime = std::chrono::system_clock::now();
+    const auto delta = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count()) / 1000.0;
+
+    if (delta <= 0.0) {
+        return;
+    }
+
+    if (m_inputState != nullptr) {
         updateMainPosition();
     }
+
+    m_world->Step(static_cast<float>(std::min(delta, static_cast<double>(kBox2DStep))), 8, 3);
+    syncSceneFromBodies();
 
     prevChrono = currentTime;
 }
@@ -287,26 +359,28 @@ void Engine::run(std::atomic<uint64_t> &commands)
 
 void Engine::updateMainPosition()
 {
-    constexpr auto horVel = 0.05f;
-    constexpr auto vertVel = 0.01f;
+    if (!m_scene || !m_world || m_scene->entities.empty() || m_inputState == nullptr) {
+        return;
+    }
 
-    Entity::Vector<int, float, bool> vect0{};
+    auto *body = m_bodies.empty() ? nullptr : m_bodies.front();
+    if (body == nullptr) {
+        return;
+    }
+
+    constexpr float forceMagnitude = 40.0f;
 
     if (m_inputState->left.unsafeGet().state) {
-        std::cout << "left\n";
-        m_scene->entities.at<Entity::PhysicsForces>(0).thrusts.push_back(Entity::Thrust{.vector = {horVel, 0.f, 0.f}});
+        body->ApplyForceToCenter({-forceMagnitude, 0.0f}, true);
     }
     if (m_inputState->right.unsafeGet().state) {
-        std::cout << "right\n";
-        m_scene->entities.at<Entity::PhysicsForces>(0).thrusts.push_back(Entity::Thrust{.vector = {-horVel, 0.f, 0.f}});
+        body->ApplyForceToCenter({forceMagnitude, 0.0f}, true);
     }
     if (m_inputState->down.unsafeGet().state) {
-        std::cout << "down\n";
-        m_scene->entities.at<Entity::PhysicsCartesianState>(0).velocity.x -= vertVel;
+        body->ApplyForceToCenter({0.0f, forceMagnitude}, true);
     }
-    if (m_inputState->up.unsafeGet().state && !m_inputState->up.unsafeGet().hold) {
-        std::cout << "up\n";
-        m_scene->entities.at<Entity::PhysicsCartesianState>(0).velocity.x += vertVel;
+    if (m_inputState->up.unsafeGet().state) {
+        body->ApplyForceToCenter({0.0f, -forceMagnitude}, true);
     }
 }
 }

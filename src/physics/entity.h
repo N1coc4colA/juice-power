@@ -16,7 +16,7 @@
 namespace Physics
 {
 
-/// @brief State vector used by Runge-Kutta integration.
+/// @brief Legacy state vector retained for compatibility with the older helper API.
 using state_type = std::array<double, 3>;
 using ComputeParameters = ReferencesSet<Entity::PhysicsCartesianState,
                                         Entity::PhysicsAngularState,

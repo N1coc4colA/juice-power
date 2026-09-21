@@ -2,6 +2,10 @@
 #define JP_PHYSICS_ENGINE_H
 
 #include <atomic>
+#include <memory>
+#include <vector>
+
+#include <box2d/box2d.h>
 
 #include "src/world/scene.h"
 
@@ -44,7 +48,15 @@ private:
     std::shared_ptr<World::Scene> m_scene = nullptr;
     /// @brief Borrowed input state pointer.
     Input::InnerState *m_inputState = nullptr;
+    /// @brief Box2D world used for all scene simulation.
+    std::unique_ptr<b2World> m_world = nullptr;
+    /// @brief Bodies backing the scene entities.
+    std::vector<b2Body *> m_bodies{};
 
+    /// @brief Rebuild the Box2D world to match the current scene.
+    void rebuildWorld();
+    /// @brief Synchronizes Box2D body state back to scene entity state.
+    void syncSceneFromBodies();
     /// @brief Emits debug dump of simulation state.
     void dump() const;
 
