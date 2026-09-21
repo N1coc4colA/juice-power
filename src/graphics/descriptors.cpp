@@ -29,6 +29,7 @@ void DescriptorLayoutBuilder::clear()
 auto DescriptorLayoutBuilder::build(const VkDevice device, const VkShaderStageFlags shaderStages) -> VkDescriptorSetLayout
 {
 	assert(device != VK_NULL_HANDLE);
+    assert(shaderStages != 0);
 	assert(shaderStages != VK_PIPELINE_LAYOUT_CREATE_FLAG_BITS_MAX_ENUM);
 
     for (auto &binding : bindings) {
