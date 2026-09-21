@@ -139,7 +139,7 @@ void DescriptorWriter::updateSet(const VkDevice device, const VkDescriptorSet se
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
-void DescriptorAllocatorGrowable::init(const VkDevice device, const uint32_t initialSets, const std::span<const PoolSizeRatio> &poolRatios)
+/*void DescriptorAllocatorGrowable::init(const VkDevice device, const uint32_t initialSets, const std::span<const PoolSizeRatio> &poolRatios)
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(initialSets != 0);
@@ -151,6 +151,23 @@ void DescriptorAllocatorGrowable::init(const VkDevice device, const uint32_t ini
     const VkDescriptorPool newPool = createPool(device, initialSets, poolRatios);
 
     m_readyPools.push_back(newPool);
+}*/
+
+void DescriptorAllocatorGrowable::init(const VkDevice device,
+                                       const uint32_t initialSets,
+                                       const std::span<const PoolSizeRatio> &poolRatios)
+{
+    assert(device != VK_NULL_HANDLE);
+    assert(initialSets != 0);
+    assert(!poolRatios.empty());
+
+    m_ratios.assign(poolRatios.begin(), poolRatios.end());
+
+    // Start at `initialSets`; getPool() grows this on subsequent pool
+    // creations so that we amortize pool-creation cost over time.
+    m_setsPerPool = initialSets;
+
+    m_readyPools.push_back(createPool(device, initialSets, poolRatios));
 }
 
 void DescriptorAllocatorGrowable::clearPools(const VkDevice device)
@@ -183,7 +200,7 @@ void DescriptorAllocatorGrowable::destroyPools(const VkDevice device)
 	m_fullPools.clear();
 }
 
-auto DescriptorAllocatorGrowable::getPool(const VkDevice device) -> VkDescriptorPool
+/*auto DescriptorAllocatorGrowable::getPool(const VkDevice device) -> VkDescriptorPool
 {
 	assert(device != VK_NULL_HANDLE);
 
@@ -203,9 +220,28 @@ auto DescriptorAllocatorGrowable::getPool(const VkDevice device) -> VkDescriptor
     }
 
     return newPool;
+}*/
+
+auto DescriptorAllocatorGrowable::getPool(const VkDevice device) -> VkDescriptorPool
+{
+    assert(device != VK_NULL_HANDLE);
+    assert(m_setsPerPool != 0 && "init() was not called on this allocator!");
+
+    if (!m_readyPools.empty()) {
+        VkDescriptorPool pool = m_readyPools.back();
+        m_readyPools.pop_back();
+        return pool;
+    }
+
+    // No ready pool: create one, then grow the target for the *next* pool.
+    VkDescriptorPool newPool = createPool(device, m_setsPerPool, m_ratios);
+    m_setsPerPool = std::min(
+        static_cast<uint32_t>(static_cast<float>(m_setsPerPool) * growthSize),
+        maxSetsPerPool);
+    return newPool;
 }
 
-auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool
+/*auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool
 {
     assert(device != VK_NULL_HANDLE);
     assert(setCount != 0);
@@ -251,9 +287,46 @@ auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32
     vkCheck(vkCreateDescriptorPool(device, &pool_info, nullptr, &newPool));
 
     return newPool;
+}*/
+
+// descriptors.cpp
+auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool
+{
+    assert(device != VK_NULL_HANDLE);
+    assert(setCount != 0);
+    assert(!poolRatios.empty());
+
+    constexpr uint32_t safetyFactor = 4;
+
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    poolSizes.reserve(poolRatios.size());
+
+    for (const auto &ratio : poolRatios) {
+        const auto baseCount = static_cast<uint32_t>(
+            std::ceil(ratio.ratio * static_cast<float>(setCount)));
+        const auto count = std::max(baseCount * safetyFactor, 1u);
+
+        poolSizes.push_back(VkDescriptorPoolSize{
+            .type = ratio.type,
+            .descriptorCount = count,
+        });
+    }
+
+    const VkDescriptorPoolCreateInfo pool_info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .maxSets = setCount,
+        .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+        .pPoolSizes = poolSizes.data(),
+    };
+
+    VkDescriptorPool newPool = VK_NULL_HANDLE;
+    vkCheck(vkCreateDescriptorPool(device, &pool_info, nullptr, &newPool));
+    return newPool;
 }
 
-auto DescriptorAllocatorGrowable::allocate(const VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
+/*auto DescriptorAllocatorGrowable::allocate(const VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(layout != VK_NULL_HANDLE);
@@ -285,6 +358,43 @@ auto DescriptorAllocatorGrowable::allocate(const VkDevice device, VkDescriptorSe
 
 	m_readyPools.push_back(poolToUse);
 	return ds;
+}*/
+
+// descriptors.cpp
+auto DescriptorAllocatorGrowable::allocate(const VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
+{
+    assert(device != VK_NULL_HANDLE);
+    assert(layout != VK_NULL_HANDLE);
+    assert(m_setsPerPool != 0 && "init() was not called on this allocator!");
+
+    VkDescriptorPool poolToUse = getPool(device);
+
+    VkDescriptorSetAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .descriptorPool = poolToUse,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &layout,
+    };
+
+    VkDescriptorSet ds = VK_NULL_HANDLE;
+    const VkResult result = vkAllocateDescriptorSets(device, &allocInfo, &ds);
+
+    // On ANY failure, retire the pool and try once with a fresh one. AMD
+    // (and Intel) drivers may return vendor-specific codes or composites
+    // that don't match VK_ERROR_OUT_OF_POOL_MEMORY exactly — matching on
+    // specific enum values is fragile. If the pool "just didn't work", a
+    // fresh one is the right answer.
+    if (result != VK_SUCCESS) {
+        m_fullPools.push_back(poolToUse);
+
+        poolToUse = getPool(device);
+        allocInfo.descriptorPool = poolToUse;
+        vkCheck(vkAllocateDescriptorSets(device, &allocInfo, &ds));
+    }
+
+    m_readyPools.push_back(poolToUse);
+    return ds;
 }
 
 void DescriptorAllocatorFreeable::init(const VkDevice device, const uint32_t maxSets, const VkDescriptorType type)
@@ -335,12 +445,13 @@ auto DescriptorAllocatorFreeable::allocate(const VkDevice device, const VkDescri
     return ds;
 }
 
-void DescriptorAllocatorFreeable::free(const VkDevice device, const VkDescriptorSet set)
+void DescriptorAllocatorFreeable::free(const VkDevice device, VkDescriptorSet &set)
 {
     assert(device != VK_NULL_HANDLE);
     assert(set != VK_NULL_HANDLE);
     assert(m_pool != VK_NULL_HANDLE);
 
     vkFreeDescriptorSets(device, m_pool, 1, &set);
+    set = VK_NULL_HANDLE;
 }
 }

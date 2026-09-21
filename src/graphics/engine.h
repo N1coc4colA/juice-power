@@ -238,7 +238,7 @@ private:
 	 * @brief Destroys cached image resources and frees associated descriptor set.
 	 * @param img Cached image entry to destroy.
 	 */
-    void destroyImage(const CachedImage &img);
+    void destroyImage(CachedImage &img);
 
     /**
 	 * @brief Creates a GPU buffer
@@ -285,6 +285,7 @@ private:
 
     /* Vulkan */
 
+    vkb::Swapchain vkbSwapchain;
     vkb::Instance vkbInstance;
     vkb::Device vkbDevice;
 
@@ -361,8 +362,6 @@ private:
     VkPipelineLayout m_pointPipelineLayout = VK_NULL_HANDLE;
     /// @brief Point rendering pipeline.
     VkPipeline m_pointPipeline = VK_NULL_HANDLE;
-    /// @brief Descriptor layout used by point pipeline.
-    VkDescriptorSetLayout m_pointDescriptorLayout = VK_NULL_HANDLE;
 
     // Bg
     /// @brief Background gradient pipeline.
@@ -380,6 +379,8 @@ private:
 
     /* Direct rendering */
 
+    /// @brief Tells if an immediate submit is currently being performed.
+    bool m_immInFlight = false;
     /// @brief Fence for immediate submit helper.
     VkFence m_immFence = VK_NULL_HANDLE;
     /// @brief Command buffer for immediate submit helper.
@@ -392,8 +393,6 @@ private:
 
     /* Images */
 
-    /// @brief 1x1 white fallback texture.
-    AllocatedImage m_whiteImage{};
     /// @brief Checkerboard error fallback texture.
     AllocatedImage m_errorCheckerboardImage{};
 

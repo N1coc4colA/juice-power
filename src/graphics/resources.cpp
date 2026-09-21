@@ -82,7 +82,7 @@ void Resources::cleanup(const std::shared_ptr<Engine> &engine)
 
     meshBuffers = {};
 
-    for (const auto &img : images) {
+    for (auto &img : images) {
         engine->destroyImage(img);
     }
     engine->deinitImageDescriptors();

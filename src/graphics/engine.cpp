@@ -464,7 +464,7 @@ void Engine::initCommands()
     m_mainDeletionQueue.pushFunction([this]() -> void { deinitCommands(); });
 }
 
-void Engine::deinitCommands()
+/*void Engine::deinitCommands()
 {
     for (auto &frame : m_frames) {
         frame.deletionQueue.flush();
@@ -488,6 +488,27 @@ void Engine::deinitCommands()
         for (auto &frame : m_frames) {
             fn(frame);
         }
+    }
+}*/
+
+void Engine::deinitCommands()
+{
+    for (auto &frame : m_frames) {
+        frame.deletionQueue.flush();
+    }
+
+    vkFreeCommandBuffers(m_device, m_immCommandPool, 1, &m_immCommandBuffer);
+    m_immCommandBuffer = VK_NULL_HANDLE;
+
+    vkDestroyCommandPool(m_device, m_immCommandPool, nullptr);
+    m_immCommandPool = VK_NULL_HANDLE;
+
+    for (auto &frame : m_frames) {
+        vkFreeCommandBuffers(m_device, frame.commandPool, 1, &frame.mainCommandBuffer);
+        vkDestroyCommandPool(m_device, frame.commandPool, nullptr);
+
+        frame.mainCommandBuffer = VK_NULL_HANDLE;
+        frame.commandPool       = VK_NULL_HANDLE;
     }
 }
 
@@ -590,7 +611,7 @@ void Engine::initDescriptors()
         frame.frameDescriptors = DescriptorAllocatorGrowable();
         frame.frameDescriptors.init(m_device, frameInitialSetCount, frameSizes);
 
-        m_mainDeletionQueue.pushFunction([this, &frame]() -> void { frame.frameDescriptors.destroyPools(m_device); });
+        m_mainDeletionQueue.pushFunction([this, framePtr = &frame]() -> void { framePtr->frameDescriptors.destroyPools(m_device); });
     }
 
     {
@@ -623,12 +644,10 @@ void Engine::deinitDescriptors()
     vkDestroyDescriptorSetLayout(m_device, m_drawImageDescriptorLayout, nullptr);
     vkDestroyDescriptorSetLayout(m_device, m_singleImageDescriptorLayout, nullptr);
     vkDestroyDescriptorSetLayout(m_device, m_lineDescriptorLayout, nullptr);
-    vkDestroyDescriptorSetLayout(m_device, m_pointDescriptorLayout, nullptr);
 
     m_drawImageDescriptorLayout = VK_NULL_HANDLE;
     m_singleImageDescriptorLayout = VK_NULL_HANDLE;
     m_lineDescriptorLayout = VK_NULL_HANDLE;
-    m_pointDescriptorLayout = VK_NULL_HANDLE;
 }
 
 void Engine::initPipelines()
@@ -1040,6 +1059,9 @@ void Engine::immediateSubmit(const std::function<void(VkCommandBuffer cmd)> &fun
 
     assert(m_immFence);
     assert(m_immCommandBuffer);
+    assert(!m_immInFlight);
+
+    m_immInFlight = true;
 
     vkCheck(vkResetFences(m_device, 1, &m_immFence));
     vkCheck(vkResetCommandBuffer(m_immCommandBuffer, 0));
@@ -1062,6 +1084,8 @@ void Engine::immediateSubmit(const std::function<void(VkCommandBuffer cmd)> &fun
     vkCheck(vkQueueSubmit2(m_graphicsQueue, 1, &submit, m_immFence));
 
     vkCheck(vkWaitForFences(m_device, 1, &m_immFence, true, standardInfiniteVkTimeout));
+
+    m_immInFlight = false;
 }
 
 void Engine::cleanup()
@@ -1191,7 +1215,15 @@ void Engine::draw()
     assert(currFrame.renderFence != VK_NULL_HANDLE);
     // wait until the gpu has finished rendering the last frame. Timeout of 1
     // second
-    vkCheck(vkWaitForFences(m_device, 1, &currFrame.renderFence, true, standardVkTimeout));
+    {
+        auto result = vkWaitForFences(m_device, 1, &currFrame.renderFence, true, standardVkTimeout);
+        if (result == VK_TIMEOUT) {
+            // Very unlikely, more like a bug, but let's try it just in case.
+            result = vkWaitForFences(m_device, 1, &currFrame.renderFence, true, standardVkTimeout);
+        }
+        vkCheck(result);
+    }
+
     currFrame.deletionQueue.flush();
     currFrame.frameDescriptors.clearPools(m_device);
 
@@ -1822,12 +1854,8 @@ void Engine::initDefaultData()
 {
     LOGFN();
 
-    //3 default textures, white, grey, black. 1 pixel each
-    const uint32_t white = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
-    const uint32_t black = glm::packUnorm4x8(glm::vec4(1.f, 1.f, 1.f, 1.f));
-    m_whiteImage = createImage(&white, VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
-
     //checkerboard image
+    const uint32_t black = glm::packUnorm4x8(glm::vec4(0.f, 0.f, 0.f, 1.f));
     const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
     constexpr int imgSize = 16;
     std::array<uint32_t, static_cast<size_t>(imgSize * imgSize)> pixels{}; //for 16x16 checkerboard texture
@@ -1860,7 +1888,6 @@ void Engine::initDefaultData()
         vkDestroySampler(m_device, m_defaultSamplerNearest, nullptr);
         vkDestroySampler(m_device, m_defaultSamplerLinear, nullptr);
 
-        destroyImage(m_whiteImage);
         destroyImage(m_errorCheckerboardImage);
     });
 }
@@ -1916,7 +1943,7 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
 
     m_swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
-    vkb::Swapchain vkb_swapchain = swapchain_builder.use_default_format_selection()
+    vkbSwapchain = swapchain_builder.use_default_format_selection()
                                        .set_desired_format(
                                            VkSurfaceFormatKHR{.format = m_swapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
                                        //use vsync present mode
@@ -1927,10 +1954,10 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
                                        .value();
 
     //store swap chain and its related images
-    m_swapchain = vkb_swapchain.swapchain;
-    m_swapchainImages = vkb_swapchain.get_images().value();
-    m_swapchainImageViews = vkb_swapchain.get_image_views().value();
-    m_swapchainExtent = vkb_swapchain.extent;
+    m_swapchain = vkbSwapchain.swapchain;
+    m_swapchainImages = vkbSwapchain.get_images().value();
+    m_swapchainImageViews = vkbSwapchain.get_image_views().value();
+    m_swapchainExtent = vkbSwapchain.extent;
 
     if (m_swapchain == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkSwapchainCreation);
@@ -1939,22 +1966,28 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
         throw Failure(FailureType::VkSwapchainImagesCreation);
     }
 
-    m_mainDeletionQueue.pushFunction([&]() -> void {
-        vkb_swapchain.destroy_image_views(m_swapchainImageViews);
-        destroy_swapchain(vkb_swapchain);
-    });
+    /*m_mainDeletionQueue.pushFunction([&]() -> void {
+        vkbSwapchain.destroy_image_views(m_swapchainImageViews);
+        destroy_swapchain(vkbSwapchain);
+    });*/
 }
 
 void Engine::destroySwapchain()
 {
     LOGFN();
 
-    vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+    if (m_swapchain != VK_NULL_HANDLE) {
+        vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+        m_swapchain = VK_NULL_HANDLE;
+    }
 
-    // destroy swap chain resources
-    for (const auto &iv : m_swapchainImageViews) {
+    for (const auto iv : m_swapchainImageViews) {
         vkDestroyImageView(m_device, iv, nullptr);
     }
+    m_swapchainImageViews.clear();
+    m_swapchainImages.clear();
+
+    vkbSwapchain = {};
 }
 
 void Engine::resizeSwapchain()
@@ -2075,7 +2108,7 @@ void Engine::destroyImage(const AllocatedImage &img)
     vmaDestroyImage(m_allocator, img.image, img.allocation);
 }
 
-void Engine::destroyImage(const CachedImage &img)
+void Engine::destroyImage(CachedImage &img)
 {
     LOGFN();
 

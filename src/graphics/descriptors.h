@@ -98,6 +98,7 @@ struct DescriptorWriter
  * Manages a single descriptor pool with fixed ratios of descriptor types.
  * More efficient than the growable version when descriptor requirements are known.
  */
+// [TODO] Delete this unused class.
 struct DescriptorAllocator
 {
 	/**
@@ -205,7 +206,7 @@ private:
     /// @brief Pools ready for new allocations.
     std::vector<VkDescriptorPool> m_readyPools{};
     /// @brief Current set count target per pool.
-    uint32_t m_setsPerPool = -1;
+    uint32_t m_setsPerPool = 0;
 };
 
 /**
@@ -224,7 +225,7 @@ struct DescriptorAllocatorFreeable
     /// @brief Allocates one descriptor set.
     auto allocate(VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet;
     /// @brief Frees one descriptor set.
-    void free(VkDevice device, VkDescriptorSet set);
+    void free(VkDevice device, VkDescriptorSet &set);
 
 private:
     /// @brief Backing Vulkan descriptor pool.
