@@ -79,7 +79,10 @@ CMakeLists.txt.user*
 .pch/
 .rcc/
 .uic/
+.cache/
+.idea/
 /build*/
+/submodules/
 
 # Qt Creator files
 CMakeLists.txt.user
