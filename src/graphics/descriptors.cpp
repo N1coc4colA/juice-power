@@ -204,17 +204,38 @@ auto DescriptorAllocatorGrowable::getPool(const VkDevice device) -> VkDescriptor
     return newPool;
 }
 
-auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios)
-    -> VkDescriptorPool
+auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32_t setCount, const std::span<const PoolSizeRatio> &poolRatios) -> VkDescriptorPool
 {
-	assert(device != VK_NULL_HANDLE);
-	assert(setCount != 0);
+    assert(device != VK_NULL_HANDLE);
+    assert(setCount != 0);
 
     std::vector<VkDescriptorPoolSize> poolSizes{};
     poolSizes.reserve(poolRatios.size());
 
-    std::ranges::transform(poolRatios, poolSizes.begin(), [setCount](const auto &ratio) -> auto {
-        return VkDescriptorPoolSize{.type = ratio.type, .descriptorCount = static_cast<uint32_t>(ratio.ratio * static_cast<float>(setCount))};
+    // For each descriptor type, calculate the total number of descriptors needed.
+    // We multiply by setCount, but we also need to account for the fact that
+    // a single set may require more than one descriptor of a given type.
+    std::ranges::transform(poolRatios, std::back_inserter(poolSizes), [setCount](const auto &ratio) -> auto {
+        // Start with the base calculation.
+        auto count = static_cast<uint32_t>(ratio.ratio * static_cast<float>(setCount));
+
+        // For some descriptor types, drivers may require additional headroom.
+        // A safe conservative estimate is to add a small percentage (e.g., 10%)
+        // or a fixed number of extra descriptors per pool.
+        // On AMD, a factor of 1.5x to 2x is sometimes necessary.
+        if (ratio.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+            // Combined image samplers can be particularly expensive.
+            // Allocate double to be safe.
+            count *= 2;
+        } else if (ratio.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+            // Storage images also have overhead.
+            count = static_cast<uint32_t>(static_cast<float>(count) * 1.5f);
+        }
+
+        // Ensure we have at least one descriptor of each type.
+        if (count == 0) count = 1;
+
+        return VkDescriptorPoolSize{.type = ratio.type, .descriptorCount = count};
     });
 
     const VkDescriptorPoolCreateInfo pool_info{
@@ -228,7 +249,7 @@ auto DescriptorAllocatorGrowable::createPool(const VkDevice device, const uint32
     VkDescriptorPool newPool = VK_NULL_HANDLE;
     vkCheck(vkCreateDescriptorPool(device, &pool_info, nullptr, &newPool));
 
-	return newPool;
+    return newPool;
 }
 
 auto DescriptorAllocatorGrowable::allocate(const VkDevice device, VkDescriptorSetLayout layout) -> VkDescriptorSet
