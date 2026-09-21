@@ -1830,7 +1830,7 @@ void Engine::initDefaultData()
     //checkerboard image
     const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1.f, 0.f, 1.f, 1.f));
     constexpr int imgSize = 16;
-    std::array<uint32_t, static_cast<size_t>(imgSize * imgSize)> pixels; //for 16x16 checkerboard texture
+    std::array<uint32_t, static_cast<size_t>(imgSize * imgSize)> pixels{}; //for 16x16 checkerboard texture
     for (int x = 0; x < imgSize; ++x) {
         for (int y = 0; y < imgSize; ++y) {
             pixels[y * imgSize + x] = (x % 2) ^ (y % 2) ? magenta : black;

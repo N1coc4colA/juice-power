@@ -130,6 +130,7 @@ auto loadShaderModule(const char *filePath, VkDevice device, VkShaderModule &out
 	file.seekg(0);
 
 	// load the entire file into the buffer
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
 
     // now that the file is loaded into the buffer, we can close it
