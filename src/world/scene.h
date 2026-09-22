@@ -5,7 +5,9 @@
 
 #include <set>
 
+#include "src/entity/components.h"
 #include "src/entity/vector.h"
+
 #include "src/graphics/chunk.h"
 #include "src/graphics/resources.h"
 #include "src/graphics/types.h"
