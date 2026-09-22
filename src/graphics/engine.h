@@ -419,7 +419,7 @@ private:
     /* Animation */
 
     /// @brief Delta time in milliseconds.
-    double m_deltaMS = 0.0;
+    double m_deltaSec = 0.0;
 
     /* Stats data */
 

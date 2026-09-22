@@ -1099,7 +1099,9 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
     while (!(commands & CommandStates::Stop)) {
         const auto currentTime = std::chrono::system_clock::now();
         const auto delta = currentTime - m_prevChrono;
-        m_deltaMS = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count()) / msRelSec;
+        m_deltaSec = static_cast<double>(
+                         std::chrono::duration_cast<std::chrono::milliseconds>(delta).count())
+                     / msRelSec;
 
         //convert to microseconds (integer), and then come back to milliseconds
         const auto frameTime = static_cast<float>(static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(delta).count()) / usRelMs);
@@ -1167,7 +1169,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
 
 void Engine::updateAnimations2(const std::shared_ptr<World::Scene> &scene)
 {
-    const auto dms = static_cast<float>(m_deltaMS);
+    const auto dms = static_cast<float>(m_deltaSec);
     for (auto &obj : scene->objects) {
         obj.animationTime += dms;
     }
