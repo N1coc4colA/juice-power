@@ -38,13 +38,13 @@ struct InnerState
     XS attack;
 
     /// @brief Builds action states bound to one shared mutex.
-    explicit InnerState(std::mutex &m_mtx)
-        : up(m_mtx)
-        , down(m_mtx)
-        , left(m_mtx)
-        , right(m_mtx)
-        , jump(m_mtx)
-        , attack(m_mtx)
+    explicit InnerState(std::mutex &mutex)
+        : up(mutex)
+        , down(mutex)
+        , left(mutex)
+        , right(mutex)
+        , jump(mutex)
+        , attack(mutex)
     {}
 };
 
@@ -54,10 +54,10 @@ struct InnerState
 struct State : InnerState
 {
     /// @brief Mutex protecting all action entries.
-    std::mutex m_mtx;
+    std::mutex mtx;
     /// @brief Constructs an empty input state.
     State()
-        : InnerState(m_mtx)
+        : InnerState(mtx)
     {}
 };
 

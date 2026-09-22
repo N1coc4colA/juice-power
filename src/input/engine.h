@@ -15,7 +15,7 @@ namespace Input {
 class Engine
 {
     /// @brief Pointer-to-member alias for State entries.
-    using _StateEntry = State::XS State::*;
+    using StateEntryPtr = State::XS State::*;
 
 public:
     /// @brief Builds the input engine from key-to-event mappings.
@@ -25,16 +25,16 @@ public:
     void run(std::atomic<uint64_t> &commands);
 
     /// @brief Returns mutable logical state.
-    auto state() -> State & { return m_state; }
+    auto state() -> State & { return i_state; }
     /// @brief Returns const logical state.
-    auto state() const -> const State & { return m_state; }
+    auto state() const -> const State & { return i_state; }
 
     /// @brief Rebuilds @ref m_keyToEntryCache
     void buildCache();
 
 protected:
     /// @brief Current input state snapshot.
-    State m_state{};
+    State i_state{};
 
 private:
     /// @brief Set of currently registered pressed keys.
@@ -42,9 +42,9 @@ private:
     /// @brief Map from platform key code to logical event.
     std::unordered_map<uint32_t, EventType> m_keyToEvent{};
     /// @brief Map from logical event to State member pointer.
-    std::unordered_map<EventType, _StateEntry> m_eventToEntry{};
+    std::unordered_map<EventType, StateEntryPtr> m_eventToEntry{};
     /// @brief Map to cache m_keyToEvent -> m_eventToEntry
-    std::unordered_map<uint32_t, _StateEntry> m_keyToEntryCache{};
+    std::unordered_map<uint32_t, StateEntryPtr> m_keyToEntryCache{};
 };
 
 } // namespace Input
