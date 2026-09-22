@@ -40,7 +40,7 @@ ImageVectorizer::~ImageVectorizer()
 void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &image, const int channelsCount)
 {
 	m_points.clear();
-	normals.clear();
+    m_normals.clear();
 
     const auto &imageWidth = image.width() / channelsCount;
     std::cout << "Image width: " << imageWidth << '\n';
@@ -48,14 +48,14 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     // If we have only 3 channels, this means that there is no alpha channel, so the border's just the image.
     if (channelsCount <= 3) {
         constexpr int normalsCount = 4;
-        normals.resize(normalsCount);
+        m_normals.resize(normalsCount);
         m_points.resize(normalsCount + 1);
 
         // Up, right, down, left.
-        normals[0] = glm::vec2{-1.f, 0.f};
-        normals[1] = glm::vec2{0.f, 1.f};
-        normals[2] = glm::vec2{1.f, 0.f};
-        normals[3] = glm::vec2{0.f, -1.f};
+        m_normals[0] = glm::vec2{-1.f, 0.f};
+        m_normals[1] = glm::vec2{0.f, 1.f};
+        m_normals[2] = glm::vec2{1.f, 0.f};
+        m_normals[3] = glm::vec2{0.f, -1.f};
 
         m_points[0] = glm::vec2{0.f, 0.f};
         m_points[1] = glm::vec2{0.f, 1.f};
@@ -105,14 +105,14 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
     // If we have no curve, it means that all the image is non-transparent.
     if (!st->plist) {
         constexpr int normalsCount = 4;
-        normals.resize(normalsCount);
+        m_normals.resize(normalsCount);
         m_points.resize(normalsCount + 1);
 
         // Up, right, down, left.
-        normals[0] = glm::vec2{-1.f, 0.f};
-        normals[1] = glm::vec2{0.f, 1.f};
-        normals[2] = glm::vec2{1.f, 0.f};
-        normals[3] = glm::vec2{0.f, -1.f};
+        m_normals[0] = glm::vec2{-1.f, 0.f};
+        m_normals[1] = glm::vec2{0.f, 1.f};
+        m_normals[2] = glm::vec2{1.f, 0.f};
+        m_normals[3] = glm::vec2{0.f, -1.f};
 
         m_points[0] = glm::vec2{0.f, 0.f};
         m_points[1] = glm::vec2{0.f, 1.f};
@@ -156,7 +156,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
         }
 
         m_points.reserve(pointsCount + 1); // Due to enclosing point.
-        normals.reserve(pointsCount);
+        m_normals.reserve(pointsCount);
     }
 
     // per-path distinct point counts and signs (visible to the normals computation below)
@@ -227,7 +227,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
 
     // Recompute normals in final (normalized) coordinate system using our per-path counts.
     {
-        normals.clear();
+        m_normals.clear();
         size_t p = 0;
 
         for (size_t pathIndex = 0; pathIndex < pathPointCounts.size(); ++pathIndex) {
@@ -271,7 +271,7 @@ void ImageVectorizer::determineImageBorders(const MatrixView<unsigned char> &ima
                     lastValidNormal = n;
                 }
 
-                normals.push_back(n);
+                m_normals.push_back(n);
             }
 
             p += static_cast<size_t>(npts) + 1;

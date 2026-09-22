@@ -17,26 +17,26 @@
 class ThreadPool
 {
 public:
-    explicit ThreadPool(const size_t num_threads = std::thread::hardware_concurrency())
+    explicit ThreadPool(const size_t numThreads = std::thread::hardware_concurrency())
     {
         assert(m_instance == nullptr);
 
         m_instance = this;
 
-        for (size_t i = 0; i < num_threads; ++i) {
-            workers.emplace_back([this] -> void {
+        for (size_t i = 0; i < numThreads; ++i) {
+            m_workers.emplace_back([this] -> void {
                 for (;;) {
                     std::function<void()> task;
                     {
-                        std::unique_lock<std::mutex> lock(this->queue_mutex);
+                        std::unique_lock<std::mutex> lock(this->m_queueMutex);
 
-                        this->condition.wait(lock, [this] -> bool { return this->stop || !this->tasks.empty(); });
-                        if (this->stop && this->tasks.empty()) {
+                        this->m_condition.wait(lock, [this] -> bool { return this->m_stop || !this->m_tasks.empty(); });
+                        if (this->m_stop && this->m_tasks.empty()) {
                             return;
                         }
 
-                        task = std::move(this->tasks.front());
-                        this->tasks.pop();
+                        task = std::move(this->m_tasks.front());
+                        this->m_tasks.pop();
                     }
                     task();
                 }
@@ -44,18 +44,18 @@ public:
         }
     }
 
-    ThreadPool(const ThreadPool&) = delete;
-    ThreadPool(ThreadPool&&) = delete;
+    ThreadPool(const ThreadPool &) = delete;
+    ThreadPool(ThreadPool &&) = delete;
 
     ~ThreadPool()
     {
         {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            stop = true;
+            std::unique_lock<std::mutex> lock(m_queueMutex);
+            m_stop = true;
         }
 
-        condition.notify_all();
-        for (std::thread& worker : workers) {
+        m_condition.notify_all();
+        for (std::thread &worker : m_workers) {
             worker.join();
         }
 
@@ -64,41 +64,41 @@ public:
         }
     }
 
-    auto operator=(const ThreadPool&) = delete;
-    auto operator=(ThreadPool&&) = delete;
+    auto operator=(const ThreadPool &) = delete;
+    auto operator=(ThreadPool &&) = delete;
 
     template<class F, class... Args>
-    auto enqueue(F&& f, Args&&... args) -> std::future<std::invoke_result_t<F, Args...>>
+    auto enqueue(F &&f, Args &&...args) -> std::future<std::invoke_result_t<F, Args...>>
     {
         using return_type = std::invoke_result_t<F, Args...>;
 
         auto task = std::make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
         std::future<return_type> res = task->get_future();
         {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            if (stop) {
+            std::unique_lock<std::mutex> lock(m_queueMutex);
+            if (m_stop) {
                 throw std::runtime_error("enqueue on stopped ThreadPool");
             }
 
-            tasks.emplace([task]() -> auto { (*task)(); });
+            m_tasks.emplace([task]() -> auto { (*task)(); });
         }
 
-        condition.notify_one();
+        m_condition.notify_one();
 
         return res;
     }
 
-    _nodiscard auto threadsCount() const { return workers.size(); }
+    _nodiscard auto threadsCount() const { return m_workers.size(); }
 
-    static auto instance() -> ThreadPool& { return *m_instance; }
+    static auto instance() -> ThreadPool & { return *m_instance; }
 
 private:
-    std::vector<std::thread> workers{};
-    std::queue<std::function<void()>> tasks{};
-    std::mutex queue_mutex{};
-    std::condition_variable condition{};
-    bool stop = false;
-    static ThreadPool* m_instance;
+    std::vector<std::thread> m_workers{};
+    std::queue<std::function<void()>> m_tasks{};
+    std::mutex m_queueMutex{};
+    std::condition_variable m_condition{};
+    bool m_stop = false;
+    static ThreadPool *m_instance;
 };
 
 #endif // JP_THREADPOOL_H

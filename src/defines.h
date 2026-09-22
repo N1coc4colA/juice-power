@@ -39,21 +39,20 @@ template<typename T>
 using ReferencesSetTypes = typename ReferencesSetTypesImpl<T>::type;
 
 template<typename T>
-struct removeConstReferences;
+struct RemoveConstReferences;
 
 template<typename... Ts>
-struct removeConstReferences<std::tuple<Ts &...>>
+struct RemoveConstReferences<std::tuple<Ts &...>>
 {
     using type = std::tuple<std::remove_const_t<Ts> &...>;
 };
 
 template<typename T>
-using removeConstReferencesType = typename removeConstReferences<T>::type;
+using RemoveConstReferencesType = typename RemoveConstReferences<T>::type;
 
 /**
  * @brief Mutex-protected value wrapper.
- * @tparam T Stored value type.
- */
+ * @tparam T Stored value type.\n */
 template<typename T>
 class Exclusive
 {
@@ -107,7 +106,7 @@ public:
     auto operator=(const Exclusive &other) -> Exclusive &
     {
         m_mtx = other.m_mtx;
-        m_value = other;
+        m_value = other.m_value;
 
         return *this;
     }
@@ -116,7 +115,7 @@ public:
     auto operator=(Exclusive &&other) noexcept -> Exclusive &
     {
         m_mtx = other.m_mtx;
-        m_value = other;
+        m_value = other.m_value;
 
         return *this;
     }

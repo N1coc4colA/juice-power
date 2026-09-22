@@ -3,8 +3,10 @@
 
 #include <glm/vec2.hpp>
 
-#include <vector>
+#include <cassert>
+#include <cstddef>
 #include <span>
+#include <vector>
 
 #include "src/aligned_vector.h"
 #include "src/keywords.h"
@@ -25,7 +27,7 @@ template<typename T>
 class MatrixView
 {
 public:
-	/// @brief Creates a matrix view over a contiguous buffer.
+    /// @brief Creates a matrix view over a contiguous buffer.
     constexpr MatrixView(T *data, const size_t width, const size_t height)
         : m_data(data)
         , m_width(width)
@@ -71,14 +73,13 @@ public:
     _nodiscard constexpr auto height() const -> size_t { return m_height; }
 
 private:
-	/// @brief Backing storage pointer.
+    /// @brief Backing storage pointer.
     T *m_data = nullptr;
     /// @brief Number of columns.
     size_t m_width = 0;
     /// @brief Number of rows.
     size_t m_height = 0;
 };
-
 
 /**
  * @brief Converts raster images into border and normal vectors.
@@ -108,28 +109,38 @@ public:
     auto operator=(ImageVectorizer &&) const -> ImageVectorizer & = delete;
 
     /**
-	 * @brief determineImageBorders
-	 * @param image The image's data buffer, stored a W*H*(R,B,B[,A])
-	 * @param channelsCount Number of channels as in R,G,B,A, most likely 3 or 4.
-	 * Data layout is RBGA, each channel with 8 bits, in pixel order, row-major order.
-	 * This means that if your image is WxH, the input image must be (W*4)xH
-	 */
+     * @brief determineImageBorders
+     * @param image The image's data buffer, stored a W*H*(R,B,B[,A])
+     * @param channelsCount Number of channels as in R,G,B,A, most likely 3 or 4.
+     * Data layout is RBGA, each channel with 8 bits, in pixel order, row-major order.
+     * This means that if your image is WxH, the input image must be (W*4)xH
+     */
     void determineImageBorders(const MatrixView<unsigned char> &image, int channelsCount);
 
     /**
-	 *  @brief Resulting delimitation of the previous @fn determineImageBorders call.
-	 *  Vector for the m_points delimiting the object.
-	 *  Every point's location is normalized in the image's range.
-	 *  As every point is just following in order, but we may have 2 groups,
-	 *  when m_points switch from one group to another, the normal is null.
-	 */
+     *  @brief Resulting delimitation of the previous @fn determineImageBorders call.
+     *  Vector for the m_points delimiting the object.
+     *  Every point's location is normalized in the image's range.
+     *  As every point is just following in order, but we may have 2 groups,
+     *  when m_points switch from one group to another, the normal is null.
+     */
+    _nodiscard auto points() const -> const std::vector<glm::vec2> & { return m_points; }
+    /// @brief Backward compatible alias for points().
     _nodiscard auto getPoints() const -> const std::vector<glm::vec2> & { return m_points; }
+
     /// @brief Resulting normals of the previous @fn determineImageBorders call.
-    _nodiscard auto getNormals() const -> const std::vector<glm::vec2> & { return normals; }
+    _nodiscard auto normals() const -> const std::vector<glm::vec2> & { return m_normals; }
+    /// @brief Backward compatible alias for normals().
+    _nodiscard auto getNormals() const -> const std::vector<glm::vec2> & { return m_normals; }
 
     /// @brief Returns minimum border coordinate.
+    _nodiscard auto min() const { return m_min; }
+    /// @brief Backward compatible alias for min().
     _nodiscard auto getMin() const { return m_min; }
+
     /// @brief Returns maximum border coordinate.
+    _nodiscard auto max() const { return m_max; }
+    /// @brief Backward compatible alias for max().
     _nodiscard auto getMax() const { return m_max; }
 
 private:
@@ -137,16 +148,16 @@ private:
     potrace_param_t *m_params = nullptr;
 
     /**
-	 * @brief Reusable contiguous bitmap storage passed to Potrace.
-	 * This is used to store data for Potrace, and is re-used through the different
-	 * calls to @fn determineImageBorders.
-	 */
+     * @brief Reusable contiguous bitmap storage passed to Potrace.
+     * This is used to store data for Potrace, and is re-used through the different
+     * calls to @fn determineImageBorders.
+     */
     std::vector<potrace_word> m_memory{};
 
-    /// @brief Extracted border m_points.
+    /// @brief Extracted border points.
     std::vector<glm::vec2> m_points{};
     /// @brief Extracted normals associated to points.
-    std::vector<glm::vec2> normals{};
+    std::vector<glm::vec2> m_normals{};
 
     /// @brief Minimum coordinate among extracted points.
     glm::vec2 m_min{};
@@ -154,8 +165,6 @@ private:
     glm::vec2 m_max{};
 };
 
-
-}
-
+} // namespace algorithms
 
 #endif // JP_ALGORITHMS_H
