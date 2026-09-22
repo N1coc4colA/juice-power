@@ -1099,9 +1099,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
     while (!(commands & CommandStates::Stop)) {
         const auto currentTime = std::chrono::system_clock::now();
         const auto delta = currentTime - m_prevChrono;
-        m_deltaSec = static_cast<double>(
-                         std::chrono::duration_cast<std::chrono::milliseconds>(delta).count())
-                     / msRelSec;
+        m_deltaSec = std::chrono::duration<double>(delta).count();
 
         //convert to microseconds (integer), and then come back to milliseconds
         const auto frameTime = static_cast<float>(static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(delta).count()) / usRelMs);
@@ -1440,13 +1438,25 @@ void Engine::drawGeometry2(const VkCommandBuffer cmd)
         return;
     }
 
-    //begin a render pass  connected to our draw image
-    const VkRenderingAttachmentInfo colorAttachment = Init::attachmentInfo(m_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    const VkRenderingAttachmentInfo depthAttachment = Init::depthAttachmentInfo(m_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    m_objCount = 0;
+    m_switchesCount = 0;
 
-    const VkRenderingInfo renderInfo = Init::renderingInfo(m_windowExtent, &colorAttachment, &depthAttachment);
+    // Record the copy + barrier BEFORE the rendering pass starts.
+    // vkCmdCopyBuffer is a transfer command and is illegal inside a dynamic rendering scope.
+    uploadObjectDataForDrawing(cmd);
 
-    //set dynamic viewport and scissor
+    // Open the rendering pass and do the draws.
+    const VkRenderingAttachmentInfo colorAttachment
+        = Init::attachmentInfo(m_drawImage.imageView,
+                               nullptr,
+                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    const VkRenderingAttachmentInfo depthAttachment
+        = Init::depthAttachmentInfo(m_depthImage.imageView,
+                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    const VkRenderingInfo renderInfo = Init::renderingInfo(m_windowExtent,
+                                                           &colorAttachment,
+                                                           &depthAttachment);
+
     const VkViewport viewport{
         .x = 0,
         .y = 0,
@@ -1470,14 +1480,8 @@ void Engine::drawGeometry2(const VkCommandBuffer cmd)
     vkCmdBeginRendering(cmd, &renderInfo);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_meshPipeline);
-
     vkCmdSetViewport(cmd, 0, 1, &viewport);
     vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-    m_objCount = 0;
-    m_switchesCount = 0;
-
-    uploadObjectDataForDrawing(cmd);
 
     const GPUDrawPushConstants2 pushConstants{
         .worldMatrix = m_worldMatrix,
@@ -1486,8 +1490,6 @@ void Engine::drawGeometry2(const VkCommandBuffer cmd)
         .objectsBuffer = m_objectDataBuffer.deviceAddress,
     };
 
-    // [NOTE] Must match the ordering of uploadObjectDataForDrawing! Otherwise, the
-    // instance offsets will be wrong, and elements will not be drawn properly.
     DrawingFuncs::drawChunkGeometry2(*this, pushConstants, cmd);
 
     vkCmdEndRendering(cmd);
@@ -1649,38 +1651,6 @@ auto Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::spa
     return newSurface;
 }
 
-/*void Engine::uploadObjectDataForDrawing()
-{
-    if (m_scene->entities.empty()) {
-        return;
-    }
-
-    const size_t elementsCount = m_scene->entities.size();
-
-    assert(elementsCount < Config::maximumObjectCount);
-
-    const size_t dataSize = elementsCount * sizeof(ObjectData);
-
-    // Create a staging buffer
-    const AllocatedBuffer staging = createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-    // Copy data to staging buffer
-    size_t offset = 0;
-    for (const auto &ref : m_scene->references) {
-        const auto s = ref.size() * sizeof(ObjectData);
-        std::memcpy(&static_cast<std::byte *>(staging.info.pMappedData)[offset], ref.data(), s);
-        offset += s;
-    }
-
-    // Submit a copy command
-    immediateSubmit([&](const VkCommandBuffer cmd) -> void {
-        const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = dataSize};
-        vkCmdCopyBuffer(cmd, staging.buffer, m_objectDataBuffer.buffer.buffer, 1, &copy);
-    });
-
-    destroyBuffer(staging);
-}*/
-
 void Engine::uploadObjectDataForDrawing(const VkCommandBuffer cmd)
 {
     assert(cmd != VK_NULL_HANDLE);
@@ -1690,14 +1660,14 @@ void Engine::uploadObjectDataForDrawing(const VkCommandBuffer cmd)
     }
 
     auto &staging = currentFrame().objectDataStaging;
+    assert(staging.buffer != VK_NULL_HANDLE);
     assert(staging.info.pMappedData != nullptr);
 
-    // Pack all ObjectData contiguously, in the same order DrawingFuncs
-    // walks m_scene->references. The instance offsets computed in
-    // drawChunkGeometry2 depend on this ordering.
+    // Pack ObjectData contiguously, matching the order that
+    // DrawingFuncs::drawChunkGeometry2 walks m_scene->references. If you
+    // ever change that iteration order, this packing must change too.
     auto *dst = static_cast<std::byte *>(staging.info.pMappedData);
     size_t offset = 0;
-
     for (const auto &ref : m_scene->references) {
         const size_t s = ref.size() * sizeof(ObjectData);
         std::memcpy(dst + offset, ref.data(), s);
@@ -1708,15 +1678,12 @@ void Engine::uploadObjectDataForDrawing(const VkCommandBuffer cmd)
         return;
     }
 
-    // 1. Copy staging -> device buffer, recorded into THIS frame's command
-    //    buffer. No separate submit, no fence wait.
+    // staging -> device, recorded inline. No separate submit, no fence wait.
     const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = offset};
     vkCmdCopyBuffer(cmd, staging.buffer, m_objectDataBuffer.buffer.buffer, 1, &copy);
 
-    // 2. Make the transfer writes visible to the vertex shader that reads
-    //    this buffer through a buffer_reference later in the same command
-    //    buffer. Needed once per frame; without it, some drivers (AMD in
-    //    particular) will read stale contents.
+    // Make the transfer visible to the vertex shader that reads this buffer
+    // later in the same command buffer through a buffer_reference.
     const VkBufferMemoryBarrier2 barrier{
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
         .pNext = nullptr,
@@ -1934,28 +1901,6 @@ void Engine::initDefaultData()
     });
 }
 
-/*void Engine::initObjectDataBuffer()
-{
-    LOGFN();
-
-    // Allocate a buffer large enough for max objects per frame
-    // Adjust the size based on your needs
-
-    constexpr size_t buffer_size = Config::maxObjectsPerFrame * sizeof(ObjectData);
-
-    m_objectDataBuffer.buffer = createBuffer(buffer_size,
-                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                                                 | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                                             VMA_MEMORY_USAGE_GPU_ONLY);
-
-    const VkBufferDeviceAddressInfo deviceAddressInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                                                      .buffer = m_objectDataBuffer.buffer.buffer};
-
-    m_objectDataBuffer.deviceAddress = vkGetBufferDeviceAddress(m_device, &deviceAddressInfo);
-
-    m_mainDeletionQueue.pushFunction([this]() -> void { deinitObjectDataBuffer(); });
-}*/
-
 void Engine::initObjectDataBuffer()
 {
     LOGFN();
@@ -1974,7 +1919,7 @@ void Engine::initObjectDataBuffer()
     };
     m_objectDataBuffer.deviceAddress = vkGetBufferDeviceAddress(m_device, &addrInfo);
 
-    // One staging buffer per frame in flight, kept forever.
+    // One staging buffer per frame in flight, kept alive and mapped forever.
     for (auto &frame : m_frames) {
         frame.objectDataStaging = createBuffer(bufferSize,
                                                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -2041,11 +1986,6 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
     if (m_swapchainImages.size() <= 1) {
         throw Failure(FailureType::VkSwapchainImagesCreation);
     }
-
-    /*m_mainDeletionQueue.pushFunction([&]() -> void {
-        m_vkbSwapchain.destroy_image_views(m_swapchainImageViews);
-        destroy_swapchain(m_vkbSwapchain);
-    });*/
 }
 
 void Engine::destroySwapchain()
