@@ -7,6 +7,8 @@
 
 #include <ctrack.hpp>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "src/config.h"
 #include "src/input/defines.h"
 #include "src/physics/entity.h"
@@ -20,7 +22,7 @@ constexpr double pi3_4 = M_PI_2 + M_PI;
 
 static auto prevChrono = std::chrono::system_clock::now();
 static Physics::ComputeState computeState{};
-constexpr float kBox2DStep = 1.0f / 60.0f;
+constexpr float box2dStep = 1.0f / 60.0f;
 }
 
 constexpr auto epsiloned(const auto &t)
@@ -59,89 +61,103 @@ void Engine::rebuildWorld()
         b2BodyDef bodyDef;
         bodyDef.type = setup.isNotFixed ? b2_dynamicBody : b2_staticBody;
         bodyDef.position.Set(cState.position.x, cState.position.y);
-        bodyDef.angle = setup.angle;
+        bodyDef.angle = m_scene->entities.at<Entity::PhysicsAngularState>(i).angle;
         bodyDef.linearVelocity.Set(cState.velocity.x, cState.velocity.y);
         bodyDef.angularVelocity = m_scene->entities.at<Entity::PhysicsAngularState>(i).angularVelocity;
-        bodyDef.gravityScale = setup.isNotFixed ? 1.0f : 0.0f;
+        bodyDef.fixedRotation = constraints.fixedRotation;
 
-        auto *body = m_world->CreateBody(&bodyDef);
-        if (body == nullptr) {
-            continue;
-        }
+        b2Body *body = m_world->CreateBody(&bodyDef);
 
-        const auto half = (bbox.max - bbox.min) * 0.5f;
-        const auto halfX = std::max(half.x, 0.5f);
-        const auto halfY = std::max(half.y, 0.5f);
-
-        b2PolygonShape shape;
-        shape.SetAsBox(halfX, halfY);
+        b2PolygonShape dynamicBox;
+        const auto size = (bbox.max - bbox.min) * 0.5f;
+        dynamicBox.SetAsBox(size.x, size.y);
 
         b2FixtureDef fixtureDef;
-        fixtureDef.shape = &shape;
-        fixtureDef.density = std::max(1.0f, setup.mass > 0.0f ? 1.0f / setup.mass : 1.0f);
-        fixtureDef.friction = constraints.friction;
-        fixtureDef.restitution = setup.elasticity;
+        fixtureDef.shape = &dynamicBox;
+        fixtureDef.density = setup.isNotFixed ? 1.0f : 0.0f;
+        fixtureDef.friction = 0.3f;
         body->CreateFixture(&fixtureDef);
 
-        body->SetFixedRotation(false);
         m_bodies[i] = body;
     }
 }
 
 void Engine::syncSceneFromBodies()
 {
+    for (size_t i = 0; i < m_bodies.size(); ++i) {
+        if (!m_bodies[i]) {
+            continue;
+        }
+
+        const auto pos = m_bodies[i]->GetPosition();
+        const auto angle = m_bodies[i]->GetAngle();
+        const auto vel = m_bodies[i]->GetLinearVelocity();
+        const auto aVel = m_bodies[i]->GetAngularVelocity();
+
+        m_scene->objects[i].position = {pos.x, pos.y, 1.f, 1.f};
+        m_scene->objects[i].transform = glm::rotate(glm::mat4(1.0f),
+                                                    angle,
+                                                    glm::vec3(0.0f, 0.0f, 1.0f));
+
+        auto &cState = m_scene->entities.at<Entity::PhysicsCartesianState>(i);
+        auto &aState = m_scene->entities.at<Entity::PhysicsAngularState>(i);
+        cState.position = {pos.x, pos.y};
+        cState.velocity = {vel.x, vel.y};
+        aState.angle = angle;
+        aState.angularVelocity = aVel;
+    }
+}
+
+void Engine::prepare()
+{
+    CTRACK;
+
     if (!m_scene || !m_world || m_scene->entities.empty()) {
         return;
     }
 
     for (size_t i = 0; i < m_scene->entities.size(); ++i) {
-        auto *body = m_bodies.at(i);
-        if (body == nullptr) {
+        if (!m_bodies[i]) {
             continue;
         }
 
         auto &cState = m_scene->entities.at<Entity::PhysicsCartesianState>(i);
         auto &aState = m_scene->entities.at<Entity::PhysicsAngularState>(i);
-
-        const auto bodyPosition = body->GetPosition();
-        cState.position = {bodyPosition.x, bodyPosition.y};
-        cState.velocity = {body->GetLinearVelocity().x, body->GetLinearVelocity().y};
-        aState.angularVelocity = body->GetAngularVelocity();
+        m_bodies[i]->SetTransform(b2Vec2{cState.position.x, cState.position.y}, aState.angle);
+        m_bodies[i]->SetLinearVelocity(b2Vec2{cState.velocity.x, cState.velocity.y});
+        m_bodies[i]->SetAngularVelocity(aState.angularVelocity);
     }
-}
-
-void Engine::setInputState(Input::InnerState &state)
-{
-    m_inputState = &state;
-}
-
-void Engine::prepare()
-{
-	prevChrono = std::chrono::system_clock::now();
 }
 
 class DumpVisitor
 {
 public:
-    void visit(const Entity::PhysicsSetup &setup,
-               const Entity::PhysicsObjectState &objState,
-               const Entity::AABB &boundingBox,
-               const Entity::PhysicsConstraints &constraints,
+    void visit(const Entity::PhysicsObjectState &entity,
                const Entity::PhysicsCartesianState &cState,
-               const Entity::PhysicsAngularState &aState) const
+               const Entity::PhysicsAngularState &aState,
+               const Entity::PhysicsForces &forces,
+               const Entity::PhysicsSetup &setup,
+               const Entity::PhysicsConstraints &constraints) const
     {
-        const auto center = Physics::center(cState, boundingBox);
-
-        std::cout << "id: " << objState.id << ", ";
-        std::cout << "position: (" << cState.position.x << ", " << cState.position.y << "), ";
-        std::cout << "velocity: (" << cState.velocity.x << ", " << cState.velocity.y << "), ";
-        std::cout << "acceleration: (" << cState.acceleration.x << ", " << cState.acceleration.y << "), ";
-        std::cout << "angular_velocity: " << aState.angularVelocity << ", ";
-        std::cout << "elasticity: " << setup.elasticity << ", mass: " << setup.mass << ", " << ", angle: " << setup.angle;
-        std::cout << "canCollide: " << setup.canCollide << ", isNotFixed: " << setup.isNotFixed << ", ";
-        std::cout << "MoI: " << constraints.MoI << ", ";
-        std::cout << "bounding_box_min: (" << boundingBox.min.x << ", " << boundingBox.min.y << "), ";
-        std::cout << "bounding_box_max: (" << boundingBox.max.x << ", " << boundingBox.max.y << ")\n";
+        std::cout << "Entity #" << entity.id << '\n';
+        std::cout << "\tpos: " << cState.position.x << " " << cState.position.y << '\n';
+        std::cout << "\tvel: " << cState.velocity.x << " " << cState.velocity.y << '\n';
+        std::cout << "\tacc: " << cState.acceleration.x << " " << cState.acceleration.y << '\n';
+        std::cout << "\tangle: " << aState.angle << '\n';
+        std::cout << "\tangular vel: " << aState.angularVelocity << '\n';
+        /*std::cout << "\tangular acc: " << aState.angularAcceleration << '\n';
+        std::cout << "\tforces: " << forces.forces.x << " " << forces.forces.y << '\n';
+        std::cout << "\tthrust: " << forces.thrust.x << " " << forces.thrust.y << '\n';
+        std::cout << "\tapplied thrust: " << forces.appliedThrust.x << " " << forces.appliedThrust.y << '\n';*/
+        std::cout << "\tmass: " << setup.mass << '\n';
+        //std::cout << "\tfriction: " << setup.friction << '\n';
+        //std::cout << "\tdrag: " << setup.drag << '\n';
+        std::cout << "\telasticity: " << setup.elasticity << '\n';
+        std::cout << "\tcan collide: " << setup.canCollide << '\n';
+        std::cout << "\tis not fixed: " << setup.isNotFixed << '\n';
+        /*std::cout << "\tfixed x: " << constraints.fixedX << '\n';
+        std::cout << "\tfixed y: " << constraints.fixedY << '\n';
+        std::cout << "\tfixed rotation: " << constraints.fixedRotation << '\n';*/
     }
 };
 
@@ -150,92 +166,50 @@ void Engine::dump() const
     m_scene->entities.visit(DumpVisitor());
 }
 
-constexpr auto rotate(const glm::vec2 &v) noexcept -> glm::vec2
-{
-	return glm::vec2{-v.y, v.x};
-}
-
-constexpr auto rotate(const glm::vec2 &v, const double angle) -> glm::vec2
-{
-	const auto c = glm::cos(angle);
-	const auto s = glm::sin(angle);
-
-	return glm::vec2 {v.x * c - v.y * s, v.x * s + v.y * c};
-}
-
 void Engine::resolveCollision(const int a, const int b, const Entity::CollisionInfo &info)
 {
-    using requiredFields = ReferencesSet<Entity::PhysicsSetup, Entity::PhysicsCartesianState>;
+    using requiredFields = TypesSet<Entity::PhysicsSetup, Entity::PhysicsCartesianState>;
 
-    if (info.depth < Config::physicsEpsilon) {
-        return;
-    }
+    // a must not be fixed.
+    assert(m_scene->entities.at<Entity::PhysicsSetup>(a).isNotFixed);
+
+    // [TODO] Resolve according to the mass.
 
     const auto &[a_Setup, a_cState] = m_scene->entities.at<requiredFields>(a);
     const auto &[b_Setup, b_cState] = m_scene->entities.at<requiredFields>(b);
 
-    // Relative velocity
-    const glm::vec2 relVel = a_cState.velocity - b_cState.velocity;
+    const auto velDelta = a_cState.velocity - b_cState.velocity;
 
-    // Velocity along the normal
-    const float velAlongNormal = glm::dot(relVel, info.normal);
-
-    // If separating and no penetration, skip
-    if (velAlongNormal > Config::physicsEpsilon && info.depth <= Config::physicsEpsilon) {
+    // a and b must not be separating.
+    if (const float relVelProj = glm::dot(velDelta, info.normal); relVelProj >= 0.0f) {
+        // [FIXME] This may not be appropriate to do so.
+        // If they are separating, don't calculate restitution.
         return;
     }
 
-    // Restitution (elasticity)
-    const float e = std::clamp(std::min(a_Setup.elasticity, b_Setup.elasticity), 0.0f, 1.0f);
+    if (b_Setup.isNotFixed) {
+        const float sumInvMass = 1.0f / a_Setup.mass + 1.0f / b_Setup.mass;
+        const float impulseScalar = -(1.0f + a_Setup.elasticity) * glm::dot(velDelta, info.normal) / sumInvMass;
+        const glm::vec2 impulse = impulseScalar * info.normal;
 
-    // Inverse masses
-    const float invMassA = a_Setup.isNotFixed ? 1.0f / a_Setup.mass : 0.0f;
-    const float invMassB = b_Setup.isNotFixed ? 1.0f / b_Setup.mass : 0.0f;
+        a_cState.velocity += impulse / a_Setup.mass;
+        b_cState.velocity -= impulse / b_Setup.mass;
 
-    const float denom = epsiloned(invMassA + invMassB);
-    if (denom == 0.f) {
-        return; // both infinite mass
-    }
+        // Position correction to prevent sinking (Penetration Resolution)
+        constexpr float percent = 0.8f; // usually 20% to 80%
+        constexpr float slop = 0.01f; // usually 0.01 to 0.1
+        const glm::vec2 correction = (std::max(info.depth - slop, 0.0f) / sumInvMass) * percent * info.normal;
+        a_cState.position += correction / a_Setup.mass;
+        b_cState.position -= correction / b_Setup.mass;
+    } else {
+        const float impulseScalar = -(1.0f + a_Setup.elasticity) * glm::dot(a_cState.velocity, info.normal);
+        a_cState.velocity += impulseScalar * info.normal;
 
-    // Impulse scalar (normal)
-    const float j = -(1.0f + e) * velAlongNormal * 0.95f / denom;
-
-    const glm::vec2 impulse = j * info.normal;
-
-    /*
-        a b choice
-        0 0 1+2 = 3 // Don't care.
-        0 1 1+4 = 5
-        1 0 2+2 = 4
-        1 1 2+4 = 6
-    */
-    switch ((1 << a_Setup.canCollide) + (2 << b_Setup.canCollide)) {
-    case 4: {
-        const auto v = epsiloned(impulse * invMassA);
-
-        a_cState.velocity += v;
-        a_cState.position -= info.normal * info.depth;
-        break;
-    }
-    case 5: {
-        const auto v = epsiloned(impulse * invMassB);
-
-        b_cState.velocity -= v;
-        b_cState.position += info.normal * info.depth;
-        break;
-    }
-    case 6: {
-        a_cState.velocity += epsiloned(impulse * invMassA);
-        b_cState.velocity -= epsiloned(impulse * invMassB);
-        break;
-    }
-    case 3: {
-        break;
-    }
-    default: {
-        assert(false && "Entering this switch case should never have happened.");
-        break;
-    }
+        // Position correction to prevent sinking (Penetration Resolution)
+        constexpr float percent = 0.8f; // usually 20% to 80%
+        constexpr float slop = 0.01f; // usually 0.01 to 0.1
+        const glm::vec2 correction = std::max(info.depth - slop, 0.0f) * percent * info.normal;
+        a_cState.position += correction;
     }
 }
 
@@ -283,7 +257,7 @@ void Engine::compute()
         updateMainPosition();
     }
 
-    m_world->Step(static_cast<float>(std::min(delta, static_cast<double>(kBox2DStep))), 8, 3);
+    m_world->Step(static_cast<float>(std::min(delta, static_cast<double>(box2dStep))), 8, 3);
     syncSceneFromBodies();
 
     prevChrono = currentTime;
@@ -300,8 +274,8 @@ void Engine::collisionResolutionFilter(const int a, const int b)
         return;
     }
 
-    const auto argsA = m_scene->entities.at<removeConstReferencesType<Physics::ComputeState::CollisionParameters>>(a);
-    const auto argsB = m_scene->entities.at<removeConstReferencesType<Physics::ComputeState::CollisionParameters>>(b);
+    const auto argsA = m_scene->entities.at<RemoveConstReferencesType<Physics::ComputeState::CollisionParameters>>(a);
+    const auto argsB = m_scene->entities.at<RemoveConstReferencesType<Physics::ComputeState::CollisionParameters>>(b);
 
     const auto &aSetup = std::get<0>(argsA);
     const auto &bSetup = std::get<0>(argsB);
@@ -342,45 +316,43 @@ void Engine::resolveAllCollisions()
 void Engine::run(std::atomic<uint64_t> &commands)
 {
     while (!(commands & Stop)) {
-        compute();
-
         if (commands & PrepareDrawing) {
-            const auto pStateRange = m_scene->entities.range<Entity::PhysicsCartesianState>();
-            for (auto &&[obj, entity] : std::views::zip(m_scene->objects, pStateRange)) {
-                obj.position = glm::vec4(std::get<0>(entity).position, 0.f, 1.f);
-            }
-
-            // Update states.
-            commands &= ~PrepareDrawing;
+            prepare();
             commands |= DrawingPrepared;
         }
+
+        compute();
     }
+}
+
+void Engine::setInputState(Input::InnerState &state)
+{
+    m_inputState = &state;
 }
 
 void Engine::updateMainPosition()
 {
-    if (!m_scene || !m_world || m_scene->entities.empty() || m_inputState == nullptr) {
+    if (!m_scene || m_scene->entities.empty() || m_bodies.empty() || !m_bodies[0]) {
         return;
     }
 
-    auto *body = m_bodies.empty() ? nullptr : m_bodies.front();
-    if (body == nullptr) {
-        return;
-    }
-
-    constexpr float forceMagnitude = 40.0f;
+    b2Vec2 force{0.0f, 0.0f};
+    constexpr float moveForce = 1500.0f;
 
     if (m_inputState->left.unsafeGet().state) {
-        body->ApplyForceToCenter({-forceMagnitude, 0.0f}, true);
+        force.x -= moveForce;
     }
     if (m_inputState->right.unsafeGet().state) {
-        body->ApplyForceToCenter({forceMagnitude, 0.0f}, true);
-    }
-    if (m_inputState->down.unsafeGet().state) {
-        body->ApplyForceToCenter({0.0f, forceMagnitude}, true);
+        force.x += moveForce;
     }
     if (m_inputState->up.unsafeGet().state) {
-        body->ApplyForceToCenter({0.0f, -forceMagnitude}, true);
+        force.y -= moveForce;
     }
+    if (m_inputState->down.unsafeGet().state) {
+        force.y += moveForce;
+    }
+
+    m_bodies[0]->ApplyForceToCenter(force, true);
 }
-}
+
+} // namespace Physics
