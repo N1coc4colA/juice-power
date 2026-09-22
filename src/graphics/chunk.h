@@ -1,12 +1,6 @@
 #ifndef JP_GRAPHICS_CHUNK_H
 #define JP_GRAPHICS_CHUNK_H
 
-#include <vector>
-
-#include "src/entity/components.h"
-#include "src/entity/vector.h"
-#include "src/graphics/types.h"
-
 namespace Graphics {
 
 /**

@@ -225,15 +225,15 @@ void Engine::initVulkan()
         throw Failure(FailureType::VkDeviceBuild, instRet.error().message());
     }
 
-    vkbInstance = instRet.value();
+    m_vkbInstance = instRet.value();
 
     //store the instance
-    m_instance = vkbInstance.instance;
+    m_instance = m_vkbInstance.instance;
     if (m_instance == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkInstanceCreation);
     }
     //store the debug messenger
-    m_debugMessenger = vkbInstance.debug_messenger;
+    m_debugMessenger = m_vkbInstance.debug_messenger;
     if (m_debugMessenger == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkDebugMessengerCreation);
     }
@@ -250,7 +250,7 @@ void Engine::initVulkan()
 
     //use vkbootstrap to select a GPU.
     //We want a GPU that can write to the SDL m_surface and supports Vulkan 1.3
-    const auto physicalDevices = vkb::PhysicalDeviceSelector(vkbInstance)
+    const auto physicalDevices = vkb::PhysicalDeviceSelector(m_vkbInstance)
                                      .set_minimum_version(1, 3) // We run on Vulkan 1.3+
                                      .set_required_features_13(features13)
                                      .set_surface(m_surface)
@@ -265,10 +265,10 @@ void Engine::initVulkan()
     enumerateDevices(m_instance);
 
     //create the final Vulkan device
-    vkbDevice = vkb::DeviceBuilder(physicalDevices.front()).add_pNext(&bufferDeviceAddressFeatures).build().value();
+    m_vkbDevice = vkb::DeviceBuilder(physicalDevices.front()).add_pNext(&bufferDeviceAddressFeatures).build().value();
 
     // Get the VkDevice handle used in the rest of a Vulkan application
-    m_device = vkbDevice.device;
+    m_device = m_vkbDevice.device;
     m_chosenGPU = physicalDevices.front().physical_device;
 
     {
@@ -279,8 +279,8 @@ void Engine::initVulkan()
                   << properties.apiVersion << ':' << properties.driverVersion << ")\n";
     }
 
-    m_graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
-    m_graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+    m_graphicsQueue = m_vkbDevice.get_queue(vkb::QueueType::graphics).value();
+    m_graphicsQueueFamily = m_vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 
     if (m_surface == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkSurfaceCreation2);
@@ -297,18 +297,18 @@ void Engine::initVulkan()
 
 void Engine::deinitVulkan()
 {
-    vkb::destroy_device(vkbDevice);
+    vkb::destroy_device(m_vkbDevice);
     m_device = VK_NULL_HANDLE;
     m_chosenGPU = VK_NULL_HANDLE;
 
     SDL_Vulkan_DestroySurface(m_instance, m_surface, nullptr);
     m_surface = VK_NULL_HANDLE;
 
-    vkb::destroy_instance(vkbInstance);
+    vkb::destroy_instance(m_vkbInstance);
     m_instance = VK_NULL_HANDLE;
     m_debugMessenger = VK_NULL_HANDLE;
 
-    maxResourceSize = 0;
+    m_maxResourceSize = 0;
 }
 
 void Engine::initVMA()
@@ -346,13 +346,13 @@ void Engine::initSwapchain()
 
 	//draw image size will match the window
 	// [NOTE] Previously was only m_windowExtent, but changed to this model in case the size differs.
-	const VkExtent3D drawImageExtent {
-		std::min(m_swapchainExtent.width, m_windowExtent.width),
-		std::min(m_swapchainExtent.height, m_windowExtent.height),
-		1,
-	};
+    const VkExtent3D drawImageExtent{
+        .width = std::min(m_swapchainExtent.width, m_windowExtent.width),
+        .height = std::min(m_swapchainExtent.height, m_windowExtent.height),
+        .depth = 1,
+    };
 
-	// Color IMG
+    // Color IMG
 	//hardcoding the draw format to 32 bit float
 	m_drawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
 	m_drawImage.imageExtent = drawImageExtent;
@@ -363,7 +363,7 @@ void Engine::initSwapchain()
     const VkImageCreateInfo renderingImageInfo = Init::imageCreateInfo(m_drawImage.imageFormat, drawImageUsages, drawImageExtent);
 
     //for the draw image, we want to allocate it from gpu local memory
-    constexpr VmaAllocationCreateInfo renderingImageAllocInfo{
+    static constexpr VmaAllocationCreateInfo renderingImageAllocInfo{
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         .requiredFlags = static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
@@ -463,33 +463,6 @@ void Engine::initCommands()
 
     m_mainDeletionQueue.pushFunction([this]() -> void { deinitCommands(); });
 }
-
-/*void Engine::deinitCommands()
-{
-    for (auto &frame : m_frames) {
-        frame.deletionQueue.flush();
-    }
-
-    vkFreeCommandBuffers(m_device, m_immCommandPool, 1, &m_immCommandBuffer);
-    m_immCommandBuffer = VK_NULL_HANDLE;
-
-    vkDestroyCommandPool(m_device, m_immCommandPool, nullptr);
-    m_immCommandPool = VK_NULL_HANDLE;
-
-    std::array<std::function<void(FrameData &)>, 3> funcs = {[&](auto &frame) -> void {
-                                                                 vkFreeCommandBuffers(m_device, frame.commandPool, 1, &frame.mainCommandBuffer);
-                                                             },
-                                                             [&](auto &frame) -> void { vkDestroyCommandPool(m_device, frame.commandPool, nullptr); },
-                                                             [&](auto &frame) -> void { frame = {}; }
-
-    };
-
-    for (const auto &fn : funcs) {
-        for (auto &frame : m_frames) {
-            fn(frame);
-        }
-    }
-}*/
 
 void Engine::deinitCommands()
 {
@@ -728,7 +701,7 @@ void Engine::initMeshPipeline()
         //pipelineBuilder.disableBlending();
         pipelineBuilder.enableBlendingAlphaBlend();
         pipelineBuilder.disableDepthTest();
-        //pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        //pipelineBuilder.enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
         //connect the image format we will draw into, from draw image
         pipelineBuilder.setColorAttachmentFormat(m_drawImage.imageFormat);
         pipelineBuilder.setDepthFormat(m_depthImage.imageFormat);
@@ -797,8 +770,8 @@ void Engine::initMeshPipeline()
         //no blending
         pipelineBuilder.disableBlending();
         //pipelineBuilder.enableBlendingAlphaBlend();
-        //pipelineBuilder.disable_depthtest();
-        pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        //pipelineBuilder.disableDepthTest();
+        pipelineBuilder.enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
         //connect the image format we will draw into, from draw image
         pipelineBuilder.setColorAttachmentFormat(m_drawImage.imageFormat);
         pipelineBuilder.setDepthFormat(m_depthImage.imageFormat);
@@ -854,8 +827,8 @@ void Engine::initMeshPipeline()
         //no blending
         //pipelineBuilder.disableBlending();
         pipelineBuilder.enableBlendingAlphaBlend();
-        //pipelineBuilder.disable_depthtest();
-        pipelineBuilder.enableDepthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        //pipelineBuilder.disableDepthTest();
+        pipelineBuilder.enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
         //connect the image format we will draw into, from draw image
         pipelineBuilder.setColorAttachmentFormat(m_drawImage.imageFormat);
         pipelineBuilder.setDepthFormat(m_depthImage.imageFormat);
@@ -1134,7 +1107,8 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
         //do not draw if we are minimized
         if (commands & PauseRendering) {
             //throttle the speed to avoid the endless spinning
-            std::this_thread::sleep_for(std::chrono::milliseconds(throttleMs));
+            //std::this_thread::sleep_for(std::chrono::milliseconds(throttleMs));
+            std::this_thread::yield();
             continue;
         }
 
@@ -1174,6 +1148,7 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
             // As this loop runs for the rendering, there are no reasons to
             // redraw what's already on the screen. The only reason would be for
             // the animations. So far, this runs smoothly enough.
+            std::this_thread::yield();
         }
         // Reset state.
         commands &= ~DrawingPrepared;
@@ -1205,12 +1180,12 @@ void Engine::draw()
     // Naive impl for now
     //const auto pos = m_scene->movings.positions[0];
     const auto pos = m_scene->objects[0].position;
-    worldMatrix = createOrthographicProjection(pos.x - orthographicHorizontalOffset,
-                                               pos.x + orthographicHorizontalOffset,
-                                               pos.y - orthographicVerticalOffset,
-                                               pos.y + orthographicVerticalOffset);
+    m_worldMatrix = createOrthographicProjection(pos.x - orthographicHorizontalOffset,
+                                                 pos.x + orthographicHorizontalOffset,
+                                                 pos.y - orthographicVerticalOffset,
+                                                 pos.y + orthographicVerticalOffset);
 
-    auto &currFrame = getCurrentFrame();
+    auto &currFrame = currentFrame();
 
     assert(currFrame.renderFence != VK_NULL_HANDLE);
     // wait until the gpu has finished rendering the last frame. Timeout of 1
@@ -1383,7 +1358,7 @@ public:
                 // We need to cache the image to the GPU so that it can be used without reuploads.
                 if (imageSet == VK_NULL_HANDLE) [[unlikely]] {
                     imageSet = engine.m_imageDescriptorAllocator.allocate(engine.m_device, engine.m_singleImageDescriptorLayout);
-                    //imageSet = engine.getCurrentFrame().frameDescriptors.allocate(engine.m_device, engine.m_singleImageDescriptorLayout);
+                    //imageSet = engine.currentFrame().frameDescriptors.allocate(engine.m_device, engine.m_singleImageDescriptorLayout);
 
                     DescriptorWriter writer{};
                     writer.writeImage(0,
@@ -1418,7 +1393,7 @@ public:
             for (const auto &obj : refs) {
                 pushConstants.color = engine.m_scene->entities.at<Entity::PhysicsObjectState>(obj.objId).hasCollision ? glm::vec3(1.f, 0.f, 0.f)
                                                                                                                       : glm::vec3(0.f, 1.f, 0.f);
-                pushConstants.worldMatrix = glm::translate(engine.worldMatrix, glm::vec3(obj.position.x, obj.position.y, 0.0f));
+                pushConstants.worldMatrix = glm::translate(engine.m_worldMatrix, glm::vec3(obj.position.x, obj.position.y, 0.0f));
 
                 vkCmdPushConstants(cmd, engine.m_linePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawLinePushConstants), &pushConstants);
                 vkCmdBindIndexBuffer(cmd, engine.m_scene->resources->linesBuffer.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -1439,7 +1414,7 @@ public:
     {
         for (const auto &refs : engine.m_scene->references) {
             for (const auto obj : refs) {
-                glm::vec4 worldPos = engine.worldMatrix * glm::vec4(obj.position.x, obj.position.y, 0.0f, 1.0f);
+                glm::vec4 worldPos = engine.m_worldMatrix * glm::vec4(obj.position.x, obj.position.y, 0.0f, 1.0f);
                 worldPos /= worldPos.w;
 
                 pushConstants.pos = glm::vec2(worldPos.x, worldPos.y);
@@ -1500,10 +1475,10 @@ void Engine::drawGeometry2(const VkCommandBuffer cmd)
     m_objCount = 0;
     m_switchesCount = 0;
 
-    uploadObjectDataForDrawing();
+    uploadObjectDataForDrawing(cmd);
 
     const GPUDrawPushConstants2 pushConstants{
-        .worldMatrix = worldMatrix,
+        .worldMatrix = m_worldMatrix,
         .vertexBuffer = m_scene->resources->meshBuffers.vertexBufferAddress,
         .animationBuffer = m_scene->resources->animationsBuffer.animationBufferAddress,
         .objectsBuffer = m_objectDataBuffer.deviceAddress,
@@ -1559,7 +1534,7 @@ void Engine::drawPhysics2(const VkCommandBuffer cmd)
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     GPUDrawLinePushConstants pushConstants{
-        .worldMatrix = worldMatrix,
+        .worldMatrix = m_worldMatrix,
         .vertexBuffer = m_scene->resources->linesBuffer.vertexBufferAddress,
     };
 
@@ -1672,7 +1647,7 @@ auto Engine::uploadMesh(const std::span<const uint32_t> &indices, const std::spa
     return newSurface;
 }
 
-void Engine::uploadObjectDataForDrawing()
+/*void Engine::uploadObjectDataForDrawing()
 {
     if (m_scene->entities.empty()) {
         return;
@@ -1702,6 +1677,66 @@ void Engine::uploadObjectDataForDrawing()
     });
 
     destroyBuffer(staging);
+}*/
+
+void Engine::uploadObjectDataForDrawing(const VkCommandBuffer cmd)
+{
+    assert(cmd != VK_NULL_HANDLE);
+
+    if (!m_scene || m_scene->entities.empty()) {
+        return;
+    }
+
+    auto &staging = currentFrame().objectDataStaging;
+    assert(staging.info.pMappedData != nullptr);
+
+    // Pack all ObjectData contiguously, in the same order DrawingFuncs
+    // walks m_scene->references. The instance offsets computed in
+    // drawChunkGeometry2 depend on this ordering.
+    auto *dst = static_cast<std::byte *>(staging.info.pMappedData);
+    size_t offset = 0;
+
+    for (const auto &ref : m_scene->references) {
+        const size_t s = ref.size() * sizeof(ObjectData);
+        std::memcpy(dst + offset, ref.data(), s);
+        offset += s;
+    }
+
+    if (offset == 0) {
+        return;
+    }
+
+    // 1. Copy staging -> device buffer, recorded into THIS frame's command
+    //    buffer. No separate submit, no fence wait.
+    const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = offset};
+    vkCmdCopyBuffer(cmd, staging.buffer, m_objectDataBuffer.buffer.buffer, 1, &copy);
+
+    // 2. Make the transfer writes visible to the vertex shader that reads
+    //    this buffer through a buffer_reference later in the same command
+    //    buffer. Needed once per frame; without it, some drivers (AMD in
+    //    particular) will read stale contents.
+    const VkBufferMemoryBarrier2 barrier{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+        .pNext = nullptr,
+        .srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = m_objectDataBuffer.buffer.buffer,
+        .offset = 0,
+        .size = VK_WHOLE_SIZE,
+    };
+
+    const VkDependencyInfo depInfo{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = nullptr,
+        .bufferMemoryBarrierCount = 1,
+        .pBufferMemoryBarriers = &barrier,
+    };
+
+    vkCmdPipelineBarrier2(cmd, &depInfo);
 }
 
 void Engine::uploadObjectData(const std::span<ObjectData> &objectData)
@@ -1727,9 +1762,9 @@ void Engine::uploadObjectData(const std::span<ObjectData> &objectData)
     destroyBuffer(staging);
 }
 
-auto Engine::getDeviceMaxImageSize() const -> uint64_t
+auto Engine::deviceMaxImageSize() const -> uint64_t
 {
-    if (maxResourceSize == 0) {
+    if (m_maxResourceSize == 0) {
         assert(m_chosenGPU != VK_NULL_HANDLE);
 
         VkImageFormatProperties props{};
@@ -1741,10 +1776,10 @@ auto Engine::getDeviceMaxImageSize() const -> uint64_t
                                                  VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
                                                  &props);
 
-        maxResourceSize = props.maxResourceSize;
+        m_maxResourceSize = props.maxResourceSize;
     }
 
-    return maxResourceSize;
+    return m_maxResourceSize;
 }
 
 auto Engine::uploadMesh(const std::span<const AnimationData> &animations) -> GPUAnimationBuffers
@@ -1864,7 +1899,12 @@ void Engine::initDefaultData()
             pixels[y * imgSize + x] = (x % 2) ^ (y % 2) ? magenta : black;
         }
     }
-    m_errorCheckerboardImage = createImage(pixels.data(), VkExtent3D{imgSize, imgSize, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+    m_errorCheckerboardImage = createImage(pixels.data(),
+                                           VkExtent3D{.width = imgSize,
+                                                      .height = imgSize,
+                                                      .depth = 1},
+                                           VK_FORMAT_R8G8B8A8_UNORM,
+                                           VK_IMAGE_USAGE_SAMPLED_BIT);
 
     VkSamplerCreateInfo sampler = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -1892,7 +1932,7 @@ void Engine::initDefaultData()
     });
 }
 
-void Engine::initObjectDataBuffer()
+/*void Engine::initObjectDataBuffer()
 {
     LOGFN();
 
@@ -1912,6 +1952,40 @@ void Engine::initObjectDataBuffer()
     m_objectDataBuffer.deviceAddress = vkGetBufferDeviceAddress(m_device, &deviceAddressInfo);
 
     m_mainDeletionQueue.pushFunction([this]() -> void { deinitObjectDataBuffer(); });
+}*/
+
+void Engine::initObjectDataBuffer()
+{
+    LOGFN();
+
+    constexpr size_t bufferSize = Config::maxObjectsPerFrame * sizeof(ObjectData);
+
+    m_objectDataBuffer.buffer = createBuffer(bufferSize,
+                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                                                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                                                 | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                             VMA_MEMORY_USAGE_GPU_ONLY);
+
+    const VkBufferDeviceAddressInfo addrInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = m_objectDataBuffer.buffer.buffer,
+    };
+    m_objectDataBuffer.deviceAddress = vkGetBufferDeviceAddress(m_device, &addrInfo);
+
+    // One staging buffer per frame in flight, kept forever.
+    for (auto &frame : m_frames) {
+        frame.objectDataStaging = createBuffer(bufferSize,
+                                               VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                               VMA_MEMORY_USAGE_CPU_TO_GPU);
+    }
+
+    m_mainDeletionQueue.pushFunction([this]() -> void {
+        for (auto &frame : m_frames) {
+            destroyBuffer(frame.objectDataStaging);
+            frame.objectDataStaging = {};
+        }
+        deinitObjectDataBuffer();
+    });
 }
 
 void Engine::deinitObjectDataBuffer()
@@ -1943,7 +2017,7 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
 
     m_swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
-    vkbSwapchain = swapchain_builder.use_default_format_selection()
+    m_vkbSwapchain = swapchain_builder.use_default_format_selection()
                                        .set_desired_format(
                                            VkSurfaceFormatKHR{.format = m_swapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
                                        //use vsync present mode
@@ -1954,10 +2028,10 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
                                        .value();
 
     //store swap chain and its related images
-    m_swapchain = vkbSwapchain.swapchain;
-    m_swapchainImages = vkbSwapchain.get_images().value();
-    m_swapchainImageViews = vkbSwapchain.get_image_views().value();
-    m_swapchainExtent = vkbSwapchain.extent;
+    m_swapchain = m_vkbSwapchain.swapchain;
+    m_swapchainImages = m_vkbSwapchain.get_images().value();
+    m_swapchainImageViews = m_vkbSwapchain.get_image_views().value();
+    m_swapchainExtent = m_vkbSwapchain.extent;
 
     if (m_swapchain == VK_NULL_HANDLE) {
         throw Failure(FailureType::VkSwapchainCreation);
@@ -1967,8 +2041,8 @@ void Engine::createSwapchain(const uint32_t width, const uint32_t height)
     }
 
     /*m_mainDeletionQueue.pushFunction([&]() -> void {
-        vkbSwapchain.destroy_image_views(m_swapchainImageViews);
-        destroy_swapchain(vkbSwapchain);
+        m_vkbSwapchain.destroy_image_views(m_swapchainImageViews);
+        destroy_swapchain(m_vkbSwapchain);
     });*/
 }
 
@@ -1987,7 +2061,7 @@ void Engine::destroySwapchain()
     m_swapchainImageViews.clear();
     m_swapchainImages.clear();
 
-    vkbSwapchain = {};
+    m_vkbSwapchain = {};
 }
 
 void Engine::resizeSwapchain()
@@ -2026,7 +2100,7 @@ auto Engine::createImage(const VkExtent3D &size, const VkFormat format, const Vk
     }
 
     // always allocate images on dedicated GPU memory
-    constexpr VmaAllocationCreateInfo allocInfo = {
+    static constexpr VmaAllocationCreateInfo allocInfo = {
         .usage = VMA_MEMORY_USAGE_GPU_ONLY,
         .requiredFlags = static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
@@ -2089,7 +2163,10 @@ auto Engine::createImage(const void *data, const VkExtent3D &size, const VkForma
         vkCmdCopyBufferToImage(cmd, uploadBuffer.buffer, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
         if (mipmapped) {
-            Utils::generateMipmaps(cmd, newImage.image, VkExtent2D{newImage.imageExtent.width, newImage.imageExtent.height});
+            Utils::generateMipmaps(cmd,
+                                   newImage.image,
+                                   VkExtent2D{.width = newImage.imageExtent.width,
+                                              .height = newImage.imageExtent.height});
         } else {
             Utils::transitionImage(cmd, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         }

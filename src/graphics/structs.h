@@ -7,6 +7,7 @@
 #include <functional>
 
 #include "src/graphics/descriptors.h"
+#include "src/graphics/types.h"
 
 namespace Graphics
 {
@@ -57,6 +58,9 @@ struct FrameData
 
 	/// @brief Descriptor allocator for frame-local descriptors
 	DescriptorAllocatorGrowable frameDescriptors {};
+
+    /// @brief Always-mapped staging buffer for per-frame object data
+    AllocatedBuffer objectDataStaging{};
 };
 
 

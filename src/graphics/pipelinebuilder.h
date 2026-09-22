@@ -43,7 +43,7 @@ public:
 	VkPipelineRenderingCreateInfo renderInfo {.sType = VK_STRUCTURE_TYPE_MAX_ENUM};
 
 	/// @brief Color attachment format
-	VkFormat colorAttachmentformat = VK_FORMAT_MAX_ENUM;
+	VkFormat colorAttachmentFormat = VK_FORMAT_MAX_ENUM;
 
     /// @brief Vertex input layout and bindings state.
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
@@ -114,7 +114,7 @@ public:
 	 * @param depthWriteEnable Whether to write depth values
 	 * @param op The depth comparison operator
 	 */
-	void enableDepthtest(bool depthWriteEnable, VkCompareOp op);
+	void enableDepthTest(bool depthWriteEnable, VkCompareOp op);
 
 	/// @brief Enables additive blending (src + dst)
 	void enableBlendingAdditive();

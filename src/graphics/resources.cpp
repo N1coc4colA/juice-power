@@ -10,6 +10,8 @@ namespace Graphics
 
 void Resources::build(const std::shared_ptr<Engine> &engine)
 {
+    engine->deinitImageDescriptors();
+
     const auto size = vertices.size();
 
     /* Upload edges */ {

@@ -1,66 +1,59 @@
 #ifndef JP_GRAPHICS_ENGINE_H
 #define JP_GRAPHICS_ENGINE_H
 
-#include <vulkan/vulkan.h>
-
-#include <atomic>
 #include <chrono>
-#include <span>
-
-#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
+#include <functional>
+#include <memory>
+#include <vector>
 
 #include <VkBootstrap.h>
+#include <vulkan/vulkan.h>
+
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/glm.hpp>
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
+
+#include <imgui.h>
+#include <imgui/backends/imgui_impl_sdl3.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
+
+#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 #include "src/graphics/allocatedimage.h"
 #include "src/graphics/descriptors.h"
 #include "src/graphics/structs.h"
 #include "src/graphics/types.h"
+#include "src/world/scene.h"
 
-#include "src/keywords.h"
-
-struct SDL_Window;
-struct ImGuiContext;
-
+// Forward declaration
 namespace Loaders
 {
 class Map;
 }
 
-namespace World
-{
-class Scene;
-class Chunk;
-}
-
-
 namespace Graphics
 {
 
-class Resources;
+// Forward declarations
 class Resources;
 
 /// @brief Number of in-flight frames.
 constexpr unsigned int FRAME_OVERLAP = 2;
 
-
 /**
- * @brief Class responsible for rendering.
- *
- * @warning Any allocation & deletion of resources must be called sync to GPU work.
- *
- **/
+ * @brief Core Vulkan rendering engine and GPU resource coordinator.
+ */
 class Engine
 {
 public:
-    /// @brief Initial descriptor sets reserved for global allocator.
-    static constexpr int initialSetCount = 10;
-    /// @brief Initial per-frame descriptor set budget.
-    static constexpr int frameInitialSetCount = 1000;
-    /// @brief Default quad index count per object.
-    static constexpr int standardIndexCount = 6;
-    /// @brief Milliseconds-per-second conversion constant.
+    /// @brief Index count for full quad draws.
+    static constexpr size_t standardIndexCount = 6;
+    /// @brief Milliseconds per second conversion factor.
     static constexpr double msRelSec = 1000.0;
-    /// @brief Microseconds-per-millisecond conversion constant.
+    /// @brief Microseconds per millisecond conversion factor.
     static constexpr double usRelMs = 1000.0;
     /// @brief Sleep throttle value for main loop pacing.
     static constexpr int throttleMs = 10;
@@ -76,6 +69,14 @@ public:
     static constexpr float orthographicHorizontalOffset = 80.f;
     /// @brief Vertical camera/world offset for orthographic projection.
     static constexpr float orthographicVerticalOffset = 50.f;
+    /// @brief Initial descriptor sets reserved for global allocator.
+    static constexpr int initialSetCount = 10;
+    /// @brief Initial per-frame descriptor set budget.
+    static constexpr int frameInitialSetCount = 1000;
+
+    explicit Engine() = default;
+    Engine(Engine &) = delete;
+    Engine(Engine &&) = delete;
 
     /// @brief Destroys the graphics engine and owned resources.
     ~Engine();
@@ -106,7 +107,8 @@ public:
     _nodiscard auto uploadMesh(const std::span<const AnimationData> &animations) -> GPUAnimationBuffers;
 
     /// @brief Updates GPU object-data staging used by draw calls.
-    void uploadObjectDataForDrawing();
+    //void uploadObjectDataForDrawing();
+    void uploadObjectDataForDrawing(VkCommandBuffer cmd);
     /// @brief Uploads object data span into GPU storage.
     void uploadObjectData(const std::span<ObjectData> &objectData);
 
@@ -116,7 +118,12 @@ public:
     _nodiscard auto scene() const -> std::shared_ptr<World::Scene> { return m_scene; }
 
     /// @brief Queries maximum image dimension supported by the selected device.
-    _nodiscard auto getDeviceMaxImageSize() const -> uint64_t;
+    _nodiscard auto deviceMaxImageSize() const -> uint64_t;
+    /// @brief Backward-compatible alias for deviceMaxImageSize.
+    _nodiscard auto getDeviceMaxImageSize() const -> uint64_t { return deviceMaxImageSize(); }
+
+    Engine &operator=(Engine &) = delete;
+    Engine &operator=(Engine &&) = delete;
 
 protected:
     /// @brief Initializes SDL and creates the window.
@@ -191,9 +198,15 @@ protected:
 
 private:
     /// @brief Returns frame-local state for the current in-flight frame.
-    _nodiscard auto getCurrentFrame() -> FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    _nodiscard auto currentFrame() -> FrameData &
+    {
+        return m_frames[m_frameNumber % FRAME_OVERLAP];
+    }
     /// @brief Returns frame-local state for the current in-flight frame (const overload).
-    _nodiscard auto getCurrentFrame() const -> const FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; };
+    _nodiscard auto currentFrame() const -> const FrameData & { return m_frames[m_frameNumber % FRAME_OVERLAP]; }
+    /// @brief Backward-compatible alias for currentFrame.
+    _nodiscard auto getCurrentFrame() -> FrameData & { return currentFrame(); }
+    _nodiscard auto getCurrentFrame() const -> const FrameData & { return currentFrame(); }
 
     /**
 	 * @brief Creates an empty GPU image
@@ -285,9 +298,9 @@ private:
 
     /* Vulkan */
 
-    vkb::Swapchain vkbSwapchain;
-    vkb::Instance vkbInstance;
-    vkb::Device vkbDevice;
+    vkb::Swapchain m_vkbSwapchain;
+    vkb::Instance m_vkbInstance;
+    vkb::Device m_vkbDevice;
 
     /// @brief Vulkan instance handle.
     VkInstance m_instance = VK_NULL_HANDLE;
@@ -389,7 +402,7 @@ private:
     VkCommandPool m_immCommandPool = VK_NULL_HANDLE;
 
     /// @brief World matrix uploaded in draw push constants.
-    glm::mat4 worldMatrix{};
+    glm::mat4 m_worldMatrix{};
 
     /* Images */
 
@@ -421,7 +434,7 @@ private:
     GPUObjectDataBuffer m_objectDataBuffer{};
 
     /* Caching */
-    mutable VkDeviceSize maxResourceSize = 0;
+    mutable VkDeviceSize m_maxResourceSize = 0;
 
     /* Others */
 
@@ -431,7 +444,6 @@ private:
     static decltype(std::chrono::system_clock::now()) m_prevChrono;
 
     friend class Loaders::Map;
-    friend class Resources;
     friend class Resources;
     friend class DrawingFuncs;
 };

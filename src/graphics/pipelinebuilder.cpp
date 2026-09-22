@@ -166,10 +166,10 @@ void PipelineBuilder::setColorAttachmentFormat(const VkFormat format)
 {
 	assert(format != VK_FORMAT_MAX_ENUM);
 
-	colorAttachmentformat = format;
+	colorAttachmentFormat = format;
 	// connect the format to the renderInfo  structure
 	renderInfo.colorAttachmentCount = 1;
-	renderInfo.pColorAttachmentFormats = &colorAttachmentformat;
+	renderInfo.pColorAttachmentFormats = &colorAttachmentFormat;
 }
 
 void PipelineBuilder::setDepthFormat(const VkFormat format)
@@ -188,7 +188,7 @@ void PipelineBuilder::disableDepthTest()
     setupDepthTest();
 }
 
-void PipelineBuilder::enableDepthtest(const bool depthWriteEnable, const VkCompareOp op)
+void PipelineBuilder::enableDepthTest(const bool depthWriteEnable, const VkCompareOp op)
 {
 	depthStencil.depthTestEnable = VK_TRUE;
 	depthStencil.depthWriteEnable = depthWriteEnable;
