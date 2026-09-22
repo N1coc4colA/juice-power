@@ -129,6 +129,8 @@ struct PhysicsConstraints
 
     /// @brief Moment of Inertia.
     float MoI = 1.f;
+
+    bool fixedRotation = false;
 };
 
 struct PhysicsAngularState
@@ -137,6 +139,7 @@ struct PhysicsAngularState
     float temporaryAngularVelocities = 0.f;
     /// @brief Angular velocity in radians per second.
     float angularVelocity = 0.f;
+    float angle = 0.f;
 };
 
 struct PhysicsCartesianState
