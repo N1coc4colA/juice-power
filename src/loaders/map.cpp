@@ -429,10 +429,13 @@ auto Map::buildResources(const std::unordered_map<std::string, int> &imagesMap,
     for (size_t fi = 0; fi < imageFrames.size(); ++fi) {
         const auto &frameInfo = imageFrames[fi];
         // createImage expects a pointer to pixel data arranged as RGBA
-        resources->images[fi].image = engine->createImage(frameImages[fi].data(),
-                                                          VkExtent3D{static_cast<uint32_t>(frameInfo.w), static_cast<uint32_t>(frameInfo.h), 1},
-                                                          VK_FORMAT_R8G8B8A8_UNORM,
-                                                          VK_IMAGE_USAGE_SAMPLED_BIT);
+        resources->images[fi].image
+            = engine->createImage(frameImages[fi].data(),
+                                  VkExtent3D{.width = static_cast<uint32_t>(frameInfo.w),
+                                             .height = static_cast<uint32_t>(frameInfo.h),
+                                             .depth = 1},
+                                  VK_FORMAT_R8G8B8A8_UNORM,
+                                  VK_IMAGE_USAGE_SAMPLED_BIT);
     }
 
     /* Update animations' data */

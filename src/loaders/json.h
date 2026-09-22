@@ -46,7 +46,7 @@ struct JsonResourceElement
     /// @brief Animation frames count.
     uint16_t frames = 0;
 
-    /// @brief Animation frame duration, interval between 2 frames.
+    /// @brief Animation frame duration (seconds), interval between 2 frames.
     float interval = 0.1f;
 };
 
