@@ -48,11 +48,19 @@ void Engine::run(std::atomic<uint64_t> &commands)
             switch (event.type) {
             case SDL_EVENT_KEY_DOWN: {
                 std::cout << event.key.key << '\n';
-                i_state.*m_keyToEntryCache[event.key.key] = {.state = true, .hold = event.key.repeat};
+                if (auto it = m_keyToEntryCache.find(event.key.key); it != m_keyToEntryCache.end()) {
+                    i_state.*it->second = {.state = true, .hold = event.key.repeat};
+                }
+
+                //i_state.*m_keyToEntryCache[event.key.key] = {.state = true, .hold = event.key.repeat};
                 break;
             }
             case SDL_EVENT_KEY_UP: {
-                i_state.*m_keyToEntryCache[event.key.key] = {.state = false, .hold = event.key.repeat};
+                if (auto it = m_keyToEntryCache.find(event.key.key); it != m_keyToEntryCache.end()) {
+                    i_state.*it->second = {.state = false, .hold = event.key.repeat};
+                }
+
+                //i_state.*m_keyToEntryCache[event.key.key] = {.state = false, .hold = event.key.repeat};
                 break;
             }
             case SDL_EVENT_QUIT: {
