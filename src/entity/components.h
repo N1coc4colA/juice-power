@@ -107,17 +107,8 @@ struct PhysicsBounds
 
 struct PhysicsSetup
 {
-    /// @brief Orientation angle in radians.
-    float angle = 0.f;
-    /// @brief Coefficient of restitution.
-    float elasticity = 0.f;
     /// @brief Mass of the entity
     float mass = 8.f;
-    /// @brief Base friction value before transient updates.
-    float baseFriction{};
-    /// @brief Tells if other objects have an impact on the entity.
-    /// @value true means the object will not be affected by other entity interactions.
-    bool canCollide = true;
     /// @brief Tells if the object is affected by gravity or not.
     bool isNotFixed = true;
 };

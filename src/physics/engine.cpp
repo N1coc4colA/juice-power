@@ -19,10 +19,6 @@ namespace
 
 /// @brief Constant value of 3/4 of Pi.
 constexpr double pi3_4 = M_PI_2 + M_PI;
-
-static auto prevChrono = std::chrono::system_clock::now();
-static Physics::ComputeState computeState{};
-constexpr float box2dStep = 1.0f / 60.0f;
 }
 
 constexpr auto epsiloned(const auto &t)
@@ -95,9 +91,9 @@ void Engine::syncSceneFromBodies()
         const auto aVel = m_bodies[i]->GetAngularVelocity();
 
         m_scene->objects[i].position = {pos.x, pos.y, 1.f, 1.f};
-        m_scene->objects[i].transform = glm::rotate(glm::mat4(1.0f),
-                                                    angle,
-                                                    glm::vec3(0.0f, 0.0f, 1.0f));
+
+        // Not used for now.
+        //m_scene->objects[i].transform = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 0.0f, 1.0f));
 
         auto &cState = m_scene->entities.at<Entity::PhysicsCartesianState>(i);
         auto &aState = m_scene->entities.at<Entity::PhysicsAngularState>(i);
@@ -129,115 +125,6 @@ void Engine::prepare()
     }
 }
 
-class DumpVisitor
-{
-public:
-    void visit(const Entity::PhysicsObjectState &entity,
-               const Entity::PhysicsCartesianState &cState,
-               const Entity::PhysicsAngularState &aState,
-               const Entity::PhysicsForces &forces,
-               const Entity::PhysicsSetup &setup,
-               const Entity::PhysicsConstraints &constraints) const
-    {
-        std::cout << "Entity #" << entity.id << '\n';
-        std::cout << "\tpos: " << cState.position.x << " " << cState.position.y << '\n';
-        std::cout << "\tvel: " << cState.velocity.x << " " << cState.velocity.y << '\n';
-        std::cout << "\tacc: " << cState.acceleration.x << " " << cState.acceleration.y << '\n';
-        std::cout << "\tangle: " << aState.angle << '\n';
-        std::cout << "\tangular vel: " << aState.angularVelocity << '\n';
-        /*std::cout << "\tangular acc: " << aState.angularAcceleration << '\n';
-        std::cout << "\tforces: " << forces.forces.x << " " << forces.forces.y << '\n';
-        std::cout << "\tthrust: " << forces.thrust.x << " " << forces.thrust.y << '\n';
-        std::cout << "\tapplied thrust: " << forces.appliedThrust.x << " " << forces.appliedThrust.y << '\n';*/
-        std::cout << "\tmass: " << setup.mass << '\n';
-        //std::cout << "\tfriction: " << setup.friction << '\n';
-        //std::cout << "\tdrag: " << setup.drag << '\n';
-        std::cout << "\telasticity: " << setup.elasticity << '\n';
-        std::cout << "\tcan collide: " << setup.canCollide << '\n';
-        std::cout << "\tis not fixed: " << setup.isNotFixed << '\n';
-        /*std::cout << "\tfixed x: " << constraints.fixedX << '\n';
-        std::cout << "\tfixed y: " << constraints.fixedY << '\n';
-        std::cout << "\tfixed rotation: " << constraints.fixedRotation << '\n';*/
-    }
-};
-
-void Engine::dump() const
-{
-    m_scene->entities.visit(DumpVisitor());
-}
-
-void Engine::resolveCollision(const int a, const int b, const Entity::CollisionInfo &info)
-{
-    using requiredFields = TypesSet<Entity::PhysicsSetup, Entity::PhysicsCartesianState>;
-
-    // a must not be fixed.
-    assert(m_scene->entities.at<Entity::PhysicsSetup>(a).isNotFixed);
-
-    // [TODO] Resolve according to the mass.
-
-    const auto &[a_Setup, a_cState] = m_scene->entities.at<requiredFields>(a);
-    const auto &[b_Setup, b_cState] = m_scene->entities.at<requiredFields>(b);
-
-    const auto velDelta = a_cState.velocity - b_cState.velocity;
-
-    // a and b must not be separating.
-    if (const float relVelProj = glm::dot(velDelta, info.normal); relVelProj >= 0.0f) {
-        // [FIXME] This may not be appropriate to do so.
-        // If they are separating, don't calculate restitution.
-        return;
-    }
-
-    if (b_Setup.isNotFixed) {
-        const float sumInvMass = 1.0f / a_Setup.mass + 1.0f / b_Setup.mass;
-        const float impulseScalar = -(1.0f + a_Setup.elasticity) * glm::dot(velDelta, info.normal) / sumInvMass;
-        const glm::vec2 impulse = impulseScalar * info.normal;
-
-        a_cState.velocity += impulse / a_Setup.mass;
-        b_cState.velocity -= impulse / b_Setup.mass;
-
-        // Position correction to prevent sinking (Penetration Resolution)
-        constexpr float percent = 0.8f; // usually 20% to 80%
-        constexpr float slop = 0.01f; // usually 0.01 to 0.1
-        const glm::vec2 correction = (std::max(info.depth - slop, 0.0f) / sumInvMass) * percent * info.normal;
-        a_cState.position += correction / a_Setup.mass;
-        b_cState.position -= correction / b_Setup.mass;
-    } else {
-        const float impulseScalar = -(1.0f + a_Setup.elasticity) * glm::dot(a_cState.velocity, info.normal);
-        a_cState.velocity += impulseScalar * info.normal;
-
-        // Position correction to prevent sinking (Penetration Resolution)
-        constexpr float percent = 0.8f; // usually 20% to 80%
-        constexpr float slop = 0.01f; // usually 0.01 to 0.1
-        const glm::vec2 correction = std::max(info.depth - slop, 0.0f) * percent * info.normal;
-        a_cState.position += correction;
-    }
-}
-
-class CollisionReset
-{
-public:
-    void visit(Entity::PhysicsObjectState &entity) const { entity.hasCollision = false; }
-};
-
-class ObjectCompute
-{
-public:
-    explicit ObjectCompute(const double timeDelta)
-        : timeDelta(timeDelta)
-    {}
-
-    void visit(Entity::PhysicsCartesianState &cState,
-               Entity::PhysicsAngularState &aState,
-               Entity::PhysicsSetup &setup,
-               Entity::PhysicsForces &forces,
-               Entity::PhysicsConstraints &constraints) const
-    {
-        Physics::compute(timeDelta, ReferencesSet{cState, aState, setup, forces, constraints});
-    }
-
-    double timeDelta;
-};
-
 void Engine::compute()
 {
     CTRACK;
@@ -246,8 +133,9 @@ void Engine::compute()
         return;
     }
 
-    const auto currentTime = std::chrono::system_clock::now();
-    const auto delta = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - prevChrono).count()) / 1000.0;
+    const auto now = std::chrono::system_clock::now();
+    const double delta = std::chrono::duration<double>(now - m_prevChrono).count();
+    m_prevChrono = now;
 
     if (delta <= 0.0) {
         return;
@@ -259,69 +147,26 @@ void Engine::compute()
 
     m_world->Step(static_cast<float>(std::min(delta, static_cast<double>(box2dStep))), 8, 3);
     syncSceneFromBodies();
-
-    prevChrono = currentTime;
 }
 
-void Engine::collisionResolutionFilter(const int a, const int b)
+void Engine::run(FrameSync &sync, std::atomic<uint64_t> &commands)
 {
-    if (a == b) {
-        return;
-    }
+    m_prevChrono = std::chrono::system_clock::now();
 
-    const std::pair m = {std::min(a, b), std::max(a, b)};
-    if (m_scene->collisions.contains(m)) {
-        return;
-    }
+    while (!sync.isStopped() && !(commands & Stop)) {
+        sync.waitForFrameRequest();
 
-    const auto argsA = m_scene->entities.at<RemoveConstReferencesType<Physics::ComputeState::CollisionParameters>>(a);
-    const auto argsB = m_scene->entities.at<RemoveConstReferencesType<Physics::ComputeState::CollisionParameters>>(b);
-
-    const auto &aSetup = std::get<0>(argsA);
-    const auto &bSetup = std::get<0>(argsB);
-
-    const bool mayCollide = aSetup.canCollide || bSetup.canCollide;
-    const bool mayNotBeFixed = aSetup.isNotFixed || bSetup.isNotFixed;
-
-    if (!(mayCollide && mayNotBeFixed)) {
-        return;
-    }
-
-    // We need to resolve the collision.
-
-    if (Entity::CollisionInfo info{}; computeState.collides(argsA, argsB, info)) {
-        //std::cout << "Detected collision between entities " << e.id << " and " << e2.id << " normal=(" << info.normal.x << "," << info.normal.y << ") depth=" << info.depth << "\n";
-        resolveCollision(a, b, info);
-
-        std::get<1>(argsA).hasCollision = aSetup.canCollide;
-        std::get<1>(argsB).hasCollision = bSetup.canCollide;
-
-        m_scene->collisions.insert(m);
-    }
-}
-
-void Engine::resolveAllCollisions()
-{
-    const auto size = static_cast<int64_t>(m_scene->entities.size());
-
-    for (int i = 0; i < size; i++) {
-        // For every entity in the current chunk, we check the entities in the current AND next chunk.
-        // Previous chunks' entities have already been checked against.
-        for (int j = i + 1; j < size; j++) {
-            collisionResolutionFilter(i, j);
-        }
-    }
-}
-
-void Engine::run(std::atomic<uint64_t> &commands)
-{
-    while (!(commands & Stop)) {
-        if (commands & PrepareDrawing) {
-            prepare();
-            commands |= DrawingPrepared;
+        if (sync.isStopped() || (commands & Stop)) {
+            break;
         }
 
+        // prepare() reads entity state -> Box2D bodies (picks up input).
+        // compute() steps the world once and writes Box2D -> entity state.
+        // These are now the only two places that touch the scene from this
+        // thread, and they're mutually exclusive with graphics via FrameSync.
         compute();
+
+        sync.signalFrameReady();
     }
 }
 
@@ -336,19 +181,27 @@ void Engine::updateMainPosition()
         return;
     }
 
-    b2Vec2 force{0.0f, 0.0f};
+    // Read all four directions once, under lock, into locals.
+    // The input thread may flip them between these reads; that's fine,
+    // we're sampling a frame's worth of input.
+    const auto left = m_inputState->left.get().state;
+    const auto right = m_inputState->right.get().state;
+    const auto up = m_inputState->up.get().state;
+    const auto down = m_inputState->down.get().state;
+
+    b2Vec2 force{0.f, 0.f};
     constexpr float moveForce = 1500.0f;
 
-    if (m_inputState->left.unsafeGet().state) {
+    if (left) {
         force.x -= moveForce;
     }
-    if (m_inputState->right.unsafeGet().state) {
+    if (right) {
         force.x += moveForce;
     }
-    if (m_inputState->up.unsafeGet().state) {
+    if (up) {
         force.y -= moveForce;
     }
-    if (m_inputState->down.unsafeGet().state) {
+    if (down) {
         force.y += moveForce;
     }
 

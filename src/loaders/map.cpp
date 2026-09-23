@@ -53,15 +53,7 @@ inline void copyValues2(decltype(std::views::concat(std::declval<JsonMap &>().mo
     //auto pCStateRange = scene->entities.range<Entity::PhysicsCartesianState>();
 
     for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {
-        std::get<0>(entity).elasticity = map.resources[element.type].elasticity;
-    }
-
-    for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {
         std::get<0>(entity).mass = map.resources[element.type].mass;
-    }
-
-    for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {
-        std::get<0>(entity).canCollide = element.canCollide;
     }
 
     for (const auto &[entity, element] : std::views::zip(pSetupRange, json)) {

@@ -51,9 +51,14 @@ void Orchestrator::run()
 
     m_physicsEngine->setInputState(m_inputEngine->state());
 
-    std::jthread m_physicsThread([this]() -> void { m_physicsEngine->run(m_commands); });
-    std::jthread m_inputThread([this]() -> void { m_inputEngine->run(m_commands); });
-    m_graphicsEngine->run([this]() -> void { m_physicsEngine->prepare(); }, m_commands);
+    m_physicsEngine->prepare(); // Used for setup.
+    std::jthread physicsThread([this] { m_physicsEngine->run(m_frameSync, m_commands); });
+    std::jthread inputThread([this] { m_inputEngine->run(m_commands); });
+
+    m_graphicsEngine->run([this] { m_physicsEngine->prepare(); }, m_frameSync, m_commands);
+
+    // Graphics loop exited, wake physics so to let it join.
+    m_frameSync.stop();
 }
 
 void Orchestrator::cleanup()

@@ -7,6 +7,7 @@
 
 #include <box2d/box2d.h>
 
+#include "src/frame_sync.h"
 #include "src/world/scene.h"
 
 namespace Input {
@@ -21,6 +22,8 @@ namespace Physics
  */
 class Engine
 {
+    static constexpr float box2dStep = 1.0f / 60.0f;
+
 public:
     /// @brief Constructs an empty physics engine.
     Engine();
@@ -34,14 +37,7 @@ public:
     /// @brief Computes one simulation step.
     void compute();
     /// @brief Runs simulation loop until stop command.
-    void run(std::atomic<uint64_t> &commands);
-
-protected:
-    /// @brief Resolves contact between two entities.
-    void resolveCollision(int a, int b, const Entity::CollisionInfo &info);
-    void collisionResolutionFilter(int a, int b);
-    /// @brief Resolves all currently detected collisions.
-    void resolveAllCollisions();
+    void run(FrameSync &sync, std::atomic<uint64_t> &commands);
 
 private:
     /// @brief Scene currently simulated.
@@ -62,6 +58,8 @@ private:
 
     /// @brief Updates main controlled entity position from input.
     void updateMainPosition();
+
+    decltype(std::chrono::system_clock::now()) m_prevChrono;
 };
 
 }

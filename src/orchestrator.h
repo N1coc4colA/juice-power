@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include "src/frame_sync.h"
 #include "src/keywords.h"
 #include "src/loaders/enums.h"
 
@@ -53,6 +54,7 @@ public:
     /// @brief Initializes core systems.
     void init();
     /// @brief Runs the game/application main loop.
+    void extracted();
     void run();
     /// @brief Performs graceful shutdown of subsystems.
     void cleanup();
@@ -79,6 +81,8 @@ private:
 
     /// @brief Shared command bitmask exchanged between worker loops.
     std::atomic<uint64_t> m_commands = 0;
+
+    FrameSync m_frameSync;
 
     /// @brief Singleton instance pointer.
     static Orchestrator *m_instance;

@@ -28,6 +28,8 @@
 #include "src/graphics/types.h"
 #include "src/world/scene.h"
 
+#include "src/frame_sync.h"
+
 // Forward declaration
 namespace Loaders
 {
@@ -87,7 +89,7 @@ public:
     /// @brief Inits the engine & related libs
     void init();
     /// @brief Runs the main rendering loop
-    void run(const std::function<void()> &prepare, std::atomic<uint64_t> &commands);
+    void run(const std::function<void()> &prepare, FrameSync &sync, std::atomic<uint64_t> &commands);
     /// @brief Stops the engine, cleans the resources & notifies related libs.
     void cleanup();
 
@@ -122,8 +124,8 @@ public:
     /// @brief Backward-compatible alias for deviceMaxImageSize.
     _nodiscard auto getDeviceMaxImageSize() const -> uint64_t { return deviceMaxImageSize(); }
 
-    Engine &operator=(Engine &) = delete;
-    Engine &operator=(Engine &&) = delete;
+    auto operator=(Engine &) -> Engine & = delete;
+    auto operator=(Engine &&) -> Engine & = delete;
 
 protected:
     /// @brief Initializes SDL and creates the window.

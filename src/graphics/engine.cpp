@@ -1087,7 +1087,9 @@ void Engine::cleanup()
     }
 }
 
-void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &commands)
+void Engine::run(const std::function<void()> &prepare,
+                 FrameSync &sync,
+                 std::atomic<uint64_t> &commands)
 {
 	LOGFN();
 
@@ -1099,16 +1101,12 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
     while (!(commands & CommandStates::Stop)) {
         const auto currentTime = std::chrono::system_clock::now();
         const auto delta = currentTime - m_prevChrono;
+        const auto frameTime = static_cast<float>(
+            std::chrono::duration<double, std::milli>(delta).count());
         m_deltaSec = std::chrono::duration<double>(delta).count();
 
-        //convert to microseconds (integer), and then come back to milliseconds
-        const auto frameTime = static_cast<float>(static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(delta).count()) / usRelMs);
-
-        //do not draw if we are minimized
         if (commands & PauseRendering) {
-            //throttle the speed to avoid the endless spinning
-            //std::this_thread::sleep_for(std::chrono::milliseconds(throttleMs));
-            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(throttleMs));
             continue;
         }
 
@@ -1141,17 +1139,11 @@ void Engine::run(const std::function<void()> &prepare, std::atomic<uint64_t> &co
 
         ImGui::Render();
 
-        // Request the data to be updated before drawing.
-        commands |= PrepareDrawing;
-        while (!(commands & (DrawingPrepared | Stop))) {
-            // Wait for the submitted work request to be performed & finished.
-            // As this loop runs for the rendering, there are no reasons to
-            // redraw what's already on the screen. The only reason would be for
-            // the animations. So far, this runs smoothly enough.
-            std::this_thread::yield();
-        }
-        // Reset state.
-        commands &= ~DrawingPrepared;
+        // Request physics to produce this frame, then block until it's ready.
+        // The waitForFrameReady() call is the acquire edge that guarantees
+        // physics' writes to m_scene are visible below.
+        sync.requestFrame();
+        sync.waitForFrameReady();
 
         //updateAnimations(*m_scene);
         updateAnimations2(m_scene);

@@ -103,13 +103,7 @@ public:
     }
 
     /// @brief Copy assignment from another wrapper.
-    auto operator=(const Exclusive &other) -> Exclusive &
-    {
-        m_mtx = other.m_mtx;
-        m_value = other.m_value;
-
-        return *this;
-    }
+    auto operator=(const Exclusive &other) -> Exclusive & = default;
 
     /// @brief Move assignment from another wrapper.
     auto operator=(Exclusive &&other) noexcept -> Exclusive &
@@ -123,21 +117,21 @@ public:
     /// @brief Copies the stored value under lock.
     operator T() const
     {
-        std::scoped_lock lg(m_mtx);
+        std::scoped_lock lg(m_mtx.get());
         return m_value;
     }
 
     /// @brief Returns mutable value reference protected by lock lifetime.
     auto get() -> T &
     {
-        std::scoped_lock lg(m_mtx);
+        std::scoped_lock lg(m_mtx.get());
         return m_value;
     }
 
     /// @brief Returns const value reference protected by lock lifetime.
     auto get() const -> const T &
     {
-        std::scoped_lock lg(m_mtx);
+        std::scoped_lock lg(m_mtx.get());
         return m_value;
     }
 
